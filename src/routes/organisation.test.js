@@ -1,20 +1,19 @@
-import { initialiseServer } from '../common/helpers/initialse-test-server.js'
+import {
+  initialiseServer,
+  stopServer
+} from '../common/helpers/initialse-test-server.js'
 import { paths, pathTo } from '../config/paths.js'
-import * as mockMongo from 'vitest-mongodb'
 import { orgSchema, mergeParams } from './organisation.js'
 
 describe('organisation API', () => {
   let server
 
   beforeAll(async () => {
-    // TODO inject a mock db - currently relies on mongo being up
-    await mockMongo.setup()
     server = await initialiseServer()
   })
 
   afterAll(async () => {
-    await server.stop({ timeout: 0 })
-    await mockMongo.teardown()
+    stopServer(server)
   })
 
   test.each([
