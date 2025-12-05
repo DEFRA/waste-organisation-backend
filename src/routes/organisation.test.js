@@ -84,4 +84,28 @@ describe('organisation API', () => {
     })
     expect(statusCode).toBe(200)
   })
+
+  test('Should get org', async () => {
+    const r1 = await server.inject({
+      method: 'PUT',
+      url: pathTo(paths.putOrganisation, { userId: 111, organisationId: 999 }),
+      payload: { organisation: { name: 'Mr Dabolina', organisationId: 999 } }
+    })
+    expect(r1.statusCode).toBe(200)
+    const { result, statusCode } = await server.inject({
+      method: 'GET',
+      url: pathTo(paths.getOrganisations, { userId: 111 })
+    })
+    expect(result).toEqual({
+      message: 'success',
+      organisations: [
+        {
+          name: 'Mr Dabolina',
+          organisationId: '999',
+          users: ['111']
+        }
+      ]
+    })
+    expect(statusCode).toBe(200)
+  })
 })

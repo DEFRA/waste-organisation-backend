@@ -75,7 +75,7 @@ export const organisations = [
         request.db,
         request.params.userId
       )
-      return h.response({ message: 'success', orgs })
+      return h.response({ message: 'success', organisations: orgs })
     }
   },
   {
