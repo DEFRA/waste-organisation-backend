@@ -4,7 +4,7 @@ import { createServer, plugins } from '../../server.js'
 export const initialiseServer = async () => {
   await mockMongo.setup()
   const mongoDb = plugins.mongoDb
-  if (globalThis && globalThis.__MONGO_URI__) {
+  if (globalThis?.__MONGO_URI__) {
     mongoDb.options.mongoUrl = globalThis.__MONGO_URI__
   }
   const server = await createServer({
