@@ -3,11 +3,11 @@ export const paths = {
   putOrganisation: '/user/{userId}/organisation/{organisationId}'
 }
 
-export const pathTo = (route, params, options) => {
+export const pathTo = (route, params) => {
   const routeParams = route.match(/\{\w+\*?\}/g)
 
-  for (let i = 0; i < routeParams.length; i++) {
-    const parts = routeParams[i].match(/\{(\w+)\*?\}/)
+  for (const r of routeParams) {
+    const parts = r.match(/\{(\w+)\*?\}/)
     const src = params[parts[1]]
     const dst = parts[0]
     const key = parts[1]
