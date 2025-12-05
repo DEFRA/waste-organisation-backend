@@ -11,7 +11,20 @@ import { pulse } from './common/helpers/pulse.js'
 import { requestTracing } from './common/helpers/request-tracing.js'
 import { setupProxy } from './common/helpers/proxy/setup-proxy.js'
 
-async function createServer() {
+// prettier-ignore
+export const plugins = {
+  logger: requestLogger,   // requestLogger  - automatically logs incoming requests
+  tracing: requestTracing, // requestTracing - trace header logging and propagation
+  secureContext,           // secureContext  - loads CA certificates from environment config
+  pulse,                   // pulse          - provides shutdown handlers
+  mongoDb: {               // mongoDb        - sets up mongo connection pool and attaches to `server` and `request` objects
+    plugin: mongoDb,
+    options: config.get('mongo')
+  },
+  router                   // router         - routes used in the app
+}
+
+async function createServer(pluginOverrides) {
   setupProxy()
   const server = Hapi.server({
     host: config.get('host'),
@@ -40,24 +53,8 @@ async function createServer() {
   })
 
   // Hapi Plugins:
-  // requestLogger  - automatically logs incoming requests
-  // requestTracing - trace header logging and propagation
-  // secureContext  - loads CA certificates from environment config
-  // pulse          - provides shutdown handlers
-  // mongoDb        - sets up mongo connection pool and attaches to `server` and `request` objects
-  // router         - routes used in the app
-  await server.register([
-    requestLogger,
-    requestTracing,
-    secureContext,
-    pulse,
-    {
-      plugin: mongoDb,
-      options: config.get('mongo')
-    },
-    router
-  ])
 
+  await server.register(Object.values({ ...plugins, ...pluginOverrides }))
   return server
 }
 
