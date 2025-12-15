@@ -72,8 +72,8 @@ const sendSomeMessages = async (messages) => {
         batch = await sender.createMessageBatch()
 
         // now, add the message failed to be added to the previous batch to this batch
-        if (!batch.tryAddMessage(messages[i])) {
-          // NOSONAR
+        // prettier-ignore
+        if (!batch.tryAddMessage(messages[i])) { // NOSONAR
           // if it still can't be added to the batch, the message is probably too big to fit in a batch
           throw new Error('Message too big to fit in a batch')
         }
