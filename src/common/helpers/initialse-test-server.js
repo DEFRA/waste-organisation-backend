@@ -1,5 +1,5 @@
 import * as mockMongo from 'vitest-mongodb'
-import { createServer, plugins } from '../../server.js'
+import { createServer, plugins } from '../../api-server.js'
 
 export const initialiseServer = async () => {
   await mockMongo.setup()
