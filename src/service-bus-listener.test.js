@@ -4,7 +4,7 @@ import {
 } from './service-bus-listener.js'
 
 describe('should do', async () => {
-  test.skip('something', async () => {
+  test('something', async () => {
     const messages = [
       { body: 'Albert Einstein' },
       { body: 'Werner Heisenberg' },
