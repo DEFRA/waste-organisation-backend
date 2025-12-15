@@ -24,7 +24,7 @@ export const plugins = {
   router                   // router         - routes used in the app
 }
 
-async function createServer(pluginOverrides) {
+export async function createServer(pluginOverrides) {
   setupProxy()
   const server = Hapi.server({
     host: config.get('host'),
@@ -58,7 +58,7 @@ async function createServer(pluginOverrides) {
   return server
 }
 
-async function startServer(server) {
+export async function startServer(server) {
   await server.start()
 
   server.logger.info('Server started successfully')
@@ -68,5 +68,3 @@ async function startServer(server) {
 
   return server
 }
-
-export { createServer, startServer }
