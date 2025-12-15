@@ -58,4 +58,15 @@ async function createServer(pluginOverrides) {
   return server
 }
 
-export { createServer }
+async function startServer(server) {
+  await server.start()
+
+  server.logger.info('Server started successfully')
+  server.logger.info(
+    `Access your backend on http://localhost:${config.get('port')}`
+  )
+
+  return server
+}
+
+export { createServer, startServer }
