@@ -1,6 +1,9 @@
 import { Db, MongoClient } from 'mongodb'
 import { LockManager } from 'mongo-locks'
-import { initialiseServer, stopServer } from './initialse-test-server.js'
+import {
+  initialiseServer,
+  stopServer
+} from '../common/helpers/initialse-test-server.js'
 
 describe('#mongoDb', () => {
   let server

@@ -1,6 +1,6 @@
 import { MongoClient } from 'mongodb'
 import { LockManager } from 'mongo-locks'
-import { orgCollection } from '../../routes/organisation.js'
+import { orgCollection } from '../routes/organisation.js'
 
 export const mongoDb = {
   plugin: {
@@ -17,6 +17,7 @@ export const mongoDb = {
       const db = client.db(databaseName)
       const locker = new LockManager(db.collection('mongo-locks'))
 
+      // Note: DB indexes are created during plugin initialisation
       await createIndexes(db)
 
       server.logger.info(`MongoDb connected to ${databaseName}`)
