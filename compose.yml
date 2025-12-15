@@ -122,6 +122,8 @@ services:
     volumes:
       - ./src:/home/node/src:z
       - ./package.json:/home/node/package.json:z
+      - ./package-lock.json:/home/node/package-lock.json:z
+      - ./node_modules:/home/node/node_modules:z
 
 ################################################################################
 
