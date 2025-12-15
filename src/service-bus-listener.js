@@ -1,5 +1,9 @@
-import { delay, ServiceBusClient, ServiceBusMessage } from '@azure/service-bus'
-import { DefaultAzureCredential } from '@azure/identity'
+import {
+  delay,
+  ServiceBusClient // ServiceBusMessage
+} from '@azure/service-bus'
+import {} from //DefaultAzureCredential
+'@azure/identity'
 
 const connectionStr =
   'Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;'
