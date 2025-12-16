@@ -3,7 +3,7 @@ import {
   stopServer
 } from '../common/helpers/initialse-test-server.js'
 import { paths, pathTo } from '../config/paths.js'
-import { orgSchema, mergeParams } from './organisation.js'
+import { orgSchema, mergeParams } from '../domain/organisation.js'
 
 describe('organisation API', () => {
   let server

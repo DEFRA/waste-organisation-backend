@@ -5,6 +5,9 @@ import {
 import {} from //DefaultAzureCredential
 '@azure/identity'
 
+// TODO keep event sourced data in s3 bucket
+// TODO tidy up example and process actual data structures
+
 const connectionStr =
   'Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;'
 
