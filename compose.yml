@@ -1,19 +1,20 @@
+---
 services:
   localstack:
     image: localstack/localstack:3.0.2
     ports:
-      - '4566:4566' # LocalStack Gateway
-      - '4510-4559:4510-4559' # external services port range
+      - '4566:4566'            # LocalStack Gateway
+      - '4510-4559:4510-4559'  # external services port range
     env_file:
       - 'compose/aws.env'
     environment:
       DEBUG: ${DEBUG:-1}
-      LS_LOG: WARN # Localstack DEBUG Level
+      LS_LOG: WARN             # Localstack DEBUG Level
       SERVICES: s3,sqs,sns,firehose
       LOCALSTACK_HOST: 127.0.0.1
     volumes:
-      - '${TMPDIR:-/tmp}/localstack:/var/lib/localstack'
-      - ./compose/start-localstack.sh:/etc/localstack/init/ready.d/start-localstack.sh
+      - '${TMPDIR:-/tmp}/localstack:/var/lib/localstack:z'
+      - ./compose/start-localstack.sh:/etc/localstack/init/ready.d/start-localstack.sh:z
     healthcheck:
       test: ['CMD', 'curl', 'localhost:4566']
       interval: 5s
@@ -37,8 +38,39 @@ services:
     ports:
       - '27017:27017'
     volumes:
-      - mongodb-data:/data
+      - mongodb-data:/data:z
     restart: always
+
+  azure-service-bus:
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    pull_policy: always
+    volumes:
+      - "./test-resources/azure-service-bus/config.json:/ServiceBus_Emulator/ConfigFiles/Config.json:z"
+    ports:
+      - "5672:5672"
+      - "5300:5300"
+    environment:
+      SQL_SERVER: mssql
+      MSSQL_SA_PASSWORD: 'Pas_w0rd'
+      ACCEPT_EULA: "Y"
+      SQL_WAIT_INTERVAL: 15
+    depends_on:
+      - mssql
+    networks:
+      cdp-tenant:
+        aliases:
+          - "sb-emulator"
+  mssql:
+    container_name: "mssql"
+    image: "mcr.microsoft.com/mssql/server:2022-latest"
+    networks:
+      cdp-tenant:
+        aliases:
+          - "mssql"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: 'Pas_w0rd'
+
 
   ################################################################################
 
@@ -71,13 +103,12 @@ services:
       target: development
     ports:
       - '3001:3001'
-    links:
-      - 'localstack:localstack'
-      - 'mongodb:mongodb'
     depends_on:
       localstack:
         condition: service_healthy
       mongodb:
+        condition: service_started
+      azure-service-bus:
         condition: service_started
     env_file:
       - 'compose/aws.env'
@@ -89,8 +120,10 @@ services:
     networks:
       - cdp-tenant
     volumes:
-      - ./src:/home/node/src
-      - ./package.json:/home/node/package.json
+      - ./src:/home/node/src:z
+      - ./package.json:/home/node/package.json:z
+      - ./package-lock.json:/home/node/package-lock.json:z
+      - ./node_modules:/home/node/node_modules:z
 
 ################################################################################
 

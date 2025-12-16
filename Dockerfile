@@ -24,8 +24,10 @@ LABEL uk.gov.defra.ffc.parent-image=defradigital/node:${PARENT_VERSION}
 # Add curl to template.
 # CDP PLATFORM HEALTHCHECK REQUIREMENT
 USER root
-RUN apk add --no-cache curl
+RUN apk add --no-cache curl dumb-init
 USER node
+
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 COPY --from=development /home/node/package*.json ./
 COPY --from=development /home/node/src ./src/

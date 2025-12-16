@@ -5,7 +5,7 @@ import { secureContext } from '@defra/hapi-secure-context'
 import { config } from './config.js'
 import { router } from './plugins/router.js'
 import { requestLogger } from './common/helpers/logging/request-logger.js'
-import { mongoDb } from './common/helpers/mongodb.js'
+import { mongoDb } from './plugins/mongodb.js'
 import { failAction } from './common/helpers/fail-action.js'
 import { pulse } from './common/helpers/pulse.js'
 import { requestTracing } from './common/helpers/request-tracing.js'
@@ -24,7 +24,7 @@ export const plugins = {
   router                   // router         - routes used in the app
 }
 
-async function createServer(pluginOverrides) {
+export async function createServer(pluginOverrides) {
   setupProxy()
   const server = Hapi.server({
     host: config.get('host'),
@@ -58,4 +58,13 @@ async function createServer(pluginOverrides) {
   return server
 }
 
-export { createServer }
+export async function startServer(server) {
+  await server.start()
+
+  server.logger.info('Server started successfully')
+  server.logger.info(
+    `Access your backend on http://localhost:${config.get('port')}`
+  )
+
+  return server
+}
