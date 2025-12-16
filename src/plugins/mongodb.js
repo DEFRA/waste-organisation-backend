@@ -1,6 +1,6 @@
 import { MongoClient } from 'mongodb'
 import { LockManager } from 'mongo-locks'
-import { orgCollection } from '../routes/organisation.js'
+import { orgCollection } from '../repositories/organisation.js'
 
 export const mongoDb = {
   plugin: {
