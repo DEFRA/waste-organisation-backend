@@ -12,6 +12,7 @@ export const organisations = [
   {
     method: 'GET',
     path: paths.getOrganisations,
+    options: { auth: 'api-key-auth' },
     handler: async (request, h) => {
       const orgs = await findAllOrganisationsForUser(
         request.db,
@@ -23,6 +24,7 @@ export const organisations = [
   {
     method: 'PUT',
     path: paths.putOrganisation,
+    options: { auth: 'api-key-auth' },
     handler: async (request, h) => {
       const org = await findOrganisationById(
         request.db,

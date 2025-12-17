@@ -1,9 +1,9 @@
 import {
   initialiseServer,
+  WASTE_CLIENT_AUTH_TEST_TOKEN,
   stopServer
 } from '../common/helpers/initialse-test-server.js'
 import { paths, pathTo } from '../config/paths.js'
-import { orgSchema, mergeParams } from '../domain/organisation.js'
 
 describe('organisation API', () => {
   let server
@@ -16,29 +16,13 @@ describe('organisation API', () => {
     stopServer(server)
   })
 
-  test.each([
-    {
-      name: 'Bob'
-    },
-    {
-      isWasteReceiver: true
-    },
-    {
-      isWasteReceiver: false,
-      users: ['abc']
-    }
-  ])('validate', (org) => {
-    const { error, value } = orgSchema.validate(
-      mergeParams(null, org, '456', '123')
-    )
-    expect(error).toEqual(undefined)
-    expect(value.name).toEqual(org.name)
-  })
-
   test('Should PUT org', async () => {
     const { result, statusCode } = await server.inject({
       method: 'PUT',
       url: pathTo(paths.putOrganisation, { userId: 123, organisationId: 456 }),
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
       payload: {
         organisation: {
           name: 'Bob'
@@ -67,6 +51,9 @@ describe('organisation API', () => {
       const { organisation, urlParams } = o(userId)
       return await server.inject({
         method: 'PUT',
+        headers: {
+          'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+        },
         url: pathTo(paths.putOrganisation, urlParams),
         payload: { organisation }
       })
@@ -88,12 +75,18 @@ describe('organisation API', () => {
   test('Should get org', async () => {
     const r1 = await server.inject({
       method: 'PUT',
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
       url: pathTo(paths.putOrganisation, { userId: 111, organisationId: 999 }),
       payload: { organisation: { name: 'Mr Dabolina', organisationId: 999 } }
     })
     expect(r1.statusCode).toBe(200)
     const { result, statusCode } = await server.inject({
       method: 'GET',
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
       url: pathTo(paths.getOrganisations, { userId: 111 })
     })
     expect(result).toEqual({

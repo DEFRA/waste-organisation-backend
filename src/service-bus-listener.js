@@ -24,7 +24,6 @@ const listenForDefraIdMessages = async () => {
   const msgs = []
   // function to handle messages
   const myMessageHandler = async (messageReceived) => {
-    console.log(`Received message: ${messageReceived.body}`)
     msgs.push({ body: messageReceived.body })
   }
 
@@ -85,8 +84,6 @@ const sendSomeMessages = async (messages) => {
 
     // Send the last created batch of messages to the queue
     await sender.sendMessages(batch)
-
-    console.log(`Sent a batch of messages to the queue: ${queueName}`)
 
     // Close the sender
     await sender.close()

@@ -10,6 +10,7 @@ import { failAction } from './common/helpers/fail-action.js'
 import { pulse } from './common/helpers/pulse.js'
 import { requestTracing } from './common/helpers/request-tracing.js'
 import { setupProxy } from './common/helpers/proxy/setup-proxy.js'
+import { authentication } from './plugins/auth.js'
 
 // prettier-ignore
 export const plugins = {
@@ -21,6 +22,7 @@ export const plugins = {
     plugin: mongoDb,
     options: config.get('mongo')
   },
+  authentication,          // api key authentication strategy
   router                   // router         - routes used in the app
 }
 
