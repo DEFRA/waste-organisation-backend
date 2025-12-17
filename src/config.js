@@ -9,7 +9,14 @@ convict.addFormats(convictFormatWithValidator)
 const isProduction = process.env.NODE_ENV === 'production'
 const isTest = process.env.NODE_ENV === 'test'
 
-const config = convict({
+export const config = convict({
+  auth: {
+    clients: {
+      doc: 'API Client pre-shared-keys',
+      format: Array,
+      default: []
+    }
+  },
   serviceVersion: {
     doc: 'The service version, this variable is injected into your docker container in CDP environments',
     format: String,
@@ -135,6 +142,13 @@ const config = convict({
   }
 })
 
-config.validate({ allowed: 'strict' })
+export const updateClientAuthKeys = () => {
+  const apiKeys = Object.entries(process.env)
+    .filter(([k]) => k.startsWith('WASTE_CLIENT_AUTH_'))
+    .map(([, v]) => v)
+  config.set('auth.clients', apiKeys)
+}
 
-export { config }
+updateClientAuthKeys()
+
+config.validate({ allowed: 'strict' })
