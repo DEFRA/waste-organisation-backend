@@ -27,3 +27,10 @@ export const saveOrganisation = (db, orgId, org) => {
     }
   )
 }
+
+export const createOrganisationIndexes = async (db) => {
+  await db.collection(orgCollection).createIndex({ users: 1 })
+  await db
+    .collection(orgCollection)
+    .createIndex({ organisationId: 1 }, { unique: true })
+}

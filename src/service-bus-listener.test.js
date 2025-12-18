@@ -22,8 +22,10 @@ describe('should do', async () => {
 
     const result = []
     // function to handle messages
-    const myMessageHandler = async (messageReceived) => {
-      result.push({ body: messageReceived.body })
+    const myMessageHandler = {
+      handleMessage: async (messageReceived) => {
+        result.push({ body: messageReceived.body })
+      }
     }
 
     await sendSomeMessages(messages)

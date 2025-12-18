@@ -3,8 +3,9 @@ import { createLogger } from './common/helpers/logging/logger.js'
 import { createServer, startServer } from './api-server.js'
 import {
   listenForDefraIdMessages,
-  messageHandler
+  dbMessageHandler
 } from './service-bus-listener.js'
+import { config } from './config.js'
 
 await startServer(await createServer())
 
@@ -15,7 +16,9 @@ process.on('unhandledRejection', (error) => {
   process.exitCode = 1
 })
 
-export const defraIdListener = listenForDefraIdMessages(messageHandler)
+export const defraIdListener = listenForDefraIdMessages(
+  await dbMessageHandler(console.log, config.get('mongo'))
+)
 
 process.on('SIGTERM', defraIdListener.close)
 process.on('SIGINT', defraIdListener.close)
