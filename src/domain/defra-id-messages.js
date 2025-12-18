@@ -22,12 +22,14 @@ const updateDefraLobServiceuserLink = ({ metadata }) => {
   return { metadata }
 }
 
+// TODO do we need this?
 const saveAccount = ({ account }) => {
   return { account }
 }
 
-const saveContact = ({ metadata }) => {
-  return { metadata }
+// TODO do we need this?
+const saveContact = (org, { metadata, recorddata }) => {
+  return { ...org, organisationId: metadata.recordid, name: recorddata.name }
 }
 
 const connectionRf = (conns, c) => {
@@ -82,6 +84,7 @@ const dispatcher = {
 export const transformMessage = (organisation, message) => {
   const entity = message?.metadata?.entity
   const operationType = message?.metadata?.operationtype
+  // TODO validate and handle errors
   if (dispatcher[entity] && dispatcher[entity][operationType]) {
     return dispatcher[entity][operationType](organisation, message)
   } else {
