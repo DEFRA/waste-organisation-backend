@@ -4,10 +4,11 @@ export const orgSchema = joi.object({
   organisationId: joi.string().required(),
   users: joi.array().items(joi.string()).required(),
   name: joi.string(),
-  isWasteReceiver: joi.boolean()
+  isWasteReceiver: joi.boolean(),
+  connections: joi.object().pattern(joi.string(), joi.string())
 })
 
-const ensureUserInOrg = (org, organisationId, userId) => {
+export const ensureUserInOrg = (org, userId) => {
   let users
   if (org && Array.isArray(org.users)) {
     if (org.users.includes(userId)) {
@@ -18,24 +19,33 @@ const ensureUserInOrg = (org, organisationId, userId) => {
   } else {
     users = [userId]
   }
-  return { ...org, organisationId, users }
+  return { ...org, users }
 }
 
-export const mergeParams = (dbOrg, requestOrg, organisationId, userId) => {
-  let org = dbOrg
-  if (org) {
-    org = {
-      ...org,
-      ...requestOrg
-    }
-  } else {
-    org = requestOrg
-  }
-  return ensureUserInOrg(org, organisationId, userId)
+const ensureOrganisationId = (org, organisationId) => {
+  return { ...org, organisationId }
+}
+
+const mergeParams = (dbOrg, requestOrg, organisationId, userId) => {
+  return ensureOrganisationId(
+    ensureUserInOrg({ ...dbOrg, ...requestOrg }, userId),
+    organisationId
+  )
 }
 
 export const mergeAndValidate = (dbOrg, requestOrg, organisationId, userId) => {
   const org = mergeParams(dbOrg, requestOrg, organisationId, userId)
   const { error, value } = orgSchema.validate(org)
   return { error, organisation: value }
+}
+
+export const removeUserConnection = (org, connectionId) => {
+  if (org?.connections) {
+    const uid = org.connections[connectionId]
+    const connections = { ...org.connections }
+    delete connections[connectionId]
+    return { ...org, connections, users: org.users.filter((u) => u !== uid) }
+  } else {
+    return org
+  }
 }
