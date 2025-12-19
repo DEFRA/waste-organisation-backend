@@ -4,7 +4,7 @@ import {
 // import {DefaultAzureCredential} from '@azure/identity'
 import { MongoClient } from 'mongodb'
 import { createLogger } from './common/helpers/logging/logger.js'
-import { saveOrganisation } from './repositories/organisation.js'
+import { updateOrganisation } from './repositories/organisation.js'
 
 // TODO keep event sourced data in s3 bucket
 // TODO tidy up example and process actual data structures
@@ -45,24 +45,19 @@ export const listenForDefraIdMessages = (messageHandler) => {
   }
 }
 
-export const dbMessageHandler = async (transform, options) => {
+export const dbMessageHandler = async (transform, query, options) => {
   const client = await MongoClient.connect(options.mongoUrl, {
     ...options.mongoOptions
   })
 
-  const databaseName = options.databaseName
-  const db = client.db(databaseName)
-
   return {
     close: async () => {
-      await db.close(true)
+      await client.close(true)
     },
     handleMessage: async (message) => {
-      // const dbOrg =
-      const org = transform(message)
-      if (org) {
-        saveOrganisation(db, org.organisationId, org)
-      }
+      updateOrganisation(client, options.databaseName, query(message), (org) =>
+        transform(org, message)
+      )
     }
   }
 }

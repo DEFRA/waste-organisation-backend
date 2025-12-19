@@ -29,13 +29,31 @@ export const saveOrganisation = (db, orgId, org) => {
 }
 
 // TODO handle transactions
-export const updateOrganisation = (db, orgId, func) => {
-  return db.runCommand({
-    findAndModify: orgCollection,
-    query: { organisationId: orgId },
-    update: {},
-    upsert: true,
-    new: true
+// { organisationId: orgId } ... { organisationId: { $eq: orgId } }
+export const updateOrganisation = async (client, databaseName, query, func) => {
+  const session = client.startSession()
+  await session.withTransaction(async () => {
+    try {
+      const db = client.db(databaseName)
+      const dbOrg = db
+        .collection(orgCollection)
+        .findOne(query, { projection: { _id: 0 }, session })
+      const org = func(dbOrg)
+      if (org) {
+        await db.collection(orgCollection).updateOne(
+          { organisationId: org.organisationId },
+          {
+            $set: org
+          },
+          {
+            upsert: true,
+            session
+          }
+        )
+      }
+    } finally {
+      await session.endSession()
+    }
   })
 }
 

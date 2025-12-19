@@ -71,12 +71,14 @@ const updateConnection = (org, { recorddata }) => {
   )
 }
 
-const findByOrgId = (_message) => {
-  return {}
+const findByOrgId = (message) => {
+  // TODO actually get the id from the message
+  return { organisationId: { $eq: message.orgId } }
 }
 
-const findByConnectionId = (_message) => {
-  return {}
+const findByConnectionId = (message) => {
+  // TODO actually get the id from the message
+  return { connections: { $elemMatch: { id: message.connectionId } } }
 }
 
 const skipMessage = (_message) => null
