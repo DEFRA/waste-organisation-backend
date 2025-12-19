@@ -40,8 +40,8 @@ export const updateOrganisation = (db, orgId, func) => {
 }
 
 export const createOrganisationIndexes = async (db) => {
+  const u = { unique: true }
   await db.collection(orgCollection).createIndex({ users: 1 })
-  await db
-    .collection(orgCollection)
-    .createIndex({ organisationId: 1 }, { unique: true })
+  await db.collection(orgCollection).createIndex({ organisationId: 1 }, u)
+  await db.collection(orgCollection).createIndex({ 'connections.id': 1 })
 }

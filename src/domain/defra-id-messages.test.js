@@ -21,13 +21,126 @@ describe('process example events from defra id team', () => {
       createServiceEnrolment.recorddata.account.accountid
     )
     expect(org.name).toEqual(createServiceEnrolment.recorddata.account.name)
-    const conns = {}
-    // prettier-ignore
-    conns[createServiceEnrolment.recorddata.connections[0].connectionid] = createServiceEnrolment.recorddata.connections[0].record1id
-    expect(org.connections).toEqual(conns)
+    expect(org.connections).toEqual([
+      {
+        id: createServiceEnrolment.recorddata.connections[0].connectionid,
+        userId: createServiceEnrolment.recorddata.connections[0].record1id
+      }
+    ])
     expect(org.users).toEqual([
       createServiceEnrolment.recorddata.connections[0].record1id
     ])
+  })
+
+  test.each([
+    {
+      messages: [
+        testData.createServiceEnrolment,
+        testData.updateServiceEnrolment
+      ],
+      expected: {
+        connections: [
+          {
+            id: 'd8aa6c8e-b9d5-f011-8544-7c1e5229d0f2',
+            userId: 'dbdb6588-b9d5-f011-8544-7c1e5229d0f2'
+          }
+        ],
+        name: 'GECHNOLOGY LIMITED',
+        organisationId: '4fdc6588-b9d5-f011-8544-7c1e5229d0f2',
+        users: ['dbdb6588-b9d5-f011-8544-7c1e5229d0f2']
+      }
+    }
+  ])('events', ({ messages, expected, initial }) => {
+    expect(messages.reduce(transformMessage, initial)).toEqual(expected)
+  })
+
+  test.each([
+    null,
+    {},
+    {
+      organisationId: testData.updateAccount.recorddata.account.accountid,
+      name: 'bob'
+    },
+    {
+      organisationId: testData.updateAccount.recorddata.account.accountid
+    }
+  ])('updateAccount', (dbOrg) => {
+    const { updateAccount } = testData
+    const org = transformMessage(dbOrg, updateAccount)
+    expect(org.organisationId).toEqual(
+      updateAccount.recorddata.account.accountid
+    )
+    expect(org.name).toEqual(updateAccount.recorddata.account.name)
+  })
+
+  describe('updateConnection', () => {
+    test('remove when user only one in org', () => {
+      const { updateConnection } = testData
+      const org = transformMessage(
+        {
+          connections: [
+            {
+              id: updateConnection.recorddata.connections[0].connectionid,
+              userId: 'userId'
+            }
+          ],
+          users: ['userId']
+        },
+        updateConnection
+      )
+      expect(org.connections).toEqual([])
+      expect(org.users).toEqual([])
+    })
+
+    test('remove when user already in org', () => {
+      const { updateConnection } = testData
+      const org = transformMessage(
+        {
+          connections: [
+            {
+              id: updateConnection.recorddata.connections[0].connectionid,
+              userId: 'userId'
+            },
+            {
+              id: 'fish',
+              userId: 'otherUser'
+            }
+          ],
+          users: ['userId', 'otherUser']
+        },
+        updateConnection
+      )
+      expect(org.connections).toEqual([
+        {
+          id: 'fish',
+          userId: 'otherUser'
+        }
+      ])
+      expect(org.users).toEqual(['otherUser'])
+    })
+
+    test("don't remove user if connection id not known", () => {
+      const { updateConnection } = testData
+      const org = transformMessage(
+        {
+          connections: [
+            {
+              id: 'fish',
+              userId: 'otherUser'
+            }
+          ],
+          users: ['userId', 'otherUser']
+        },
+        updateConnection
+      )
+      expect(org.connections).toEqual([
+        {
+          id: 'fish',
+          userId: 'otherUser'
+        }
+      ])
+      expect(org.users).toEqual(['userId', 'otherUser'])
+    })
   })
 })
 

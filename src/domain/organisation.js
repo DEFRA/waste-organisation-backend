@@ -5,7 +5,9 @@ export const orgSchema = joi.object({
   users: joi.array().items(joi.string()).required(),
   name: joi.string(),
   isWasteReceiver: joi.boolean(),
-  connections: joi.object().pattern(joi.string(), joi.string())
+  connections: joi
+    .array()
+    .items(joi.object({ id: joi.string(), userId: joi.string() }))
 })
 
 export const ensureUserInOrg = (org, userId) => {
@@ -41,11 +43,29 @@ export const mergeAndValidate = (dbOrg, requestOrg, organisationId, userId) => {
 
 export const removeUserConnection = (org, connectionId) => {
   if (org?.connections) {
-    const uid = org.connections[connectionId]
-    const connections = { ...org.connections }
-    delete connections[connectionId]
-    return { ...org, connections, users: org.users.filter((u) => u !== uid) }
+    return org.connections.reduce(
+      (org, c) => {
+        if (c.id === connectionId) {
+          org.users = org.users.filter((u) => u !== c.userId)
+        } else {
+          org.connections.push(c)
+        }
+        return org
+      },
+      { ...org, connections: [] }
+    )
   } else {
     return org
   }
 }
+
+export const addUserConnection = (org, connection) => {
+  const cs = (org?.connections || []).filter(({ id }) => id !== connection.id)
+  cs.push(connection)
+  return { ...ensureUserInOrg(org, connection.userId), connections: cs }
+}
+
+export const updateUserConnection = (org, connection) =>
+  connection.userId
+    ? addUserConnection(org, connection)
+    : removeUserConnection(org, connection.id)

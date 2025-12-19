@@ -26,7 +26,7 @@ const testData = [
     },
     org: {
       users: ['abc'],
-      connections: { 'abc-123': 'abc' }
+      connections: [{ id: 'abc-123', userId: 'abc' }]
     }
   }
 ]
@@ -42,7 +42,7 @@ describe('user domain', () => {
     expect(organisation.organisationId).toEqual(o)
     expect(organisation.users.includes(u)).toBe(true)
     if (organisation.connections) {
-      const uids = new Set(Object.values(organisation.connections))
+      const uids = new Set(organisation.connections.map(({ userId }) => userId))
       uids.add(u)
       expect(uids).toEqual(new Set(organisation.users))
     }
@@ -52,11 +52,14 @@ describe('user domain', () => {
     const org = removeUserConnection(
       {
         users: ['xyz', 'abc'],
-        connections: { 'abc-123': 'abc', 'xyz-789': 'xyz' }
+        connections: [
+          { id: 'abc-123', userId: 'abc' },
+          { id: 'xyz-789', userId: 'xyz' }
+        ]
       },
       'abc-123'
     )
-    expect(org.connections).toEqual({ 'xyz-789': 'xyz' })
+    expect(org.connections).toEqual([{ id: 'xyz-789', userId: 'xyz' }])
     expect(org.users).toEqual(['xyz'])
   })
 })
