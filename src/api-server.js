@@ -55,7 +55,6 @@ export async function createServer(pluginOverrides) {
   })
 
   // Hapi Plugins:
-
   await server.register(Object.values({ ...plugins, ...pluginOverrides }))
   return server
 }

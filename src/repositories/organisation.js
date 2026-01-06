@@ -35,9 +35,10 @@ export const updateOrganisation = async (client, databaseName, query, func) => {
   await session.withTransaction(async () => {
     try {
       const db = client.db(databaseName)
-      const dbOrg = db
+      const dbOrg = await db
         .collection(orgCollection)
         .findOne(query, { projection: { _id: 0 }, session })
+      // console.log('dbOrg: ', dbOrg)
       const org = func(dbOrg)
       if (org) {
         await db.collection(orgCollection).updateOne(
@@ -51,8 +52,11 @@ export const updateOrganisation = async (client, databaseName, query, func) => {
           }
         )
       }
+    } catch (e) {
+      console.log('error: ', e)
+      throw e
     } finally {
-      await session.endSession()
+      // await session.endSession()
     }
   })
 }

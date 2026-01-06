@@ -1,19 +1,25 @@
 import * as mockMongo from 'vitest-mongodb'
 import { createServer, plugins } from '../../api-server.js'
-import { updateClientAuthKeys } from '../../config.js'
+import { updateClientAuthKeys, config } from '../../config.js'
 
 export const WASTE_CLIENT_AUTH_TEST_TOKEN = 'mytesttoken'
 
 export const initInMemMongo = async () => {
-  await mockMongo.setup()
+  await mockMongo.setup({
+    type: 'replSet',
+    serverOptions: { replSet: { count: 4 } }
+  })
   const mongoDb = plugins.mongoDb
   if (globalThis?.__MONGO_URI__) {
     mongoDb.options.mongoUrl = globalThis.__MONGO_URI__
+    config.set('mongo.options', mongoDb.options)
   }
   return mongoDb
 }
 
-export const stopInMemMongo = mockMongo.teardown
+export const stopInMemMongo = async () => {
+  await mockMongo.teardown()
+}
 
 export const initialiseServer = async () => {
   process.env.WASTE_CLIENT_AUTH_TEST_TOKEN = WASTE_CLIENT_AUTH_TEST_TOKEN

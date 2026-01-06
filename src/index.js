@@ -1,12 +1,11 @@
 import process from 'node:process'
 import { createLogger } from './common/helpers/logging/logger.js'
-import { createServer, startServer } from './api-server.js'
+import { createServer, startServer, plugins } from './api-server.js'
 import {
   listenForDefraIdMessages,
   dbMessageHandler
 } from './service-bus-listener.js'
 import { findOrgQuery, transformMessage } from './domain/defra-id-messages.js'
-import { config } from './config.js'
 
 await startServer(await createServer())
 
@@ -18,7 +17,11 @@ process.on('unhandledRejection', (error) => {
 })
 
 export const defraIdListener = listenForDefraIdMessages(
-  await dbMessageHandler(transformMessage, findOrgQuery, config.get('mongo'))
+  await dbMessageHandler(
+    transformMessage,
+    findOrgQuery,
+    plugins.mongoDb.options
+  )
 )
 
 process.on('SIGTERM', defraIdListener.close)

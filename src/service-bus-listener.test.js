@@ -10,6 +10,7 @@ import {
   stopInMemMongo
 } from './common/helpers/initialse-test-server.js'
 import { config } from './config.js'
+import { plugins } from './api-server.js'
 
 describe('should do', async () => {
   test('something', async () => {
@@ -75,23 +76,24 @@ describe('db messenge handler', () => {
     await initInMemMongo()
   })
   afterAll(async () => {
-    await stopInMemMongo()
+    // await stopInMemMongo()
   })
 
   test('updates organisation', async () => {
     const id = '123'
     const { handleMessage, close } = await dbMessageHandler(
-      (_) => {
-        console.log('_: ', _)
+      (x) => {
+        console.log('THIS ONE _: ', x)
         return { test: 'data', id }
       },
       (_) => ({ id: { $eq: id } }),
-      config.get('mongo')
+      plugins.mongoDb.options
+      //config.get('mongo')
     )
     try {
       await handleMessage()
     } finally {
-      await close()
+      // await close()
     }
   })
 })
