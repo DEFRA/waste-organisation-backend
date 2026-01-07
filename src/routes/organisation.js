@@ -6,7 +6,9 @@ import {
   findOrganisationById,
   saveOrganisation
 } from '../repositories/organisation.js'
-// TODO authentication - pre-shared key?
+
+// DONE authentication - pre-shared key?
+// TODO add db locks to PUT
 
 export const organisations = [
   {

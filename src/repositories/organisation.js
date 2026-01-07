@@ -27,3 +27,48 @@ export const saveOrganisation = (db, orgId, org) => {
     }
   )
 }
+
+// TODO handle transactions
+// { organisationId: orgId } ... { organisationId: { $eq: orgId } }
+export const updateOrganisation = async (
+  client,
+  session,
+  databaseName,
+  query,
+  func
+) => {
+  await session.withTransaction(async () => {
+    try {
+      const db = client.db(databaseName)
+      const dbOrg = await db
+        .collection(orgCollection)
+        .findOne(query, { projection: { _id: 0 }, session })
+      // console.log('dbOrg: ', dbOrg)
+      const org = func(dbOrg)
+      if (org) {
+        await db.collection(orgCollection).updateOne(
+          { organisationId: org.organisationId },
+          {
+            $set: org
+          },
+          {
+            upsert: true,
+            session
+          }
+        )
+      }
+    } catch (e) {
+      console.log('error: ', e)
+      throw e
+    } finally {
+      // await session.endSession()
+    }
+  })
+}
+
+export const createOrganisationIndexes = async (db) => {
+  const u = { unique: true }
+  await db.collection(orgCollection).createIndex({ users: 1 })
+  await db.collection(orgCollection).createIndex({ organisationId: 1 }, u)
+  await db.collection(orgCollection).createIndex({ 'connections.id': 1 })
+}

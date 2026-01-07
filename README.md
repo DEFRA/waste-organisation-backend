@@ -1,5 +1,13 @@
 # waste-organisation-backend
 
+## CURRENT STATUS OF THIS BRANCH
+
+ - Started implementing DEFRA ID synchronisation mechanism. (on hold for now)
+ - Started moving db logic to using transaction api
+   - end session not implemented correctly (tests fail with `MongoExpiredSessionError: Cannot use a session that has ended`)
+
+
+
 Core delivery platform Node.js Backend Template.
 
 - [Requirements](#requirements)

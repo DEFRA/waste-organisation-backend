@@ -1,6 +1,6 @@
 import { MongoClient } from 'mongodb'
 import { LockManager } from 'mongo-locks'
-import { orgCollection } from '../repositories/organisation.js'
+import { createOrganisationIndexes } from '../repositories/organisation.js'
 
 export const mongoDb = {
   plugin: {
@@ -42,7 +42,5 @@ export const mongoDb = {
 
 async function createIndexes(db) {
   await db.collection('mongo-locks').createIndex({ id: 1 })
-  await db
-    .collection(orgCollection)
-    .createIndex({ users: 1, organisationId: 1 })
+  await createOrganisationIndexes(db)
 }
