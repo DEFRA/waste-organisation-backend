@@ -49,14 +49,20 @@ export const dbMessageHandler = async (transform, query, options) => {
   const client = await MongoClient.connect(options.mongoUrl, {
     ...options.mongoOptions
   })
-
+  const session = client.startSession()
+  console.log('session started')
   return {
     close: async () => {
+      await session.endSession()
       await client.close(true)
     },
     handleMessage: async (message) => {
-      updateOrganisation(client, options.databaseName, query(message), (org) =>
-        transform(org, message)
+      updateOrganisation(
+        client,
+        session,
+        options.databaseName,
+        query(message),
+        (org) => transform(org, message)
       )
     }
   }

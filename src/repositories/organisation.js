@@ -30,8 +30,13 @@ export const saveOrganisation = (db, orgId, org) => {
 
 // TODO handle transactions
 // { organisationId: orgId } ... { organisationId: { $eq: orgId } }
-export const updateOrganisation = async (client, databaseName, query, func) => {
-  const session = client.startSession()
+export const updateOrganisation = async (
+  client,
+  session,
+  databaseName,
+  query,
+  func
+) => {
   await session.withTransaction(async () => {
     try {
       const db = client.db(databaseName)

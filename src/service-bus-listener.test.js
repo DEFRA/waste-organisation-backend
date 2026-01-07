@@ -86,14 +86,15 @@ describe('db messenge handler', () => {
         console.log('THIS ONE _: ', x)
         return { test: 'data', id }
       },
-      (_) => ({ id: { $eq: id } }),
+      (_) => ({ id }), // { id: { $eq: id } }
       plugins.mongoDb.options
       //config.get('mongo')
     )
     try {
       await handleMessage()
+      // TODO assert data has been saved?
     } finally {
-      // await close()
+      await close()
     }
   })
 })
