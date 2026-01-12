@@ -38,7 +38,7 @@ services:
     ports:
       - '27017:27017'
     volumes:
-      - mongodb-data:/data:z
+      - ./mongodb-data:/data:z
     restart: always
 
   azure-service-bus:
@@ -126,9 +126,6 @@ services:
       - ./node_modules:/home/node/node_modules:z
 
 ################################################################################
-
-volumes:
-  mongodb-data:
 
 networks:
   cdp-tenant:

@@ -1,0 +1,45 @@
+{
+  "metadata": {
+    "entity": "connection",
+    "operationtype": "update",
+    "origin": "org3da56f2e",
+    "recordid": "fbc6ae41-bdd5-f011-8544-7c1e5229d3d5",
+    "request-id": "8323eaa6-44de-4503-b190-9c08657c84ca",
+    "trackingId": null
+  },
+  "recorddata": {
+    "account": null,
+    "connections": [
+      {
+        "defra_connectiondetailsid": null,
+        "record1id_type": null,
+        "record1id": null,
+        "record1roleid": null,
+        "record2id_type": null,
+        "record2id": null,
+        "record2roleid": null,
+        "connectionid": "fbc6ae41-bdd5-f011-8544-7c1e5229d3d5",
+        "defra_iscustomer": false,
+        "defra_connectiondetailsid_hasvalue": false,
+        "record1id_hasvalue": false,
+        "record1roleid_hasvalue": false,
+        "record2id_hasvalue": false,
+        "record2roleid_hasvalue": false,
+        "defra_iscustomer_hasvalue": false,
+        "statecode": 1,
+        "statecode_hasvalue": true,
+        "statuscode": 2,
+        "statuscode_hasvalue": true,
+        "effectiveend": "2025-12-16",
+        "effectiveend_hasvalue": true,
+        "effectivestart": null,
+        "effectivestart_hasvalue": false
+      }
+    ],
+    "contact": null,
+    "defra_address": null,
+    "defra_addressdetails": null,
+    "defra_connectiondetail": null,
+    "defra_lobserviceuserlink": null
+  }
+}
