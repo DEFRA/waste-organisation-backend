@@ -1,0 +1,879 @@
+import { transformMessage } from './defra-id-messages.js'
+
+describe('process example events from defra id team', () => {
+  test.each([
+    null,
+    {},
+    {
+      organisationId:
+        testData.createServiceEnrolment.recorddata.account.accountid,
+      users: []
+    },
+    {
+      users: [
+        testData.createServiceEnrolment.recorddata.connections[0].record1id
+      ]
+    }
+  ])('createServiceEnrolment', (dbOrg) => {
+    const { createServiceEnrolment } = testData
+    const org = transformMessage(dbOrg, createServiceEnrolment)
+    expect(org.organisationId).toEqual(
+      createServiceEnrolment.recorddata.account.accountid
+    )
+    expect(org.name).toEqual(createServiceEnrolment.recorddata.account.name)
+    expect(org.connections).toEqual([
+      {
+        id: createServiceEnrolment.recorddata.connections[0].connectionid,
+        userId: createServiceEnrolment.recorddata.connections[0].record1id
+      }
+    ])
+    expect(org.users).toEqual([
+      createServiceEnrolment.recorddata.connections[0].record1id
+    ])
+  })
+
+  test.each([
+    {
+      messages: [
+        testData.createServiceEnrolment,
+        testData.updateServiceEnrolment
+      ],
+      expected: {
+        connections: [
+          {
+            id: 'd8aa6c8e-b9d5-f011-8544-7c1e5229d0f2',
+            userId: 'dbdb6588-b9d5-f011-8544-7c1e5229d0f2'
+          }
+        ],
+        name: 'GECHNOLOGY LIMITED',
+        organisationId: '4fdc6588-b9d5-f011-8544-7c1e5229d0f2',
+        users: ['dbdb6588-b9d5-f011-8544-7c1e5229d0f2']
+      }
+    }
+  ])('events', ({ messages, expected, initial }) => {
+    expect(messages.reduce(transformMessage, initial)).toEqual(expected)
+  })
+
+  test.each([
+    null,
+    {},
+    {
+      organisationId: testData.updateAccount.recorddata.account.accountid,
+      name: 'bob'
+    },
+    {
+      organisationId: testData.updateAccount.recorddata.account.accountid
+    }
+  ])('updateAccount', (dbOrg) => {
+    const { updateAccount } = testData
+    const org = transformMessage(dbOrg, updateAccount)
+    expect(org.organisationId).toEqual(
+      updateAccount.recorddata.account.accountid
+    )
+    expect(org.name).toEqual(updateAccount.recorddata.account.name)
+  })
+
+  describe('updateConnection', () => {
+    test('remove when user only one in org', () => {
+      const { updateConnection } = testData
+      const org = transformMessage(
+        {
+          connections: [
+            {
+              id: updateConnection.recorddata.connections[0].connectionid,
+              userId: 'userId'
+            }
+          ],
+          users: ['userId']
+        },
+        updateConnection
+      )
+      expect(org.connections).toEqual([])
+      expect(org.users).toEqual([])
+    })
+
+    test('remove when user already in org', () => {
+      const { updateConnection } = testData
+      const org = transformMessage(
+        {
+          connections: [
+            {
+              id: updateConnection.recorddata.connections[0].connectionid,
+              userId: 'userId'
+            },
+            {
+              id: 'fish',
+              userId: 'otherUser'
+            }
+          ],
+          users: ['userId', 'otherUser']
+        },
+        updateConnection
+      )
+      expect(org.connections).toEqual([
+        {
+          id: 'fish',
+          userId: 'otherUser'
+        }
+      ])
+      expect(org.users).toEqual(['otherUser'])
+    })
+
+    test("don't remove user if connection id not known", () => {
+      const { updateConnection } = testData
+      const org = transformMessage(
+        {
+          connections: [
+            {
+              id: 'fish',
+              userId: 'otherUser'
+            }
+          ],
+          users: ['userId', 'otherUser']
+        },
+        updateConnection
+      )
+      expect(org.connections).toEqual([
+        {
+          id: 'fish',
+          userId: 'otherUser'
+        }
+      ])
+      expect(org.users).toEqual(['userId', 'otherUser'])
+    })
+  })
+})
+
+const testData = {
+  createAddress: {
+    metadata: {
+      entity: 'defra_addressdetails',
+      operationtype: 'create',
+      origin: 'org3da56f2e',
+      recordid: '6ef2d790-b9d5-f011-8543-000d3a4a510c',
+      'request-id': '3186fded-208a-454a-99b1-06710efd9a0b',
+      trackingId: null
+    },
+    recorddata: {
+      account: null,
+      connections: null,
+      contact: null,
+      defra_address: null,
+      defra_addressdetails: [
+        {
+          defra_addressid: null,
+          defra_connectiondetailsid: null,
+          defra_customer_type: 'account',
+          defra_customerid: '4fdc6588-b9d5-f011-8544-7c1e5229d0f2',
+          defra_addressdetailsid: '6ef2d790-b9d5-f011-8543-000d3a4a510c',
+          defra_addresstype: 7,
+          defra_fax: null,
+          defra_mobile: null,
+          defra_name: null,
+          defra_phone: '08001231235',
+          defra_uniquereference: 'FA202551-W8-1512-K9-1011',
+          defra_validfrom: '2025-12-10T11:15:52Z',
+          defra_validto: null,
+          emailaddress: null,
+          statecode: null,
+          statuscode: null,
+          defra_addressid_hasvalue: false,
+          defra_connectiondetailsid_hasvalue: false,
+          defra_customer_type_hasvalue: true,
+          defra_customerid_hasvalue: true,
+          defra_addressdetailsid_hasvalue: false,
+          defra_addresstype_hasvalue: true,
+          defra_fax_hasvalue: false,
+          defra_mobile_hasvalue: false,
+          defra_name_hasvalue: false,
+          defra_phone_hasvalue: true,
+          defra_uniquereference_hasvalue: true,
+          defra_validfrom_hasvalue: true,
+          defra_validto_hasvalue: false,
+          emailaddress_hasvalue: false,
+          statecode_hasvalue: false,
+          statuscode_hasvalue: false
+        }
+      ],
+      defra_connectiondetail: null,
+      defra_lobserviceuserlink: null
+    }
+  },
+  updateAddress: {
+    metadata: {
+      entity: 'defra_addressdetails',
+      operationtype: 'update',
+      origin: 'org3da56f2e',
+      recordid: '6ef2d790-b9d5-f011-8543-000d3a4a510c',
+      'request-id': '00000000-0000-0000-0000-000000000000',
+      trackingId: null
+    },
+    recorddata: {
+      account: null,
+      connections: null,
+      contact: null,
+      defra_address: null,
+      defra_addressdetails: [
+        {
+          defra_addressid: null,
+          defra_connectiondetailsid: null,
+          defra_customer_type: null,
+          defra_customerid: null,
+          defra_addressdetailsid: '6ef2d790-b9d5-f011-8543-000d3a4a510c',
+          defra_addresstype: null,
+          defra_fax: null,
+          defra_mobile: null,
+          defra_name: 'FA202551-W8-1512-K9-1011',
+          defra_phone: null,
+          defra_uniquereference: null,
+          defra_validfrom: null,
+          defra_validto: null,
+          emailaddress: null,
+          statecode: null,
+          statuscode: null,
+          defra_addressid_hasvalue: false,
+          defra_connectiondetailsid_hasvalue: false,
+          defra_customer_type_hasvalue: false,
+          defra_customerid_hasvalue: false,
+          defra_addressdetailsid_hasvalue: false,
+          defra_addresstype_hasvalue: false,
+          defra_fax_hasvalue: false,
+          defra_mobile_hasvalue: false,
+          defra_name_hasvalue: true,
+          defra_phone_hasvalue: false,
+          defra_uniquereference_hasvalue: false,
+          defra_validfrom_hasvalue: false,
+          defra_validto_hasvalue: false,
+          emailaddress_hasvalue: false,
+          statecode_hasvalue: false,
+          statuscode_hasvalue: false
+        }
+      ],
+      defra_connectiondetail: null,
+      defra_lobserviceuserlink: null
+    }
+  },
+  updateContact: {
+    metadata: {
+      entity: 'contact',
+      operationtype: 'update',
+      origin: 'org3da56f2e',
+      recordid: 'dbdb6588-b9d5-f011-8544-7c1e5229d0f2',
+      'request-id': '3186fded-208a-454a-99b1-06710efd9a0b',
+      trackingId: null
+    },
+    recorddata: {
+      account: null,
+      connections: null,
+      contact: {
+        defra_title: null,
+        defra_title_hasvalue: false,
+        defra_b2cobjectid: null,
+        defra_b2cobjectid_hasvalue: false,
+        defra_ggcredentialid: null,
+        defra_ggcredentialid_hasvalue: false,
+        defra_cmcreateascitizen: false,
+        defra_cmcreateascitizen_hasvalue: false,
+        defra_operationid: null,
+        defra_operationid_hasvalue: false,
+        gendercode: null,
+        gendercode_hasvalue: false,
+        firstname: null,
+        firstname_hasvalue: false,
+        middlename: null,
+        middlename_hasvalue: false,
+        lastname: null,
+        lastname_hasvalue: false,
+        contactid: 'dbdb6588-b9d5-f011-8544-7c1e5229d0f2',
+        contactid_hasvalue: false,
+        emailaddress1: null,
+        emailaddress1_hasvalue: false,
+        birthdate: null,
+        birthdate_hasvalue: false,
+        telephone1: '08001231235',
+        telephone1_hasvalue: true,
+        address1_telephone1: null,
+        address1_telephone1_hasvalue: false,
+        defra_cmcreationsource: null,
+        defra_cmcreationsource_hasvalue: false,
+        defra_tacsacceptedversion: null,
+        defra_tacsacceptedversion_hasvalue: false,
+        defra_tacsacceptedon: null,
+        defra_tacsacceptedon_hasvalue: false,
+        defra_cookiespolicyacceptedversion: null,
+        defra_cookiespolicyacceptedversion_hasvalue: false,
+        defra_cookiespolicyacceptedon: null,
+        defra_cookiespolicyacceptedon_hasvalue: false,
+        defra_privacypolicyacceptedversion: null,
+        defra_privacypolicyacceptedversion_hasvalue: false,
+        defra_privacypolicyacceptedon: null,
+        defra_privacypolicyacceptedon_hasvalue: false,
+        defra_addrcorbuildingname: null,
+        defra_addrcorlocality: null,
+        defra_addrcorstreet: null,
+        defra_addrcorsubbuildingname: null,
+        defra_addrcorbuildingnumber: null,
+        defra_addrcortown: null,
+        defra_addrcoruprn: null,
+        defra_addrcorcounty: null,
+        defra_addrcorcountryid: null,
+        defra_addrcordependentlocality: null,
+        defra_addrcorinternationalpostalcode: null,
+        defra_addrcorfromcompanieshouse: false,
+        defra_addrcorpostcode: null,
+        defra_addrcorrespondenceid: null,
+        defra_addrcorrespondenceid_hasvalue: false,
+        statecode: 0,
+        statecode_hasvalue: false,
+        statuscode: 0,
+        statuscode_hasvalue: false,
+        defra_uniquereference: null,
+        defra_uniquereference_hasvalue: false,
+        defra_addrbusinessactivityid: null,
+        defra_addrbusinessactivityid_hasvalue: false,
+        defra_addrbusacbuildingname: null,
+        defra_addrbusacdependentlocality: null,
+        defra_addrbusacbuildingnumber: null,
+        defra_addrbusaccountryid: null,
+        defra_addrbusaccounty: null,
+        defra_addrbusacfromcompanieshouse: false,
+        defra_addrbusacinternationalpostalcode: null,
+        defra_addrbusaclocality: null,
+        defra_addrbusacpostcode: null,
+        defra_addrbusacsubbuildingname: null,
+        defra_addrbusacstreet: null,
+        defra_addrbusactown: null,
+        defra_addrbusacuprn: null,
+        defra_addrbillingid: null,
+        defra_addrbillingid_hasvalue: false,
+        defra_addrbillcountryid: null,
+        defra_addrbillbuildingname: null,
+        defra_addrbillbuildingnumber: null,
+        defra_addrbillcounty: null,
+        defra_addrbilldependentlocality: null,
+        defra_addrbillfromcompanieshouse: false,
+        defra_addrbillinternationalpostalcode: null,
+        defra_addrbilllocality: null,
+        defra_addrbillpostcode: null,
+        defra_addrbillsubbuildingname: null,
+        defra_addrbillstreet: null,
+        defra_addrbilltown: null,
+        defra_addrbilluprn: null
+      },
+      defra_address: null,
+      defra_addressdetails: null,
+      defra_connectiondetail: null,
+      defra_lobserviceuserlink: null
+    }
+  },
+  createServiceEnrolment: {
+    metadata: {
+      entity: 'defra_lobserviceuserlink',
+      operationtype: 'create',
+      origin: 'org3da56f2e',
+      recordid: 'ccab6c8e-b9d5-f011-8544-7c1e5229d0f2',
+      'request-id': '16d29623-bd20-43ec-b937-103224bb5395',
+      trackingId: null
+    },
+    recorddata: {
+      account: {
+        defra_addrregcountryid: 'f49cf73a-fa9c-e811-a950-000d3a3a2566',
+        name: 'GECHNOLOGY LIMITED',
+        defra_isuk: true,
+        defra_type: '910400001',
+        defra_cminterimorganisationtypevalue: 910400001,
+        defra_operationid: 'fc970f28dfdc49d08174a8e7b4a7fa18',
+        defra_charitynumber: null,
+        defra_charitynumberni: null,
+        defra_charitynumberscot: null,
+        defra_cmcrn: '09425549',
+        defra_validatedwithcompanyhouse: false,
+        defra_addrregbuildingnumber: '1',
+        defra_addrregbuildingname: null,
+        defra_addrregsubbuildingname: null,
+        defra_addrregstreet: 'Brewers Hill Road',
+        defra_addrreglocality: null,
+        defra_addrregdependentlocality: null,
+        defra_addrregcounty: null,
+        defra_addrregtown: 'Dunstable',
+        defra_addrregpostcode: 'LU6 1AA',
+        defra_addrreginternationalpostalcode: null,
+        defra_addrregfromcompanieshouse: false,
+        defra_addrreguprn: null,
+        defra_addrcorrespondenceid: null,
+        defra_addrcorbuildingname: null,
+        defra_addrcorbuildingnumber: null,
+        defra_addrcorcountryid: null,
+        defra_addrcorcounty: null,
+        defra_addrcordependentlocality: null,
+        defra_addrcorfromcompanieshouse: null,
+        defra_addrcorinternationalpostalcode: null,
+        defra_addrcorlocality: null,
+        defra_addrcorpostcode: null,
+        defra_addrcorsubbuildingname: null,
+        defra_addrcorstreet: null,
+        defra_addrcortown: null,
+        defra_addrcoruprn: null,
+        defra_addrbusinessactivityid: null,
+        defra_addrbusacbuildingname: null,
+        defra_addrbusacbuildingnumber: null,
+        defra_addrbusaccountryid: null,
+        defra_addrbusaccounty: null,
+        defra_addrbusacdependentlocality: null,
+        defra_addrbusacfromcompanieshouse: null,
+        defra_addrbusacinternationalpostalcode: null,
+        defra_addrbusaclocality: null,
+        defra_addrbusacpostcode: null,
+        defra_addrbusacsubbuildingname: null,
+        defra_addrbusacstreet: null,
+        defra_addrbusactown: null,
+        defra_addrbusacuprn: null,
+        defra_addrbillingid: null,
+        defra_addrbillbuildingname: null,
+        defra_addrbillbuildingnumber: null,
+        defra_addrbillcountryid: null,
+        defra_addrbillcounty: null,
+        defra_addrbilldependentlocality: null,
+        defra_addrbillfromcompanieshouse: null,
+        defra_addrbillinternationalpostalcode: null,
+        defra_addrbilllocality: null,
+        defra_addrbillpostcode: null,
+        defra_addrbillsubbuildingname: null,
+        defra_addrbillstreet: null,
+        defra_addrbilltown: null,
+        defra_addrbilluprn: null,
+        emailaddress1: 'david.manning+cpdev_business@condatis.com',
+        telephone1: '08001231235',
+        defra_hierarchylevel: null,
+        defra_addrregisteredid: null,
+        accountid: '4fdc6588-b9d5-f011-8544-7c1e5229d0f2',
+        defra_uniquereference: 'AA202537-T2-1512-F8-1011',
+        defra_dateofdissolution: null,
+        defra_dateofincorporation: null,
+        defra_dateofdissolution_hasvalue: false,
+        defra_dateofincorporation_hasvalue: false,
+        name_hasvalue: false,
+        defra_isuk_hasvalue: false,
+        defra_type_hasvalue: false,
+        defra_cminterimorganisationtypevalue_hasvalue: false,
+        defra_operationid_hasvalue: false,
+        defra_charitynumber_hasvalue: false,
+        defra_cmcrn_hasvalue: false,
+        defra_validatedwithcompanyhouse_hasvalue: false,
+        defra_addrregcountryid_hasvalue: false,
+        emailaddress1_hasvalue: false,
+        telephone1_hasvalue: false,
+        defra_hierarchylevel_hasvalue: false,
+        defra_addrregisteredid_hasvalue: false,
+        defra_uniquereference_hasvalue: false,
+        defra_charitynumberni_hasvalue: false,
+        defra_charitynumberscot_hasvalue: false,
+        defra_addrcorrespondenceid_hasvalue: false,
+        defra_addrbusinessactivityid_hasvalue: false,
+        defra_addrbillingid_hasvalue: false,
+        statecode: null,
+        statecode_hasvalue: false,
+        statuscode: null,
+        statuscode_hasvalue: false
+      },
+      connections: [
+        {
+          defra_connectiondetailsid: '7bab6c8e-b9d5-f011-8544-7c1e5229d0f2',
+          record1id_type: 'contact',
+          record1id: 'dbdb6588-b9d5-f011-8544-7c1e5229d0f2',
+          record1roleid: '1eb54ab1-58b7-4d14-bf39-4f3e402616e8',
+          record2id_type: 'account',
+          record2id: '4fdc6588-b9d5-f011-8544-7c1e5229d0f2',
+          record2roleid: '35a23b91-ec62-41ea-b5e5-c59b689ff0b4',
+          connectionid: 'd8aa6c8e-b9d5-f011-8544-7c1e5229d0f2',
+          defra_iscustomer: true,
+          defra_connectiondetailsid_hasvalue: false,
+          record1id_hasvalue: false,
+          record1roleid_hasvalue: false,
+          record2id_hasvalue: false,
+          record2roleid_hasvalue: false,
+          defra_iscustomer_hasvalue: false,
+          statecode: 0,
+          statecode_hasvalue: false,
+          statuscode: 1,
+          statuscode_hasvalue: false,
+          effectiveend: null,
+          effectiveend_hasvalue: false,
+          effectivestart: '2025-12-10T11:15:45Z',
+          effectivestart_hasvalue: false
+        }
+      ],
+      contact: {
+        defra_title: null,
+        defra_title_hasvalue: false,
+        defra_b2cobjectid: 'e21d5458-d7b4-4b63-938f-851c2bfdbeb1',
+        defra_b2cobjectid_hasvalue: false,
+        defra_ggcredentialid: '9048590557362189',
+        defra_ggcredentialid_hasvalue: false,
+        defra_cmcreateascitizen: false,
+        defra_cmcreateascitizen_hasvalue: false,
+        defra_operationid: 'fc970f28dfdc49d08174a8e7b4a7fa18',
+        defra_operationid_hasvalue: false,
+        gendercode: null,
+        gendercode_hasvalue: false,
+        firstname: 'David-cpdev-orgadm',
+        firstname_hasvalue: false,
+        middlename: null,
+        middlename_hasvalue: false,
+        lastname: 'Manning',
+        lastname_hasvalue: false,
+        contactid: 'dbdb6588-b9d5-f011-8544-7c1e5229d0f2',
+        contactid_hasvalue: false,
+        emailaddress1: 'david.manning+cpdev_orgadm@condatis.com',
+        emailaddress1_hasvalue: false,
+        birthdate: null,
+        birthdate_hasvalue: false,
+        telephone1: '08001231235',
+        telephone1_hasvalue: false,
+        address1_telephone1: null,
+        address1_telephone1_hasvalue: false,
+        defra_cmcreationsource: 2,
+        defra_cmcreationsource_hasvalue: false,
+        defra_tacsacceptedversion: '4',
+        defra_tacsacceptedversion_hasvalue: false,
+        defra_tacsacceptedon: '2025-12-10T09:45:06Z',
+        defra_tacsacceptedon_hasvalue: false,
+        defra_cookiespolicyacceptedversion: '2',
+        defra_cookiespolicyacceptedversion_hasvalue: false,
+        defra_cookiespolicyacceptedon: '2025-12-10T11:15:34Z',
+        defra_cookiespolicyacceptedon_hasvalue: false,
+        defra_privacypolicyacceptedversion: '3',
+        defra_privacypolicyacceptedversion_hasvalue: false,
+        defra_privacypolicyacceptedon: '2025-12-10T09:45:06Z',
+        defra_privacypolicyacceptedon_hasvalue: false,
+        defra_addrcorbuildingname: null,
+        defra_addrcorlocality: null,
+        defra_addrcorstreet: null,
+        defra_addrcorsubbuildingname: null,
+        defra_addrcorbuildingnumber: null,
+        defra_addrcortown: null,
+        defra_addrcoruprn: null,
+        defra_addrcorcounty: null,
+        defra_addrcorcountryid: null,
+        defra_addrcordependentlocality: null,
+        defra_addrcorinternationalpostalcode: null,
+        defra_addrcorfromcompanieshouse: false,
+        defra_addrcorpostcode: null,
+        defra_addrcorrespondenceid: null,
+        defra_addrcorrespondenceid_hasvalue: false,
+        statecode: 0,
+        statecode_hasvalue: false,
+        statuscode: 0,
+        statuscode_hasvalue: false,
+        defra_uniquereference: 'BA202534-G4-1512-K1-1011',
+        defra_uniquereference_hasvalue: false,
+        defra_addrbusinessactivityid: null,
+        defra_addrbusinessactivityid_hasvalue: false,
+        defra_addrbusacbuildingname: null,
+        defra_addrbusacdependentlocality: null,
+        defra_addrbusacbuildingnumber: null,
+        defra_addrbusaccountryid: null,
+        defra_addrbusaccounty: null,
+        defra_addrbusacfromcompanieshouse: false,
+        defra_addrbusacinternationalpostalcode: null,
+        defra_addrbusaclocality: null,
+        defra_addrbusacpostcode: null,
+        defra_addrbusacsubbuildingname: null,
+        defra_addrbusacstreet: null,
+        defra_addrbusactown: null,
+        defra_addrbusacuprn: null,
+        defra_addrbillingid: null,
+        defra_addrbillingid_hasvalue: false,
+        defra_addrbillcountryid: null,
+        defra_addrbillbuildingname: null,
+        defra_addrbillbuildingnumber: null,
+        defra_addrbillcounty: null,
+        defra_addrbilldependentlocality: null,
+        defra_addrbillfromcompanieshouse: false,
+        defra_addrbillinternationalpostalcode: null,
+        defra_addrbilllocality: null,
+        defra_addrbillpostcode: null,
+        defra_addrbillsubbuildingname: null,
+        defra_addrbillstreet: null,
+        defra_addrbilltown: null,
+        defra_addrbilluprn: null
+      },
+      defra_address: null,
+      defra_addressdetails: null,
+      defra_connectiondetail: {
+        defra_connectiondetailsid: '7bab6c8e-b9d5-f011-8544-7c1e5229d0f2',
+        defra_name: 'CA202546-S3-1512-T5-1011',
+        defra_name_hasvalue: false,
+        defra_uniquereference: 'CA202546-S3-1512-T5-1011',
+        defra_uniquereference_hasvalue: false,
+        statecode: 0,
+        statecode_hasvalue: false,
+        statuscode: 0,
+        statuscode_hasvalue: false
+      },
+      defra_lobserviceuserlink: {
+        defra_connectiondetailid: '7bab6c8e-b9d5-f011-8544-7c1e5229d0f2',
+        defra_connectiondetailid_hasvalue: false,
+        defra_lobserviceapprovalid: null,
+        defra_lobserviceapprovalid_hasvalue: false,
+        defra_organisationid: '4fdc6588-b9d5-f011-8544-7c1e5229d0f2',
+        defra_organisationid_hasvalue: false,
+        defra_previousenrolmentid: null,
+        defra_previousenrolmentid_hasvalue: false,
+        defra_serviceid: '8d13a162-ed6b-ed11-9561-000d3adeabd5',
+        defra_serviceid_hasvalue: false,
+        defra_serviceroleid: 'e9b5f8a7-856c-ed11-9561-000d3adf7047',
+        defra_serviceroleid_hasvalue: false,
+        defra_serviceuserid: 'dbdb6588-b9d5-f011-8544-7c1e5229d0f2',
+        defra_serviceuserid_hasvalue: false,
+        defra_contactid: null,
+        defra_contactid_hasvalue: false,
+        defra_deactivatedon: null,
+        defra_deactivatedon_hasvalue: false,
+        defra_email: null,
+        defra_email_hasvalue: false,
+        defra_enrolmentstatus: 3,
+        defra_enrolmentstatus_hasvalue: false,
+        defra_ishandshake: 'false',
+        defra_ishandshake_hasvalue: false,
+        defra_lobserviceuserlinkid: 'ccab6c8e-b9d5-f011-8544-7c1e5229d0f2',
+        defra_name: 'DA202548-L2-1512-R6-1011',
+        defra_name_hasvalue: false,
+        defra_operationid: 'fc970f28dfdc49d08174a8e7b4a7fa18',
+        defra_operationid_hasvalue: false,
+        defra_uniquereference: 'DA202548-L2-1512-R6-1011',
+        defra_uniquereference_hasvalue: false,
+        defra_validfrom: '2025-12-10T11:15:48Z',
+        defra_validfrom_hasvalue: false,
+        defra_validto: null,
+        defra_validto_hasvalue: false,
+        statecode: 0,
+        statecode_hasvalue: false,
+        statuscode: 1,
+        statuscode_hasvalue: false
+      }
+    }
+  },
+  updateAccount: {
+    metadata: {
+      entity: 'account',
+      operationtype: 'update',
+      origin: 'org3da56f2e',
+      recordid: '4fdc6588-b9d5-f011-8544-7c1e5229d0f2',
+      'request-id': '3186fded-208a-454a-99b1-06710efd9a0b',
+      trackingId: null
+    },
+    recorddata: {
+      account: {
+        defra_addrregcountryid: null,
+        name: null,
+        defra_isuk: false,
+        defra_type: null,
+        defra_cminterimorganisationtypevalue: null,
+        defra_operationid: null,
+        defra_charitynumber: null,
+        defra_charitynumberni: null,
+        defra_charitynumberscot: null,
+        defra_cmcrn: null,
+        defra_validatedwithcompanyhouse: false,
+        defra_addrregbuildingnumber: null,
+        defra_addrregbuildingname: null,
+        defra_addrregsubbuildingname: null,
+        defra_addrregstreet: null,
+        defra_addrreglocality: null,
+        defra_addrregdependentlocality: null,
+        defra_addrregcounty: null,
+        defra_addrregtown: null,
+        defra_addrregpostcode: null,
+        defra_addrreginternationalpostalcode: null,
+        defra_addrregfromcompanieshouse: false,
+        defra_addrreguprn: null,
+        defra_addrcorrespondenceid: null,
+        defra_addrcorbuildingname: null,
+        defra_addrcorbuildingnumber: null,
+        defra_addrcorcountryid: null,
+        defra_addrcorcounty: null,
+        defra_addrcordependentlocality: null,
+        defra_addrcorfromcompanieshouse: null,
+        defra_addrcorinternationalpostalcode: null,
+        defra_addrcorlocality: null,
+        defra_addrcorpostcode: null,
+        defra_addrcorsubbuildingname: null,
+        defra_addrcorstreet: null,
+        defra_addrcortown: null,
+        defra_addrcoruprn: null,
+        defra_addrbusinessactivityid: null,
+        defra_addrbusacbuildingname: null,
+        defra_addrbusacbuildingnumber: null,
+        defra_addrbusaccountryid: null,
+        defra_addrbusaccounty: null,
+        defra_addrbusacdependentlocality: null,
+        defra_addrbusacfromcompanieshouse: null,
+        defra_addrbusacinternationalpostalcode: null,
+        defra_addrbusaclocality: null,
+        defra_addrbusacpostcode: null,
+        defra_addrbusacsubbuildingname: null,
+        defra_addrbusacstreet: null,
+        defra_addrbusactown: null,
+        defra_addrbusacuprn: null,
+        defra_addrbillingid: null,
+        defra_addrbillbuildingname: null,
+        defra_addrbillbuildingnumber: null,
+        defra_addrbillcountryid: null,
+        defra_addrbillcounty: null,
+        defra_addrbilldependentlocality: null,
+        defra_addrbillfromcompanieshouse: null,
+        defra_addrbillinternationalpostalcode: null,
+        defra_addrbilllocality: null,
+        defra_addrbillpostcode: null,
+        defra_addrbillsubbuildingname: null,
+        defra_addrbillstreet: null,
+        defra_addrbilltown: null,
+        defra_addrbilluprn: null,
+        emailaddress1: null,
+        telephone1: '08001231235',
+        defra_hierarchylevel: null,
+        defra_addrregisteredid: null,
+        accountid: '4fdc6588-b9d5-f011-8544-7c1e5229d0f2',
+        defra_uniquereference: null,
+        defra_dateofdissolution: null,
+        defra_dateofincorporation: null,
+        defra_dateofdissolution_hasvalue: false,
+        defra_dateofincorporation_hasvalue: false,
+        name_hasvalue: false,
+        defra_isuk_hasvalue: false,
+        defra_type_hasvalue: false,
+        defra_cminterimorganisationtypevalue_hasvalue: false,
+        defra_operationid_hasvalue: false,
+        defra_charitynumber_hasvalue: false,
+        defra_cmcrn_hasvalue: false,
+        defra_validatedwithcompanyhouse_hasvalue: false,
+        defra_addrregcountryid_hasvalue: false,
+        emailaddress1_hasvalue: false,
+        telephone1_hasvalue: true,
+        defra_hierarchylevel_hasvalue: false,
+        defra_addrregisteredid_hasvalue: false,
+        defra_uniquereference_hasvalue: false,
+        defra_charitynumberni_hasvalue: false,
+        defra_charitynumberscot_hasvalue: false,
+        defra_addrcorrespondenceid_hasvalue: false,
+        defra_addrbusinessactivityid_hasvalue: false,
+        defra_addrbillingid_hasvalue: false,
+        statecode: null,
+        statecode_hasvalue: false,
+        statuscode: null,
+        statuscode_hasvalue: false
+      },
+      connections: null,
+      contact: null,
+      defra_address: null,
+      defra_addressdetails: null,
+      defra_connectiondetail: null,
+      defra_lobserviceuserlink: null
+    }
+  },
+  updateConnection: {
+    metadata: {
+      entity: 'connection',
+      operationtype: 'update',
+      origin: 'org3da56f2e',
+      recordid: 'fbc6ae41-bdd5-f011-8544-7c1e5229d3d5',
+      'request-id': '8323eaa6-44de-4503-b190-9c08657c84ca',
+      trackingId: null
+    },
+    recorddata: {
+      account: null,
+      connections: [
+        {
+          defra_connectiondetailsid: null,
+          record1id_type: null,
+          record1id: null,
+          record1roleid: null,
+          record2id_type: null,
+          record2id: null,
+          record2roleid: null,
+          connectionid: 'fbc6ae41-bdd5-f011-8544-7c1e5229d3d5',
+          defra_iscustomer: false,
+          defra_connectiondetailsid_hasvalue: false,
+          record1id_hasvalue: false,
+          record1roleid_hasvalue: false,
+          record2id_hasvalue: false,
+          record2roleid_hasvalue: false,
+          defra_iscustomer_hasvalue: false,
+          statecode: 1,
+          statecode_hasvalue: true,
+          statuscode: 2,
+          statuscode_hasvalue: true,
+          effectiveend: '2025-12-16',
+          effectiveend_hasvalue: true,
+          effectivestart: null,
+          effectivestart_hasvalue: false
+        }
+      ],
+      contact: null,
+      defra_address: null,
+      defra_addressdetails: null,
+      defra_connectiondetail: null,
+      defra_lobserviceuserlink: null
+    }
+  },
+  updateServiceEnrolment: {
+    metadata: {
+      entity: 'defra_lobserviceuserlink',
+      operationtype: 'update',
+      origin: 'org3da56f2e',
+      recordid: 'ccab6c8e-b9d5-f011-8544-7c1e5229d0f2',
+      'request-id': '16d29623-bd20-43ec-b937-103224bb5395',
+      trackingId: null
+    },
+    recorddata: {
+      account: null,
+      connections: null,
+      contact: null,
+      defra_address: null,
+      defra_addressdetails: null,
+      defra_connectiondetail: null,
+      defra_lobserviceuserlink: {
+        defra_connectiondetailid: null,
+        defra_connectiondetailid_hasvalue: false,
+        defra_lobserviceapprovalid: null,
+        defra_lobserviceapprovalid_hasvalue: false,
+        defra_organisationid: null,
+        defra_organisationid_hasvalue: false,
+        defra_previousenrolmentid: null,
+        defra_previousenrolmentid_hasvalue: false,
+        defra_serviceid: null,
+        defra_serviceid_hasvalue: false,
+        defra_serviceroleid: null,
+        defra_serviceroleid_hasvalue: false,
+        defra_serviceuserid: null,
+        defra_serviceuserid_hasvalue: false,
+        defra_contactid: null,
+        defra_contactid_hasvalue: false,
+        defra_deactivatedon: null,
+        defra_deactivatedon_hasvalue: false,
+        defra_email: null,
+        defra_email_hasvalue: false,
+        defra_enrolmentstatus: 0,
+        defra_enrolmentstatus_hasvalue: false,
+        defra_ishandshake: null,
+        defra_ishandshake_hasvalue: false,
+        defra_lobserviceuserlinkid: 'ccab6c8e-b9d5-f011-8544-7c1e5229d0f2',
+        defra_name: 'DA202548-L2-1512-R6-1011',
+        defra_name_hasvalue: true,
+        defra_operationid: null,
+        defra_operationid_hasvalue: false,
+        defra_uniquereference: null,
+        defra_uniquereference_hasvalue: false,
+        defra_validfrom: null,
+        defra_validfrom_hasvalue: false,
+        defra_validto: null,
+        defra_validto_hasvalue: false,
+        statecode: 0,
+        statecode_hasvalue: false,
+        statuscode: 0,
+        statuscode_hasvalue: false
+      }
+    }
+  }
+}

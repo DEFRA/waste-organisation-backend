@@ -1,95 +1,69 @@
 import {
-  delay,
   ServiceBusClient // ServiceBusMessage
 } from '@azure/service-bus'
-import {} from //DefaultAzureCredential
-'@azure/identity'
+// import {DefaultAzureCredential} from '@azure/identity'
+import { MongoClient } from 'mongodb'
+import { createLogger } from './common/helpers/logging/logger.js'
+import { updateOrganisation } from './repositories/organisation.js'
 
 // TODO keep event sourced data in s3 bucket
 // TODO tidy up example and process actual data structures
+// TODO add db lock to messageHandler
+// TODO persist connection id -> contact id relationship
 
-const connectionStr =
+export const connectionStr =
   'Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;'
 
 // name of the queue
-const queueName = 'queue.1'
+export const queueName = 'queue.1'
 
-const listenForDefraIdMessages = async () => {
-  // create a Service Bus client using the passwordless authentication to the Service Bus namespace
+const logger = createLogger()
+
+const msgErrorHandler = async (error) => {
+  logger.log(error)
+}
+
+export const listenForDefraIdMessages = (messageHandler) => {
   const sbClient = new ServiceBusClient(connectionStr)
-
-  // createReceiver() can also be used to create a receiver for a subscription.
   const receiver = sbClient.createReceiver(queueName)
 
-  const msgs = []
-  // function to handle messages
-  const myMessageHandler = async (messageReceived) => {
-    msgs.push({ body: messageReceived.body })
-  }
-
-  // function to handle any errors
-  const myErrorHandler = async (error) => {
-    console.log(error)
-  }
-
-  // subscribe and specify the message and error handlers
+  logger.info('Starting DEFRA ID listener')
   receiver.subscribe({
-    processMessage: myMessageHandler,
-    processError: myErrorHandler
+    processMessage: messageHandler.handleMessage,
+    processError: msgErrorHandler
   })
 
-  // Waiting long enough before closing the sender to send messages
-  await delay(2000) // NOSONAR
-
-  await receiver.close()
-  await sbClient.close()
-
-  return msgs
-}
-
-const sendSomeMessages = async (messages) => {
-  // create a Service Bus client using the passwordless authentication to the Service Bus namespace
-  const sbClient = new ServiceBusClient(connectionStr)
-
-  // createSender() can also be used to create a sender for a topic.
-  const sender = sbClient.createSender(queueName)
-
-  try {
-    // Tries to send all messages in a single batch.
-    // Will fail if the messages cannot fit in a batch.
-    // await sender.sendMessages(messages);
-
-    // create a batch object
-    let batch = await sender.createMessageBatch()
-    for (let i = 0; i < messages.length; i++) {
-      // for each message in the array
-
-      // try to add the message to the batch
-      if (!batch.tryAddMessage(messages[i])) {
-        // if it fails to add the message to the current batch
-        // send the current batch as it is full
-        await sender.sendMessages(batch)
-
-        // then, create a new batch
-        batch = await sender.createMessageBatch()
-
-        // now, add the message failed to be added to the previous batch to this batch
-        // prettier-ignore
-        if (!batch.tryAddMessage(messages[i])) { // NOSONAR
-          // if it still can't be added to the batch, the message is probably too big to fit in a batch
-          throw new Error('Message too big to fit in a batch')
-        }
+  return {
+    close: async () => {
+      logger.info('Shutting down DEFRA ID listener')
+      await receiver.close()
+      await sbClient.close()
+      if (messageHandler.close) {
+        await messageHandler.close()
       }
     }
-
-    // Send the last created batch of messages to the queue
-    await sender.sendMessages(batch)
-
-    // Close the sender
-    await sender.close()
-  } finally {
-    await sbClient.close()
   }
 }
 
-export { listenForDefraIdMessages, sendSomeMessages }
+export const dbMessageHandler = async (transform, query, options) => {
+  const client = await MongoClient.connect(options.mongoUrl, {
+    ...options.mongoOptions
+  })
+  const session = client.startSession()
+  console.log('session started')
+  return {
+    close: async () => {
+      await session.endSession()
+      await client.close(true)
+    },
+    handleMessage: async (message) => {
+      updateOrganisation(
+        client,
+        session,
+        options.databaseName,
+        query(message),
+        (org) => transform(org, message)
+      )
+    }
+  }
+}

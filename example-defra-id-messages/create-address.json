@@ -1,0 +1,54 @@
+{
+  "metadata": {
+    "entity": "defra_addressdetails",
+    "operationtype": "create",
+    "origin": "org3da56f2e",
+    "recordid": "6ef2d790-b9d5-f011-8543-000d3a4a510c",
+    "request-id": "3186fded-208a-454a-99b1-06710efd9a0b",
+    "trackingId": null
+  },
+  "recorddata": {
+    "account": null,
+    "connections": null,
+    "contact": null,
+    "defra_address": null,
+    "defra_addressdetails": [
+      {
+        "defra_addressid": null,
+        "defra_connectiondetailsid": null,
+        "defra_customer_type": "account",
+        "defra_customerid": "4fdc6588-b9d5-f011-8544-7c1e5229d0f2",
+        "defra_addressdetailsid": "6ef2d790-b9d5-f011-8543-000d3a4a510c",
+        "defra_addresstype": 7,
+        "defra_fax": null,
+        "defra_mobile": null,
+        "defra_name": null,
+        "defra_phone": "08001231235",
+        "defra_uniquereference": "FA202551-W8-1512-K9-1011",
+        "defra_validfrom": "2025-12-10T11:15:52Z",
+        "defra_validto": null,
+        "emailaddress": null,
+        "statecode": null,
+        "statuscode": null,
+        "defra_addressid_hasvalue": false,
+        "defra_connectiondetailsid_hasvalue": false,
+        "defra_customer_type_hasvalue": true,
+        "defra_customerid_hasvalue": true,
+        "defra_addressdetailsid_hasvalue": false,
+        "defra_addresstype_hasvalue": true,
+        "defra_fax_hasvalue": false,
+        "defra_mobile_hasvalue": false,
+        "defra_name_hasvalue": false,
+        "defra_phone_hasvalue": true,
+        "defra_uniquereference_hasvalue": true,
+        "defra_validfrom_hasvalue": true,
+        "defra_validto_hasvalue": false,
+        "emailaddress_hasvalue": false,
+        "statecode_hasvalue": false,
+        "statuscode_hasvalue": false
+      }
+    ],
+    "defra_connectiondetail": null,
+    "defra_lobserviceuserlink": null
+  }
+}
