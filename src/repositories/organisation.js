@@ -1,5 +1,11 @@
 export const orgCollection = 'organisations'
 
+export const createOrgIndexes = async (db) => {
+  await db
+    .collection(orgCollection)
+    .createIndex({ users: 1, organisationId: 1 })
+}
+
 export const findAllOrganisationsForUser = (db, userId) => {
   const cursor = db
     .collection(orgCollection)
@@ -14,16 +20,4 @@ export const findOrganisationById = (db, orgId) => {
   return db
     .collection(orgCollection)
     .findOne({ organisationId: { $eq: orgId } }, { projection: { _id: 0 } })
-}
-
-export const saveOrganisation = (db, orgId, org) => {
-  return db.collection(orgCollection).updateOne(
-    { organisationId: orgId },
-    {
-      $set: org
-    },
-    {
-      upsert: true
-    }
-  )
 }

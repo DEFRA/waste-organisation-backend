@@ -3,10 +3,10 @@ import { paths } from '../config/paths.js'
 import { mergeAndValidate } from '../domain/organisation.js'
 import {
   findAllOrganisationsForUser,
-  findOrganisationById,
-  saveOrganisation
+  orgCollection
 } from '../repositories/organisation.js'
-// TODO authentication - pre-shared key?
+import { updateWithOptimisticLock } from '../repositories/index.js'
+// DONE authentication - pre-shared key?
 
 export const organisations = [
   {
@@ -26,29 +26,31 @@ export const organisations = [
     path: paths.putOrganisation,
     options: { auth: 'api-key-auth' },
     handler: async (request, h) => {
-      const org = await findOrganisationById(
-        request.db,
-        request.params.organisationId
-      )
-      const { error, organisation } = mergeAndValidate(
-        org,
-        request?.payload?.organisation,
-        request.params.organisationId,
-        request.params.userId
-      )
-      if (error) {
-        return h.response({
-          message: 'error',
-          organisation: org,
-          errors: error
-        })
-      } else {
-        await saveOrganisation(
-          request.db,
-          organisation.organisationId,
-          organisation
+      try {
+        const organisation = await updateWithOptimisticLock(
+          request.db.collection(orgCollection),
+          { organisationId: request.params.organisationId },
+          (dbOrg) => {
+            const organisationId = request.params.organisationId
+            const userId = request.params.userId
+            return mergeAndValidate(
+              dbOrg,
+              {
+                organisationId,
+                userId,
+                ...request?.payload?.organisation
+              },
+              organisationId,
+              userId
+            )
+          }
         )
         return h.response({ message: 'success', organisation })
+      } catch (e) {
+        return h.response({
+          message: 'error',
+          errors: e.isJoi ? e.details : [`${e}`]
+        })
       }
     }
   }

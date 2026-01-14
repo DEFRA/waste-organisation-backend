@@ -35,7 +35,8 @@ describe('organisation API', () => {
       organisation: {
         name: 'Bob',
         organisationId: '456',
-        users: ['123']
+        users: ['123'],
+        version: 1
       }
     })
     expect(statusCode).toBe(200)
@@ -66,7 +67,8 @@ describe('organisation API', () => {
       organisation: {
         name: 'Mr Dabolina',
         organisationId: '456',
-        users: ['123', '789']
+        users: ['123', '789'],
+        version: 3
       }
     })
     expect(statusCode).toBe(200)
@@ -95,7 +97,8 @@ describe('organisation API', () => {
         {
           name: 'Mr Dabolina',
           organisationId: '999',
-          users: ['111']
+          users: ['111'],
+          version: 1
         }
       ]
     })
