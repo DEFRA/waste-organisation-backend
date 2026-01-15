@@ -39,8 +39,7 @@ export const spreadsheet = [
       try {
         const organisationId = request.params.organisationId
         const uploadId = request.params.uploadId
-        // NOSONAR - false positive variable name shadowing
-        const spreadsheet = await updateWithOptimisticLock(
+        const s = await updateWithOptimisticLock(
           request.db.collection(spreadsheetCollection),
           { uploadId, organisationId },
           (dbSpreadsheet) => {
@@ -51,7 +50,7 @@ export const spreadsheet = [
             )
           }
         )
-        return h.response({ message: 'success', spreadsheet })
+        return h.response({ message: 'success', spreadsheet: s })
       } catch (e) {
         return h.response({
           message: 'error',
