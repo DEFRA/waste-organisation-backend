@@ -2,6 +2,7 @@ export const paths = {
   getOrganisations: '/user/{userId}/organisations',
   putOrganisation: '/user/{userId}/organisation/{organisationId}',
   getSpreadsheets: '/spreadsheet/{organisationId}',
+  getOneSpreadsheet: '/spreadsheet/{organisationId}/{uploadId}',
   putSpreadsheet: '/spreadsheet/{organisationId}/{uploadId}'
 }
 
