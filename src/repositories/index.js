@@ -31,6 +31,8 @@ export const updateWithOptimisticLock = async (
       logger.warn(
         `Optimistic lock conflict, retrying... (attempt ${attempt + 1})`
       )
+    } else {
+      return null
     }
   }
   throw new Error('Max retries exceeded - too much contention')
