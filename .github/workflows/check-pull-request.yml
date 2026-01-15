@@ -28,8 +28,8 @@ jobs:
           npm ci
           npm run format:check
           npm run lint
-          docker compose up -d azure-service-bus
-          bash -c 'T=$(date "+%Y-%m-%dT%H:%M:%SZ") ; while ! docker compose logs --since "$T" azure-service-bus | grep "Emulator Service is Successfully Up" ; do echo -n "" ; done '
+          # docker compose up -d azure-service-bus
+          # bash -c 'T=$(date "+%Y-%m-%dT%H:%M:%SZ") ; while ! docker compose logs --since "$T" azure-service-bus | grep "Emulator Service is Successfully Up" ; do echo -n "" ; done '
           npm test
           docker compose down
 

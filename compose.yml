@@ -41,35 +41,35 @@ services:
       - mongodb-data:/data:z
     restart: always
 
-  azure-service-bus:
-    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
-    pull_policy: always
-    volumes:
-      - "./test-resources/azure-service-bus/config.json:/ServiceBus_Emulator/ConfigFiles/Config.json:z"
-    ports:
-      - "5672:5672"
-      - "5300:5300"
-    environment:
-      SQL_SERVER: mssql
-      MSSQL_SA_PASSWORD: 'Pas_w0rd'
-      ACCEPT_EULA: "Y"
-      SQL_WAIT_INTERVAL: 15
-    depends_on:
-      - mssql
-    networks:
-      cdp-tenant:
-        aliases:
-          - "sb-emulator"
-  mssql:
-    container_name: "mssql"
-    image: "mcr.microsoft.com/mssql/server:2022-latest"
-    networks:
-      cdp-tenant:
-        aliases:
-          - "mssql"
-    environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: 'Pas_w0rd'
+  # azure-service-bus:
+  #   image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+  #   pull_policy: always
+  #   volumes:
+  #     - "./test-resources/azure-service-bus/config.json:/ServiceBus_Emulator/ConfigFiles/Config.json:z"
+  #   ports:
+  #     - "5672:5672"
+  #     - "5300:5300"
+  #   environment:
+  #     SQL_SERVER: mssql
+  #     MSSQL_SA_PASSWORD: 'Pas_w0rd'
+  #     ACCEPT_EULA: "Y"
+  #     SQL_WAIT_INTERVAL: 15
+  #   depends_on:
+  #     - mssql
+  #   networks:
+  #     cdp-tenant:
+  #       aliases:
+  #         - "sb-emulator"
+  # mssql:
+  #   container_name: "mssql"
+  #   image: "mcr.microsoft.com/mssql/server:2022-latest"
+  #   networks:
+  #     cdp-tenant:
+  #       aliases:
+  #         - "mssql"
+  #   environment:
+  #     ACCEPT_EULA: "Y"
+  #     MSSQL_SA_PASSWORD: 'Pas_w0rd'
 
 
   ################################################################################
@@ -108,8 +108,8 @@ services:
         condition: service_healthy
       mongodb:
         condition: service_started
-      azure-service-bus:
-        condition: service_started
+      # azure-service-bus:
+      #   condition: service_started
     env_file:
       - 'compose/aws.env'
     environment:
