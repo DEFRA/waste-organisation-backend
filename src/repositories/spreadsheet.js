@@ -8,7 +8,9 @@ export const createSpreadsheetIndexes = async (db) => {
 
 export const findAllSpreadsheets = (db, orgId, uploadId) => {
   const q = { organisationId: { $eq: orgId } }
-  if (uploadId) q.uploadId = { $eq: uploadId }
+  if (uploadId) {
+    q.uploadId = { $eq: uploadId }
+  }
   const cursor = db
     .collection(spreadsheetCollection)
     .find(q, { projection: { _id: 0 } })

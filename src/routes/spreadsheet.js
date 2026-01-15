@@ -16,27 +16,30 @@ const getHandler = async (request, h) => {
   return h.response({ spreadsheets, message: 'success' })
 }
 
+const options = { auth: 'api-key-auth' }
+
 export const spreadsheet = [
   {
     method: 'GET',
     path: paths.getSpreadsheets,
-    options: { auth: 'api-key-auth' },
+    options,
     handler: getHandler
   },
   {
     method: 'GET',
     path: paths.getOneSpreadsheet,
-    options: { auth: 'api-key-auth' },
+    options,
     handler: getHandler
   },
   {
     method: 'PUT',
     path: paths.putSpreadsheet,
-    options: { auth: 'api-key-auth' },
+    options,
     handler: async (request, h) => {
       try {
         const organisationId = request.params.organisationId
         const uploadId = request.params.uploadId
+        // NOSONAR - false positive variable name shadowing
         const spreadsheet = await updateWithOptimisticLock(
           request.db.collection(spreadsheetCollection),
           { uploadId, organisationId },
