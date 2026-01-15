@@ -82,5 +82,29 @@ describe('spreadsheet API', () => {
       ]
     })
     expect(statusCode).toBe(200)
+
+    const r2 = await server.inject({
+      method: 'GET',
+      url: pathTo(paths.getOneSpreadsheet, {
+        organisationId: 5678,
+        uploadId: 1234
+      }),
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      }
+    })
+
+    expect(r2.result).toEqual({
+      message: 'success',
+      spreadsheets: [
+        {
+          uploadId: '1234',
+          organisationId: '5678',
+          statusUrl: 'http://example.com/fish',
+          version: 1
+        }
+      ]
+    })
+    expect(r2.statusCode).toBe(200)
   })
 })
