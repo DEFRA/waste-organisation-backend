@@ -25,7 +25,7 @@ describe('spreadsheet API', () => {
       },
       payload: {
         spreadsheet: {
-          statusUrl: 'http://example.com/fish'
+          fileId: 'file-id'
         }
       }
     })
@@ -34,7 +34,7 @@ describe('spreadsheet API', () => {
       message: 'success',
       spreadsheet: {
         organisationId: '456',
-        statusUrl: 'http://example.com/fish',
+        fileId: 'file-id',
         uploadId: '123',
         version: 1
       }
@@ -54,7 +54,7 @@ describe('spreadsheet API', () => {
       },
       payload: {
         spreadsheet: {
-          statusUrl: 'http://example.com/fish'
+          fileId: 'file-id'
         }
       }
     })
@@ -76,7 +76,7 @@ describe('spreadsheet API', () => {
         {
           uploadId: '1234',
           organisationId: '5678',
-          statusUrl: 'http://example.com/fish',
+          fileId: 'file-id',
           version: 1
         }
       ]
@@ -100,7 +100,7 @@ describe('spreadsheet API', () => {
         {
           uploadId: '1234',
           organisationId: '5678',
-          statusUrl: 'http://example.com/fish',
+          fileId: 'file-id',
           version: 1
         }
       ]

@@ -115,8 +115,9 @@ services:
     environment:
       PORT: 3001
       NODE_ENV: development
-      LOCALSTACK_ENDPOINT: http://localstack:4566
+      S3_ENDPOINT: http://localstack:4566
       MONGO_URI: mongodb://mongodb:27017/
+      AWS_S3_FORCE_PATH_STYLE: true
     networks:
       - cdp-tenant
     volumes:

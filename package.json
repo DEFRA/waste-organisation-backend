@@ -27,6 +27,7 @@
   "author": "Defra DDTS",
   "license": "OGL-UK-3.0",
   "dependencies": {
+    "@aws-sdk/client-s3": "3.970.0",
     "@azure/identity": "4.13.0",
     "@defra/cdp-auditing": "0.1.0",
     "@defra/hapi-secure-context": "0.1.3",
