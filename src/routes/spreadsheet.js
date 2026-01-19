@@ -9,6 +9,7 @@ import {
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
 import { config } from '../config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
+import Excel from 'exceljs'
 
 const logger = createLogger()
 
@@ -36,12 +37,21 @@ const maybeFetchAndProcessSpreadsheet = async (s3Client, spreadsheet) => {
   const request = new GetObjectCommand({
     Bucket: spreadsheet.s3Bucket,
     Key: spreadsheet.s3Key,
-    Range: 'bytes=0-9',
     ChecksumMode: config.get('aws.checksumMode')
   })
   const response = await s3Client.send(request)
-  const bytes = await response.Body.transformToByteArray()
-  logger.info('Fetching bytes: ', bytes)
+  const stream = await response.Body
+  const chunks = []
+  for await (const c of stream) {
+    chunks.push(c)
+  }
+  const buffer = Buffer.concat(chunks)
+  logger.info(`Fetching bytes: ${buffer.length}`)
+  const workbook = new Excel.Workbook()
+  await workbook.xlsx.load(buffer)
+  workbook.eachSheet(function (worksheet, sheetId) {
+    console.log(`worksheet ${worksheet.name}`)
+  })
   return null
 }
 
