@@ -47,6 +47,18 @@ export const config = convict({
       format: ['ENABLED', 'DISABLED'],
       default: 'DISABLED',
       env: 'AWS_S3_CHECKSUM_MODE'
+    },
+    sqsEndpoint: {
+      doc: 'AWS SQS endpoint',
+      format: String,
+      default: 'http://127.0.0.1:4566',
+      env: 'SQS_ENDPOINT'
+    },
+    backgroundProcessQueue: {
+      doc: 'AWS SQS queue - used for scheduling background processes',
+      format: String,
+      default: 'waste-receiver-background-process',
+      env: 'SPREADSHEET_SQS_QUEUE'
     }
   },
   serviceVersion: {

@@ -6,10 +6,9 @@ import {
   spreadsheetCollection,
   findAllSpreadsheets
 } from '../repositories/spreadsheet.js'
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
+import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs'
 import { config } from '../config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
-import Excel from 'exceljs'
 
 const logger = createLogger()
 
@@ -24,38 +23,45 @@ const getHandler = async (request, h) => {
 
 const options = { auth: 'api-key-auth' }
 
-const constructS3Client = () => {
-  return new S3Client({
+const constructSqsClient = () => {
+  return new SQSClient({
     region: config.get('aws.region'),
-    endpoint: config.get('aws.s3Endpoint'),
-    forcePathStyle: config.get('aws.forcePathStyle')
+    endpoint: config.get('aws.sqsEndpoint')
   })
 }
 
-const maybeFetchAndProcessSpreadsheet = async (s3Client, spreadsheet) => {
-  console.log('spreadsheet: ', spreadsheet)
-  const request = new GetObjectCommand({
-    Bucket: spreadsheet.s3Bucket,
-    Key: spreadsheet.s3Key,
-    ChecksumMode: config.get('aws.checksumMode')
-  })
-  const response = await s3Client.send(request)
-  const stream = await response.Body
-  const chunks = []
-  for await (const c of stream) {
-    chunks.push(c)
+const sendJob = async (client, QueueUrl, jobData) => {
+  const params = {
+    QueueUrl,
+    MessageBody: JSON.stringify(jobData),
+    MessageAttributes: {
+      JobType: {
+        DataType: 'String',
+        StringValue: 'process_excel_file'
+      }
+    }
   }
-  const buffer = Buffer.concat(chunks)
-  logger.info(`Fetching bytes: ${buffer.length}`)
-  const workbook = new Excel.Workbook()
-  await workbook.xlsx.load(buffer)
-  workbook.eachSheet(function (worksheet, sheetId) {
-    console.log(`worksheet ${worksheet.name}`)
-  })
+
+  try {
+    const command = new SendMessageCommand(params)
+    const result = await client.send(command)
+    logger.info(`Job sent to queue: ${result.MessageId}`)
+    return result.MessageId
+  } catch (err) {
+    logger.error(`Error sending job: ${err}`)
+    throw err
+  }
+}
+
+const scheduleProcessor = async (sqsClient, queueUrl, spreadsheet) => {
+  console.log('spreadsheet: ', spreadsheet)
+  // TODO check state of the data - maybe only do this if it's just become ready or something??
+  sendJob(sqsClient, queueUrl, spreadsheet)
   return null
 }
 
-const putHandler = (s3Client) => {
+const putHandler = (sqsClient) => {
+  const queueUrl = config.get('aws.backgroundProcessQueue')
   return async (request, h) => {
     try {
       const organisationId = request.params.organisationId
@@ -72,7 +78,7 @@ const putHandler = (s3Client) => {
         }
       )
       // TODO don't do all the work in the callback response
-      await maybeFetchAndProcessSpreadsheet(s3Client, s)
+      await scheduleProcessor(sqsClient, queueUrl, s)
       return h.response({ message: 'success', spreadsheet: s })
     } catch (e) {
       logger.error(`Error storing spreadsheet info ${e}`)
@@ -101,6 +107,6 @@ export const spreadsheet = [
     method: 'PUT',
     path: paths.putSpreadsheet,
     options,
-    handler: putHandler(constructS3Client())
+    handler: putHandler(constructSqsClient())
   }
 ]
