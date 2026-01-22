@@ -22,7 +22,7 @@ const constructS3Client = () => {
   })
 }
 
-const fetchS3Object = async (s3Client, Bucket, Key) => {
+export const fetchS3Object = async (s3Client, Bucket, Key) => {
   const request = new GetObjectCommand({
     Bucket,
     Key,
@@ -44,7 +44,7 @@ const constructSqsClient = () => {
   })
 }
 
-const deleteMessage = async (client, QueueUrl, receiptHandle) => {
+export const deleteMessage = async (client, QueueUrl, receiptHandle) => {
   const params = {
     QueueUrl,
     ReceiptHandle: receiptHandle
@@ -59,7 +59,7 @@ const deleteMessage = async (client, QueueUrl, receiptHandle) => {
   }
 }
 
-const processJob = async (s3Client, message) => {
+export const processJob = async (s3Client, message) => {
   logger.info(`Message: ${JSON.stringify(message)}`)
   const { s3Bucket, s3Key } = JSON.parse(message.Body)
   if (s3Key && s3Bucket) {
@@ -73,7 +73,7 @@ const processJob = async (s3Client, message) => {
   }
 }
 
-const pollQueue = async (s3Client, sqsClient, QueueUrl) => {
+export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {
   const params = {
     QueueUrl,
     MaxNumberOfMessages: 10, // Process up to 10 messages at once
@@ -92,27 +92,27 @@ const pollQueue = async (s3Client, sqsClient, QueueUrl) => {
       await Promise.all(
         data.Messages.map(async (message) => {
           try {
-            await processJob(s3Client, message)
+            await action(message)
             // Delete message after successful processing
             await deleteMessage(sqsClient, QueueUrl, message.ReceiptHandle)
           } catch (err) {
-            logger.error(`Error processing message: ${err}`)
             // Message will become visible again after VisibilityTimeout
+            logger.error(`Error processing message: ${err}`)
           }
         })
       )
     } else {
-      logger.info('No messages in queue')
+      logger.debug('No messages in queue')
     }
   } catch (err) {
     logger.error(`Error polling queue: ${err}`)
   }
 }
 
-const parseExcelFile = async (buffer) => {
+export const parseExcelFile = async (buffer) => {
   const workbook = new Excel.Workbook()
   await workbook.xlsx.load(buffer)
-  workbook.eachSheet(function (worksheet, sheetId) {
+  workbook.eachSheet((worksheet, _sheetId) => {
     logger.info(`worksheet ${worksheet.name}`)
   })
   return workbook
@@ -120,9 +120,15 @@ const parseExcelFile = async (buffer) => {
 
 export const startWorker = async () => {
   logger.info('Worker started. Polling for jobs...')
-  const queueUrl = config.get('aws.backgroundProcessQueue')
+  const QueueUrl = config.get('aws.backgroundProcessQueue')
+  const s3Client = constructS3Client()
+  const sqsClient = constructSqsClient()
   while (true) {
-    await pollQueue(constructS3Client(), constructSqsClient(), queueUrl)
+    await pollQueue({
+      sqsClient,
+      QueueUrl,
+      action: async (message) => await processJob(s3Client, message)
+    })
     await new Promise((resolve) => setTimeout(resolve, 1000))
   }
 }
