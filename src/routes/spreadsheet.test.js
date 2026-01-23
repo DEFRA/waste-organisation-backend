@@ -9,6 +9,17 @@ describe('spreadsheet API', () => {
   let server
 
   beforeAll(async () => {
+    vi.doMock('@aws-sdk/client-sqs', () => {
+      return {
+        SQSClient: {
+          send: async () => {
+            console.log('mockSqsClient call')
+            return { MessageId: 'dummy' }
+          }
+        }
+      }
+    })
+
     server = await initialiseServer()
   })
 
