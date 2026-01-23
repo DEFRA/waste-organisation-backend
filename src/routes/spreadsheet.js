@@ -24,10 +24,15 @@ const getHandler = async (request, h) => {
 const options = { auth: 'api-key-auth' }
 
 const constructSqsClient = () => {
-  return new SQSClient({
-    region: config.get('aws.region'),
-    endpoint: config.get('aws.sqsEndpoint')
-  })
+  try {
+    return new SQSClient({
+      region: config.get('aws.region'),
+      endpoint: config.get('aws.sqsEndpoint')
+    })
+  } catch (e) {
+    logger.error(`Error could not initialise SQS Client: ${e}`)
+    return null
+  }
 }
 
 const sendJob = async (client, QueueUrl, jobData) => {
@@ -54,7 +59,6 @@ const sendJob = async (client, QueueUrl, jobData) => {
 }
 
 const scheduleProcessor = async (sqsClient, queueUrl, spreadsheet) => {
-  console.log('spreadsheet: ', spreadsheet)
   // TODO check state of the data - maybe only do this if it's just become ready or something??
   sendJob(sqsClient, queueUrl, spreadsheet)
   return null
