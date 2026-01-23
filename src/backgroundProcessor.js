@@ -123,7 +123,8 @@ export const startWorker = async () => {
   const QueueUrl = config.get('aws.backgroundProcessQueue')
   const s3Client = constructS3Client()
   const sqsClient = constructSqsClient()
-  while (true) {
+  // prettier-ignore
+  while (true) {  // NOSONAR
     await pollQueue({
       sqsClient,
       QueueUrl,
