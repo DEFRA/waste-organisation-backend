@@ -8,7 +8,7 @@ const mockSqs = () => ({
   plugin: {
     name: 'sqsPlugin',
     version: '1.0.0',
-    register: async (server, options) => {
+    register: async (server) => {
       server.decorate('request', 'sqsClient', {
         send: async () => ({ MessageId: 'dummy' })
       })
