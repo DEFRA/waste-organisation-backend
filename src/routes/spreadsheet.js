@@ -6,8 +6,7 @@ import {
   spreadsheetCollection,
   findAllSpreadsheets
 } from '../repositories/spreadsheet.js'
-import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs'
-import { config } from '../config.js'
+import { SendMessageCommand } from '@aws-sdk/client-sqs'
 import { createLogger } from '../common/helpers/logging/logger.js'
 
 const logger = createLogger()
@@ -22,22 +21,6 @@ const getHandler = async (request, h) => {
 }
 
 const options = { auth: 'api-key-auth' }
-
-const constructSqsClient = () => {
-  try {
-    return new SQSClient({
-      region: config.get('aws.region'),
-      endpoint: config.get('aws.sqsEndpoint')
-    })
-  } catch (e) {
-    return {
-      send: async () => {
-        console.log('mockSqsClient call')
-        return { MessageId: 'dummy' }
-      }
-    }
-  }
-}
 
 const sendJob = async (client, QueueUrl, jobData) => {
   const params = {
@@ -68,33 +51,34 @@ const scheduleProcessor = async (sqsClient, queueUrl, jobData) => {
   return null
 }
 
-const putHandler = (sqsClient) => {
-  const queueUrl = config.get('aws.backgroundProcessQueue')
-  return async (request, h) => {
-    try {
-      const organisationId = request.params.organisationId
-      const uploadId = request.params.uploadId
-      const s = await updateWithOptimisticLock(
-        request.db.collection(spreadsheetCollection),
-        { uploadId, organisationId },
-        (dbSpreadsheet) => {
-          return mergeAndValidate(
-            dbSpreadsheet,
-            { organisationId, uploadId, ...request?.payload?.spreadsheet },
-            spreadsheetSchema
-          )
-        }
-      )
-      // TODO don't do all the work in the callback response
-      await scheduleProcessor(sqsClient, queueUrl, s)
-      return h.response({ message: 'success', spreadsheet: s })
-    } catch (e) {
-      logger.error(`Error storing spreadsheet info ${e}`)
-      return h.response({
-        message: 'error',
-        errors: e.isJoi ? e.details : [`${e}`]
-      })
-    }
+const putHandler = async (request, h) => {
+  try {
+    const organisationId = request.params.organisationId
+    const uploadId = request.params.uploadId
+    const data = await updateWithOptimisticLock(
+      request.db.collection(spreadsheetCollection),
+      { uploadId, organisationId },
+      (dbSpreadsheet) => {
+        return mergeAndValidate(
+          dbSpreadsheet,
+          { organisationId, uploadId, ...request?.payload?.spreadsheet },
+          spreadsheetSchema
+        )
+      }
+    )
+    // TODO don't do all the work in the callback response
+    await scheduleProcessor(
+      request.sqsClient,
+      request.backgroundProcessSqsQueueUrl,
+      data
+    )
+    return h.response({ message: 'success', spreadsheet: data })
+  } catch (e) {
+    logger.error(`Error storing spreadsheet info ${e}`)
+    return h.response({
+      message: 'error',
+      errors: e.isJoi ? e.details : [`${e}`]
+    })
   }
 }
 
@@ -115,6 +99,6 @@ export const spreadsheet = [
     method: 'PUT',
     path: paths.putSpreadsheet,
     options,
-    handler: putHandler(constructSqsClient())
+    handler: putHandler
   }
 ]
