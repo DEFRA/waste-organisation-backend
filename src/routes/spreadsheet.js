@@ -62,9 +62,9 @@ const sendJob = async (client, QueueUrl, jobData) => {
   }
 }
 
-const scheduleProcessor = async (sqsClient, queueUrl, spreadsheet) => {
+const scheduleProcessor = async (sqsClient, queueUrl, jobData) => {
   // TODO check state of the data - maybe only do this if it's just become ready or something??
-  sendJob(sqsClient, queueUrl, spreadsheet)
+  sendJob(sqsClient, queueUrl, jobData)
   return null
 }
 
