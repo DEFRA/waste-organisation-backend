@@ -4,18 +4,22 @@ import { updateClientAuthKeys } from '../../config.js'
 
 export const WASTE_CLIENT_AUTH_TEST_TOKEN = 'mytesttoken'
 
-const mockSqs = () => {
-  vi.doMock('@aws-sdk/client-sqs', () => {
-    return {
-      SQSClient: {
-        send: async () => {
-          console.log('mockSqsClient call')
-          return { MessageId: 'dummy' }
-        }
-      }
+const mockSqs = () => ({
+  plugin: {
+    name: 'sqsPlugin',
+    version: '1.0.0',
+    register: async (server, options) => {
+      server.decorate('request', 'sqsClient', {
+        send: async () => ({ MessageId: 'dummy' })
+      })
+      server.decorate(
+        'request',
+        'backgroundProcessSqsQueueUrl',
+        'http://example.com/sqs/queue/url'
+      )
     }
-  })
-}
+  }
+})
 
 export const initialiseServer = async () => {
   process.env.WASTE_CLIENT_AUTH_TEST_TOKEN = WASTE_CLIENT_AUTH_TEST_TOKEN
@@ -29,7 +33,8 @@ export const initialiseServer = async () => {
     mongoDb.options.mongoUrl = globalThis.__MONGO_URI__
   }
   const server = await createServer({
-    mongoDb
+    mongoDb,
+    sqsPlugin: mockSqs()
   })
   await server.initialize()
   return server
