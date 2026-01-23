@@ -6,7 +6,7 @@ import {
   spreadsheetCollection,
   findAllSpreadsheets
 } from '../repositories/spreadsheet.js'
-import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs'
+import { /* SQSClient, */ SendMessageCommand } from '@aws-sdk/client-sqs'
 import { config } from '../config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 
@@ -24,15 +24,19 @@ const getHandler = async (request, h) => {
 const options = { auth: 'api-key-auth' }
 
 const constructSqsClient = () => {
-  try {
-    return new SQSClient({
-      region: config.get('aws.region'),
-      endpoint: config.get('aws.sqsEndpoint')
-    })
-  } catch (e) {
-    logger.error(`Error could not initialise SQS Client: ${e}`)
-    return null
+  return {
+    send: async () => {
+      return { MessageId: 'dummy' }
+    }
   }
+  // try {
+  //   return new SQSClient({
+  //     region: config.get('aws.region'),
+  //     endpoint: config.get('aws.sqsEndpoint')
+  //   })
+  // } catch (e) {
+  //   logger.error(`Error could not initialise SQS Client: ${e}`)
+  // }
 }
 
 const sendJob = async (client, QueueUrl, jobData) => {
