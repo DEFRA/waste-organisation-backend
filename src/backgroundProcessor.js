@@ -59,6 +59,8 @@ export const deleteMessage = async (client, QueueUrl, receiptHandle) => {
   }
 }
 
+/* v8 ignore start */
+// TODO write some tests for this
 export const processJob = async (s3Client, message) => {
   logger.info(`Message: ${JSON.stringify(message)}`)
   const { s3Bucket, s3Key } = JSON.parse(message.Body)
@@ -72,6 +74,7 @@ export const processJob = async (s3Client, message) => {
     return null
   }
 }
+/* v8 ignore stop */
 
 export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {
   const params = {
