@@ -17,6 +17,50 @@ export const config = convict({
       default: []
     }
   },
+  aws: {
+    region: {
+      doc: 'AWS region',
+      format: String,
+      default: 'eu-west-2',
+      env: 'AWS_REGION'
+    },
+    s3Endpoint: {
+      doc: 'AWS S3 endpoint',
+      format: String,
+      default: 'http://127.0.0.1:4566',
+      env: 'S3_ENDPOINT'
+    },
+    spreadsheetS3Bucket: {
+      doc: 'AWS S3 bucket for spreadsheet uploads',
+      format: String,
+      default: 'spreadsheet-bucket',
+      env: 'SPREADSHEET_S3_BUCKET'
+    },
+    forcePathStyle: {
+      doc: 'S3 Client path config',
+      format: Boolean,
+      default: !isProduction,
+      env: 'AWS_S3_FORCE_PATH_STYLE'
+    },
+    checksumMode: {
+      doc: 'S3 Client Checksum Mode',
+      format: ['ENABLED', 'DISABLED'],
+      default: 'DISABLED',
+      env: 'AWS_S3_CHECKSUM_MODE'
+    },
+    sqsEndpoint: {
+      doc: 'AWS SQS endpoint',
+      format: String,
+      default: 'http://127.0.0.1:4566',
+      env: 'SQS_ENDPOINT'
+    },
+    backgroundProcessQueue: {
+      doc: 'AWS SQS queue - used for scheduling background processes',
+      format: String,
+      default: 'waste-receiver-background-process',
+      env: 'SPREADSHEET_SQS_QUEUE'
+    }
+  },
   serviceVersion: {
     doc: 'The service version, this variable is injected into your docker container in CDP environments',
     format: String,

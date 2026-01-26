@@ -11,6 +11,7 @@ import { pulse } from './common/helpers/pulse.js'
 import { requestTracing } from './common/helpers/request-tracing.js'
 import { setupProxy } from './common/helpers/proxy/setup-proxy.js'
 import { authentication } from './plugins/auth.js'
+import { sqsPlugin } from './plugins/sqs.js'
 
 // prettier-ignore
 export const plugins = {
@@ -23,7 +24,16 @@ export const plugins = {
     options: config.get('mongo')
   },
   authentication,          // api key authentication strategy
-  router                   // router         - routes used in the app
+  router,                  // router         - routes used in the app
+  sqsPlugin: {
+    plugin: sqsPlugin,
+    options: {
+      region: config.get('aws.region'),
+      endpoint: config.get('aws.sqsEndpoint'),
+      queueKey: 'backgroundProcessSqsQueueUrl',
+      queueUrl: config.get('aws.backgroundProcessQueue')
+    }
+  }
 }
 
 export async function createServer(pluginOverrides) {
