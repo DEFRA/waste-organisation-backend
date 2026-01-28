@@ -7,7 +7,7 @@ import {
 } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 
-export const apiCodes = [
+export const apiCodeRoutes = [
   {
     method: 'GET',
     path: paths.listApiCodes,
