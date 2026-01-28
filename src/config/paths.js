@@ -3,7 +3,9 @@ export const paths = {
   putOrganisation: '/user/{userId}/organisation/{organisationId}',
   getSpreadsheets: '/spreadsheet/{organisationId}',
   getOneSpreadsheet: '/spreadsheet/{organisationId}/{uploadId}',
-  putSpreadsheet: '/spreadsheet/{organisationId}/{uploadId}'
+  putSpreadsheet: '/spreadsheet/{organisationId}/{uploadId}',
+  saveApiCode: '/organisation/{organisationId}/api-code/{apiCode}',
+  listApiCodes: '/organisation/{organisationId}/api-codes'
 }
 
 export const pathTo = (route, params) => {
