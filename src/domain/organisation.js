@@ -42,7 +42,7 @@ export const createApiCode = (org, name) => {
   const apiCodes = org.apiCodes || []
   apiCodes.push({
     code: uuidv4().toString(),
-    name: name || `API Code ${apiCodes.length}`,
+    name: name || `API Code ${apiCodes.length + 1}`,
     isDisabled: false
   })
   return joi.attempt({ ...org, apiCodes }, orgSchema, 'Validation Error', {
@@ -55,8 +55,12 @@ export const updateApiCode = (org, apiCode, name, isDisabled) => {
   const apiCodes = org.apiCodes || []
   const a = apiCodes.find(({ code }) => code === apiCode)
   if (a) {
-    if (name != null) a.name = name
-    if (isDisabled != null) a.isDisabled = isDisabled
+    if (name != null) {
+      a.name = name
+    }
+    if (isDisabled != null) {
+      a.isDisabled = isDisabled
+    }
   } else {
     throw Boom.notFound('not found')
   }

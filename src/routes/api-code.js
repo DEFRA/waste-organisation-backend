@@ -21,11 +21,13 @@ const handleErr = (e, h) => {
   })
 }
 
+const options = { auth: 'api-key-auth' }
+
 export const apiCodeRoutes = [
   {
     method: 'GET',
     path: paths.listApiCodes,
-    options: { auth: 'api-key-auth' },
+    options,
     handler: async (request, h) => {
       const r = await findOrganisationById(
         request.db,
@@ -41,7 +43,7 @@ export const apiCodeRoutes = [
   {
     method: 'POST',
     path: paths.createApiCode,
-    options: { auth: 'api-key-auth' },
+    options,
     handler: async (request, h) => {
       try {
         const organisation = await updateWithOptimisticLock(
@@ -59,7 +61,7 @@ export const apiCodeRoutes = [
   {
     method: 'PUT',
     path: paths.saveApiCode,
-    options: { auth: 'api-key-auth' },
+    options,
     handler: async (request, h) => {
       try {
         const organisation = await updateWithOptimisticLock(
