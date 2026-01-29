@@ -11,14 +11,20 @@ import { createLogger } from '../common/helpers/logging/logger.js'
 const logger = createLogger()
 
 const handleErr = (e, h) => {
+  logger.error(`Error with request: ${e}`)
   if (e.isBoom) {
     throw e
   }
-  logger.error(`Error with request: ${e}`)
-  return h.response({
-    message: 'error',
-    errors: e.isJoi ? e.details : [`${e}`]
-  })
+  // console.log('errors: ', e)
+  if (e.isJoi) {
+    throw Boom.badRequest(e.details.map(({ message }) => message).join(', '))
+  }
+  return h
+    .response({
+      message: 'error',
+      errors: e.isJoi ? e.details : [`${e}`]
+    })
+    .code(400)
 }
 
 const options = { auth: 'api-key-auth' }
@@ -80,10 +86,7 @@ export const apiCodeRoutes = [
         )
         return h.response({ message: 'success', apiCode })
       } catch (e) {
-        return h.response({
-          message: 'error',
-          errors: e.isJoi ? e.details : [`${e}`]
-        })
+        return handleErr(e, h)
       }
     }
   }

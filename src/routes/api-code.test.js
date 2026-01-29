@@ -129,7 +129,8 @@ describe('api codes', () => {
     expect(result.apiCode.isDisabled).toEqual(true)
     expect(statusCode).toBe(200)
   })
-  test('should disable api code', async () => {
+
+  test('check validation errors', async () => {
     const r = await server.inject({
       method: 'POST',
       url: pathTo(paths.createApiCode, {
@@ -151,10 +152,10 @@ describe('api codes', () => {
       },
       payload: {
         apiCode: {
-          isDisabled: 'fish'
+          name: 123
         }
       }
     })
-    expect(statusCode).toBe(200)
+    expect(statusCode).toBe(400)
   })
 })
