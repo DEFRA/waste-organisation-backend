@@ -19,12 +19,7 @@ const handleErr = (e, h) => {
   if (e.isJoi) {
     throw Boom.badRequest(e.details.map(({ message }) => message).join(', '))
   }
-  return h
-    .response({
-      message: 'error',
-      errors: e.isJoi ? e.details : [`${e}`]
-    })
-    .code(400)
+  throw Boom.badRequest(`${e}`)
 }
 
 const options = { auth: 'api-key-auth' }
@@ -40,7 +35,7 @@ export const apiCodeRoutes = [
         request.params.organisationId
       )
       if (r) {
-        return h.response({ message: 'success', apiCodes: r.apiCodes })
+        return h.response({ apiCodes: r.apiCodes })
       } else {
         throw Boom.notFound()
       }
@@ -58,7 +53,7 @@ export const apiCodeRoutes = [
           (dbOrg) => createApiCode(dbOrg, request.payload?.apiCode?.name)
         )
         const apiCode = organisation.apiCodes[organisation.apiCodes.length - 1]
-        return h.response({ message: 'success', apiCode })
+        return h.response(apiCode)
       } catch (e) {
         return handleErr(e, h)
       }
@@ -84,7 +79,7 @@ export const apiCodeRoutes = [
         const apiCode = organisation.apiCodes.find(
           ({ code }) => code === request.params.apiCode
         )
-        return h.response({ message: 'success', apiCode })
+        return h.response(apiCode)
       } catch (e) {
         return handleErr(e, h)
       }

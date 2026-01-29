@@ -55,7 +55,6 @@ describe('api codes', () => {
         'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
       }
     })
-    expect(result.message).toEqual('success')
     expect(result.apiCodes[0].name).toEqual('Alice')
     expect(result.apiCodes[1].name).toEqual('Bob')
     expect(result.apiCodes[0].code.toLowerCase()).toEqual(
@@ -81,7 +80,7 @@ describe('api codes', () => {
       payload: {}
     })
     expect(r.statusCode).toBe(200)
-    const apiCode = r.result.apiCode.code
+    const apiCode = r.result.code
     expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
     const { result, statusCode } = await server.inject({
       method: 'PUT',
@@ -96,7 +95,7 @@ describe('api codes', () => {
       }
     })
 
-    expect(result.apiCode.name).toEqual('Bob')
+    expect(result.name).toEqual('Bob')
     expect(statusCode).toBe(200)
   })
 
@@ -112,7 +111,7 @@ describe('api codes', () => {
       payload: {}
     })
     expect(r.statusCode).toBe(200)
-    const apiCode = r.result.apiCode.code
+    const apiCode = r.result.code
     expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
     const { result, statusCode } = await server.inject({
       method: 'PUT',
@@ -126,7 +125,7 @@ describe('api codes', () => {
         }
       }
     })
-    expect(result.apiCode.isDisabled).toEqual(true)
+    expect(result.isDisabled).toEqual(true)
     expect(statusCode).toBe(200)
   })
 
@@ -142,7 +141,7 @@ describe('api codes', () => {
       payload: {}
     })
     expect(r.statusCode).toBe(200)
-    const apiCode = r.result.apiCode.code
+    const apiCode = r.result.code
     expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
     const { statusCode } = await server.inject({
       method: 'PUT',
