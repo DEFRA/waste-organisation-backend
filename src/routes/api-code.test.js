@@ -16,6 +16,17 @@ describe('api codes', () => {
     stopServer(server)
   })
 
+  test('404 for not found org', async () => {
+    const { statusCode } = await server.inject({
+      method: 'GET',
+      url: pathTo(paths.listApiCodes, { organisationId: 'notehuntoehutnoeh' }),
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      }
+    })
+    expect(statusCode).toBe(404)
+  })
+
   test('should list saved api codes', async () => {
     for (const apiCode of [
       {
@@ -47,10 +58,10 @@ describe('api codes', () => {
     expect(result.message).toEqual('success')
     expect(result.apiCodes[0].name).toEqual('Alice')
     expect(result.apiCodes[1].name).toEqual('Bob')
-    expect(result.apiCodes[0].apiCode.toLowerCase()).toEqual(
+    expect(result.apiCodes[0].code.toLowerCase()).toEqual(
       expect.stringMatching(/[0-9a-f-]*/)
     )
-    expect(result.apiCodes[1].apiCode.toLowerCase()).toEqual(
+    expect(result.apiCodes[1].code.toLowerCase()).toEqual(
       expect.stringMatching(/[0-9a-f-]*/)
     )
     expect(result.apiCodes[0].isDisabled).toEqual(false)
@@ -70,7 +81,7 @@ describe('api codes', () => {
       payload: {}
     })
     expect(r.statusCode).toBe(200)
-    const apiCode = r.result.apiCode.apiCode
+    const apiCode = r.result.apiCode.code
     expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
     const { result, statusCode } = await server.inject({
       method: 'PUT',
@@ -101,7 +112,7 @@ describe('api codes', () => {
       payload: {}
     })
     expect(r.statusCode).toBe(200)
-    const apiCode = r.result.apiCode.apiCode
+    const apiCode = r.result.apiCode.code
     expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
     const { result, statusCode } = await server.inject({
       method: 'PUT',
@@ -130,7 +141,7 @@ describe('api codes', () => {
       payload: {}
     })
     expect(r.statusCode).toBe(200)
-    const apiCode = r.result.apiCode.apiCode
+    const apiCode = r.result.apiCode.code
     expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
     const { statusCode } = await server.inject({
       method: 'PUT',

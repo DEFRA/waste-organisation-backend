@@ -5,7 +5,7 @@ import Boom from '@hapi/boom'
 
 export const apiCodeSchema = joi.object({
   name: joi.string().required(),
-  apiCode: joi.string().required(),
+  code: joi.string().required(),
   isDisabled: joi.boolean()
 })
 
@@ -41,7 +41,7 @@ export const mergeAndValidate = (dbOrg, requestOrg, organisationId, userId) => {
 export const createApiCode = (org, name) => {
   const apiCodes = org.apiCodes || []
   apiCodes.push({
-    apiCode: uuidv4().toString(),
+    code: uuidv4().toString(),
     name: name || `API Code ${apiCodes.length}`,
     isDisabled: false
   })
@@ -53,7 +53,7 @@ export const createApiCode = (org, name) => {
 
 export const updateApiCode = (org, apiCode, name, isDisabled) => {
   const apiCodes = org.apiCodes || []
-  const a = apiCodes.find((e) => e.apiCode === apiCode)
+  const a = apiCodes.find(({ code }) => code === apiCode)
   if (a) {
     if (name != null) a.name = name
     if (isDisabled != null) a.isDisabled = isDisabled

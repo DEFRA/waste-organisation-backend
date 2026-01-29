@@ -1,4 +1,4 @@
-// import Boom from '@hapi/boom'
+import Boom from '@hapi/boom'
 import { paths } from '../config/paths.js'
 import { createApiCode, updateApiCode } from '../domain/organisation.js'
 import {
@@ -27,11 +27,15 @@ export const apiCodeRoutes = [
     path: paths.listApiCodes,
     options: { auth: 'api-key-auth' },
     handler: async (request, h) => {
-      const { apiCodes } = await findOrganisationById(
+      const r = await findOrganisationById(
         request.db,
         request.params.organisationId
       )
-      return h.response({ message: 'success', apiCodes })
+      if (r) {
+        return h.response({ message: 'success', apiCodes: r.apiCodes })
+      } else {
+        throw Boom.notFound()
+      }
     }
   },
   {
@@ -70,7 +74,7 @@ export const apiCodeRoutes = [
             )
         )
         const apiCode = organisation.apiCodes.find(
-          (c) => c.apiCode === request.params.apiCode
+          ({ code }) => code === request.params.apiCode
         )
         return h.response({ message: 'success', apiCode })
       } catch (e) {
