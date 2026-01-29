@@ -4,6 +4,7 @@ export const createOrgIndexes = async (db) => {
   await db
     .collection(orgCollection)
     .createIndex({ users: 1, organisationId: 1 })
+  await db.collection(orgCollection).createIndex({ 'apiCodes.$**': 1 })
 }
 
 export const findAllOrganisationsForUser = (db, userId) => {

@@ -19,19 +19,15 @@ describe('api codes', () => {
   test('should list saved api codes', async () => {
     for (const apiCode of [
       {
-        name: 'Alice',
-        apiCode: 'abc123'
+        name: 'Alice'
       },
       {
-        name: 'Bob',
-        disabled: 'true',
-        apiCode: 'def456'
+        name: 'Bob'
       }
     ]) {
-      await server.inject({
-        method: 'PUT',
-        url: pathTo(paths.saveApiCode, {
-          apiCode: apiCode.apiCode,
+      const r = await server.inject({
+        method: 'POST',
+        url: pathTo(paths.createApiCode, {
           organisationId: 456
         }),
         headers: {
@@ -39,6 +35,7 @@ describe('api codes', () => {
         },
         payload: { apiCode }
       })
+      expect(r.statusCode).toBe(200)
     }
     const { result, statusCode } = await server.inject({
       method: 'GET',
@@ -47,27 +44,37 @@ describe('api codes', () => {
         'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
       }
     })
-    expect(result).toEqual({
-      message: 'success',
-      apiCodes: {
-        abc123: {
-          name: 'Alice',
-          apiCode: 'abc123'
-        },
-        def456: {
-          name: 'Bob',
-          disabled: true,
-          apiCode: 'def456'
-        }
-      }
-    })
+    expect(result.message).toEqual('success')
+    expect(result.apiCodes[0].name).toEqual('Alice')
+    expect(result.apiCodes[1].name).toEqual('Bob')
+    expect(result.apiCodes[0].apiCode.toLowerCase()).toEqual(
+      expect.stringMatching(/[0-9a-f-]*/)
+    )
+    expect(result.apiCodes[1].apiCode.toLowerCase()).toEqual(
+      expect.stringMatching(/[0-9a-f-]*/)
+    )
+    expect(result.apiCodes[0].isDisabled).toEqual(false)
+    expect(result.apiCodes[1].isDisabled).toEqual(false)
     expect(statusCode).toBe(200)
   })
 
   test('should PUT api code', async () => {
+    const r = await server.inject({
+      method: 'POST',
+      url: pathTo(paths.createApiCode, {
+        organisationId: 456
+      }),
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
+      payload: {}
+    })
+    expect(r.statusCode).toBe(200)
+    const apiCode = r.result.apiCode.apiCode
+    expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
     const { result, statusCode } = await server.inject({
       method: 'PUT',
-      url: pathTo(paths.saveApiCode, { apiCode: 123, organisationId: 456 }),
+      url: pathTo(paths.saveApiCode, { apiCode, organisationId: 456 }),
       headers: {
         'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
       },
@@ -78,37 +85,63 @@ describe('api codes', () => {
       }
     })
 
-    expect(result).toEqual({
-      message: 'success',
-      apiCode: {
-        name: 'Bob',
-        apiCode: '123'
-      }
-    })
+    expect(result.apiCode.name).toEqual('Bob')
     expect(statusCode).toBe(200)
   })
 
   test('should disable api code', async () => {
+    const r = await server.inject({
+      method: 'POST',
+      url: pathTo(paths.createApiCode, {
+        organisationId: 456
+      }),
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
+      payload: {}
+    })
+    expect(r.statusCode).toBe(200)
+    const apiCode = r.result.apiCode.apiCode
+    expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
     const { result, statusCode } = await server.inject({
       method: 'PUT',
-      url: pathTo(paths.saveApiCode, { apiCode: 123, organisationId: 456 }),
+      url: pathTo(paths.saveApiCode, { apiCode, organisationId: 456 }),
       headers: {
         'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
       },
       payload: {
         apiCode: {
-          name: 'Bob',
-          disabled: 'true'
+          isDisabled: true
         }
       }
     })
-
-    expect(result).toEqual({
-      message: 'success',
-      apiCode: {
-        name: 'Bob',
-        apiCode: '123',
-        disabled: true
+    expect(result.apiCode.isDisabled).toEqual(true)
+    expect(statusCode).toBe(200)
+  })
+  test('should disable api code', async () => {
+    const r = await server.inject({
+      method: 'POST',
+      url: pathTo(paths.createApiCode, {
+        organisationId: 456
+      }),
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
+      payload: {}
+    })
+    expect(r.statusCode).toBe(200)
+    const apiCode = r.result.apiCode.apiCode
+    expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
+    const { statusCode } = await server.inject({
+      method: 'PUT',
+      url: pathTo(paths.saveApiCode, { apiCode, organisationId: 456 }),
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
+      payload: {
+        apiCode: {
+          isDisabled: 'fish'
+        }
       }
     })
     expect(statusCode).toBe(200)
