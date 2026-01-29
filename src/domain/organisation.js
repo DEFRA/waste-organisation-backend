@@ -11,7 +11,7 @@ export const apiCodeSchema = joi.object({
 
 export const orgSchema = joi.object({
   organisationId: joi.string().required(),
-  users: joi.array().items(joi.string()), // TODO removed this: .required()
+  users: joi.array().items(joi.string()), // NOTE removed this: .required()
   name: joi.string(),
   apiCodes: joi.array().items(apiCodeSchema),
   isWasteReceiver: joi.boolean()
