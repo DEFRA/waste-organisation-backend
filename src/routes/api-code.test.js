@@ -4,6 +4,7 @@ import {
   stopServer
 } from '../common/helpers/initialse-test-server.js'
 import { paths, pathTo } from '../config/paths.js'
+import { updateApiCode } from '../domain/organisation.js'
 
 describe('api codes', () => {
   let server
@@ -156,5 +157,16 @@ describe('api codes', () => {
       }
     })
     expect(statusCode).toBe(400)
+  })
+})
+
+describe('api code domain tests', () => {
+  test('should throw if no api code found', () => {
+    try {
+      updateApiCode({}, 'test', 'name')
+      expect(true).toBe(false)
+    } catch (e) {
+      expect(true).toEqual(true)
+    }
   })
 })
