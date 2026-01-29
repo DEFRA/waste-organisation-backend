@@ -10,7 +10,7 @@ import { createLogger } from '../common/helpers/logging/logger.js'
 
 const logger = createLogger()
 
-const handleErr = (e, h) => {
+const handleErr = (e) => {
   logger.error(`Error with request: ${e}`)
   if (e.isBoom) {
     throw e
@@ -55,7 +55,7 @@ export const apiCodeRoutes = [
         const apiCode = organisation.apiCodes[organisation.apiCodes.length - 1]
         return h.response(apiCode)
       } catch (e) {
-        return handleErr(e, h)
+        return handleErr(e)
       }
     }
   },
@@ -81,7 +81,7 @@ export const apiCodeRoutes = [
         )
         return h.response(apiCode)
       } catch (e) {
-        return handleErr(e, h)
+        return handleErr(e)
       }
     }
   }
