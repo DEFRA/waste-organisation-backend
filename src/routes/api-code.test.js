@@ -158,6 +158,44 @@ describe('api codes', () => {
     })
     expect(statusCode).toBe(400)
   })
+
+  test('should resolve org from api code', async () => {
+    const r = await server.inject({
+      method: 'POST',
+      url: pathTo(paths.createApiCode, {
+        organisationId: 456
+      }),
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
+      payload: {}
+    })
+    expect(r.statusCode).toBe(200)
+    const apiCode = r.result.code
+    expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
+    const { result, statusCode } = await server.inject({
+      method: 'GET',
+      url: pathTo(paths.lookupOrgFromApiCode, { apiCode }),
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      }
+    })
+    expect(result.defraOrganisationId).toEqual('456')
+    expect(statusCode).toBe(200)
+  })
+
+  test('should 404 for unknown api code', async () => {
+    const { statusCode } = await server.inject({
+      method: 'GET',
+      url: pathTo(paths.lookupOrgFromApiCode, {
+        apiCode: 'not a known api code'
+      }),
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      }
+    })
+    expect(statusCode).toBe(404)
+  })
 })
 
 describe('api code domain tests', () => {

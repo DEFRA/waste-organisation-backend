@@ -1,12 +1,14 @@
+// prettier-ignore
 export const paths = {
-  getOrganisations: '/user/{userId}/organisations',
-  putOrganisation: '/user/{userId}/organisation/{organisationId}',
-  getSpreadsheets: '/spreadsheet/{organisationId}',
-  getOneSpreadsheet: '/spreadsheet/{organisationId}/{uploadId}',
-  putSpreadsheet: '/spreadsheet/{organisationId}/{uploadId}',
-  saveApiCode: '/organisation/{organisationId}/apiCodes/{apiCode}',
-  createApiCode: '/organisation/{organisationId}/apiCodes',
-  listApiCodes: '/organisation/{organisationId}/apiCodes'
+  getOrganisations:     '/user/{userId}/organisations',
+  putOrganisation:      '/user/{userId}/organisation/{organisationId}',
+  getSpreadsheets:      '/spreadsheet/{organisationId}',
+  getOneSpreadsheet:    '/spreadsheet/{organisationId}/{uploadId}',
+  putSpreadsheet:       '/spreadsheet/{organisationId}/{uploadId}',
+  saveApiCode:          '/organisation/{organisationId}/apiCodes/{apiCode}',
+  createApiCode:        '/organisation/{organisationId}/apiCodes',
+  listApiCodes:         '/organisation/{organisationId}/apiCodes',
+  lookupOrgFromApiCode: '/organisation/{apiCode}'
 }
 
 export const pathTo = (route, params) => {

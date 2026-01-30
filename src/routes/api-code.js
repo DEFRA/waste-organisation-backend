@@ -2,6 +2,7 @@ import Boom from '@hapi/boom'
 import { paths } from '../config/paths.js'
 import { createApiCode, updateApiCode } from '../domain/organisation.js'
 import {
+  findOrganisationByApiCode,
   findOrganisationById,
   orgCollection
 } from '../repositories/organisation.js'
@@ -15,7 +16,6 @@ const handleErr = (e) => {
   if (e.isBoom) {
     throw e
   }
-  // console.log('errors: ', e)
   if (e.isJoi) {
     throw Boom.badRequest(e.details.map(({ message }) => message).join(', '))
   }
@@ -25,6 +25,22 @@ const handleErr = (e) => {
 const options = { auth: 'api-key-auth' }
 
 export const apiCodeRoutes = [
+  {
+    method: 'GET',
+    path: paths.lookupOrgFromApiCode,
+    options,
+    handler: async (request, h) => {
+      const org = await findOrganisationByApiCode(
+        request.db,
+        request.params.apiCode
+      )
+      if (org) {
+        return h.response({ defraOrganisationId: org.organisationId })
+      } else {
+        throw Boom.notFound()
+      }
+    }
+  },
   {
     method: 'GET',
     path: paths.listApiCodes,
