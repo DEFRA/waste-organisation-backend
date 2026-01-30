@@ -30,11 +30,11 @@ export const apiCodeRoutes = [
     path: paths.lookupOrgFromApiCode,
     options,
     handler: async (request, h) => {
-      const org = await findOrganisationByApiCode(
-        request.db,
-        request.params.apiCode
-      )
-      if (org) {
+      const apiCode = request.params.apiCode
+      const org = await findOrganisationByApiCode(request.db, apiCode)
+      if (
+        org?.apiCodes.find(({ code }) => code === apiCode).isDisabled === false
+      ) {
         return h.response({ defraOrganisationId: org.organisationId })
       } else {
         throw Boom.notFound()
