@@ -24,7 +24,7 @@ const mockSqs = () => ({
 export const initialiseServer = async () => {
   process.env.WASTE_CLIENT_AUTH_TEST_TOKEN = WASTE_CLIENT_AUTH_TEST_TOKEN
   process.env.WASTE_CLIENT_AUTH_TEST_1 = 'my test token 1'
-  process.env.WASTE_CLIENT_AUTH_TEST_2 = 'my test token 2'
+  process.env.WASTE_CLIENT_AUTH_TEST_2 = '4d5d48cb-456a-470a-8814-eae2758be90d'
   updateClientAuthKeys()
   mockSqs()
   await mockMongo.setup()

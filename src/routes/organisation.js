@@ -1,6 +1,6 @@
 // import Boom from '@hapi/boom'
 import { paths } from '../config/paths.js'
-import { mergeAndValidate } from '../domain/organisation.js'
+import { mergeAndValidate, createApiCode } from '../domain/organisation.js'
 import {
   findAllOrganisationsForUser,
   orgCollection
@@ -18,6 +18,7 @@ export const organisations = [
         request.db,
         request.params.userId
       )
+      orgs.forEach((o) => delete o.apiCodes)
       return h.response({ message: 'success', organisations: orgs })
     }
   },
@@ -33,7 +34,7 @@ export const organisations = [
           (dbOrg) => {
             const organisationId = request.params.organisationId
             const userId = request.params.userId
-            return mergeAndValidate(
+            const org = mergeAndValidate(
               dbOrg,
               {
                 organisationId,
@@ -43,8 +44,14 @@ export const organisations = [
               organisationId,
               userId
             )
+            if (org.apiCodes == null) {
+              return createApiCode(org)
+            } else {
+              return org
+            }
           }
         )
+        delete organisation.apiCodes
         return h.response({ message: 'success', organisation })
       } catch (e) {
         return h.response({

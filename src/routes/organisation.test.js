@@ -84,6 +84,7 @@ describe('organisation API', () => {
       payload: { organisation: { name: 'Mr Dabolina', organisationId: 999 } }
     })
     expect(r1.statusCode).toBe(200)
+    expect(r1.result.organisation.organisationId).toEqual('999')
     const { result, statusCode } = await server.inject({
       method: 'GET',
       headers: {
