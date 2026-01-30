@@ -159,14 +159,15 @@ describe('api codes', () => {
     expect(statusCode).toBe(400)
   })
 
-  test('should resolve org from api code', async () => {
+  test('should resolve org from api code - supporting basic auth', async () => {
     const r = await server.inject({
       method: 'POST',
       url: pathTo(paths.createApiCode, {
         organisationId: 456
       }),
       headers: {
-        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+        authorization:
+          'Basic d2FzdGUtbW92ZW1lbnQtZXh0ZXJuYWwtYXBpOjRkNWQ0OGNiLTQ1NmEtNDcwYS04ODE0LWVhZTI3NThiZTkwZA=='
       },
       payload: {}
     })
@@ -182,6 +183,32 @@ describe('api codes', () => {
     })
     expect(result.defraOrganisationId).toEqual('456')
     expect(statusCode).toBe(200)
+  })
+
+  test('should reject invalid auth token', async () => {
+    const r = await server.inject({
+      method: 'POST',
+      url: pathTo(paths.createApiCode, {
+        organisationId: 456
+      }),
+      headers: {
+        authorization:
+          'Basic ' + Buffer.from('user:fish:invalid', 'utf8').toString('base64')
+      },
+      payload: {}
+    })
+    expect(r.statusCode).toBe(403)
+    const r1 = await server.inject({
+      method: 'POST',
+      url: pathTo(paths.createApiCode, {
+        organisationId: 456
+      }),
+      headers: {
+        authorization: 'fish'
+      },
+      payload: {}
+    })
+    expect(r1.statusCode).toBe(403)
   })
 
   test('should 404 for unknown api code', async () => {
