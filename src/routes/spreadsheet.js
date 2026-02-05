@@ -35,7 +35,7 @@ const sendJob = async (client, QueueUrl, jobData) => {
   }
 
   try {
-    logger.info('params: ${params}')
+    logger.info(`params: ${params}`)
     const command = new SendMessageCommand(params)
     const result = await client.send(command)
     logger.info(`Job sent to queue: ${result.MessageId}`)
