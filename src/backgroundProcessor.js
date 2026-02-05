@@ -10,7 +10,7 @@ import {
 } from '@aws-sdk/client-sqs'
 import { config } from './config.js'
 import { createLogger } from './common/helpers/logging/logger.js'
-import { parseExcelFile } from '../services/spreadsheetImport.js'
+import { parseExcelFile } from './services/spreadsheetImport.js'
 
 const logger = createLogger()
 

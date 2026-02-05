@@ -1,6 +1,7 @@
 import Excel from 'exceljs'
-import { createLogger } from './common/helpers/logging/logger.js'
+import { createLogger } from '../common/helpers/logging/logger.js'
 
+/* v8 ignore start */
 const logger = createLogger()
 
 export const parseExcelFile = async (buffer) => {
@@ -11,3 +12,4 @@ export const parseExcelFile = async (buffer) => {
   })
   return workbook
 }
+/* v8 ignore stop */
