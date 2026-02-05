@@ -45,7 +45,7 @@ export const config = convict({
     checksumMode: {
       doc: 'S3 Client Checksum Mode',
       format: ['ENABLED', 'DISABLED'],
-      default: 'DISABLED',
+      default: 'ENABLED',
       env: 'AWS_S3_CHECKSUM_MODE'
     },
     sqsEndpoint: {
