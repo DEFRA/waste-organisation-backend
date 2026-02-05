@@ -10,7 +10,7 @@ import {
 } from '@aws-sdk/client-sqs'
 import { config } from './config.js'
 import { createLogger } from './common/helpers/logging/logger.js'
-import Excel from 'exceljs'
+import { parseExcelFile } from './services/spreadsheetImport.js'
 
 const logger = createLogger()
 
@@ -110,15 +110,6 @@ export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {
   } catch (err) {
     logger.error(`Error polling queue: ${err}`)
   }
-}
-
-export const parseExcelFile = async (buffer) => {
-  const workbook = new Excel.Workbook()
-  await workbook.xlsx.load(buffer)
-  workbook.eachSheet((worksheet, _sheetId) => {
-    logger.info(`worksheet ${worksheet.name}`)
-  })
-  return workbook
 }
 
 export const startWorker = async () => {
