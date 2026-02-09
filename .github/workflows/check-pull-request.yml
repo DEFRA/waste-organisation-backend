@@ -21,12 +21,13 @@ jobs:
 
       - name: Test code and Create Test Coverage Reports
         uses: actions/setup-node@v4
-        env:
-          GOV_NOTIFY_KEY: ${{ secrets.GOV_NOTIFY_KEY }}
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: |
+      - name: Running the tests
+        env:
+          GOV_NOTIFY_KEY: ${{ secrets.GOV_NOTIFY_KEY }}
+        run: |
           npm ci
           npm run format:check
           npm run lint
