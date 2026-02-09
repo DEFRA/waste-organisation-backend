@@ -21,4 +21,9 @@ describe.skipIf(!apiKey)('notify', () => {
     const emailResonse = await sendEmail.sendFailed({ email: emailAddress })
     expect(emailResonse.status).toBe(201)
   })
+
+  it('should send email with an attachment', async () => {
+    const emailResonse = await sendEmail.sendSuccess({ email: emailAddress })
+    expect(emailResonse.status).toBe(201)
+  })
 })
