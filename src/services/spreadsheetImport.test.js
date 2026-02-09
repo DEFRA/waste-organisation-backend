@@ -45,7 +45,7 @@ describe('excel proccessor', () => {
               components: [
                 {
                   code: 'Hydrochloric Acid',
-                  concentration: '<'
+                  concentration: '<=37%'
                 },
                 {
                   code: 'Water',

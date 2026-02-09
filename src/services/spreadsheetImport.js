@@ -4,7 +4,7 @@ import { createLogger } from '../common/helpers/logging/logger.js'
 const logger = createLogger()
 
 const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
-  const a = []
+  const elements = []
   let errorOccured = false
   worksheet.eachRow((row, rowNumber) => {
     if (rowNumber > minRow) {
@@ -16,15 +16,20 @@ const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
               updateFn(r, colNumber, rowNumber, cell.value)
             } catch (e) {
               errorOccured = true
-              updateError(worksheet, cell, e.message) // TODO update this worksheet???
+              updateError(worksheet, cell, e.message)
             }
           }
         })
-        a.push(r)
+        elements.push(r)
       }
     }
   })
-  return a
+  return elements
+}
+
+const updateError = (worksheet, cell, message) => {
+  console.log('error message: ', message)
+  return worksheet, cell, message
 }
 
 export const parseExcelFile = async (buffer) => {
@@ -140,7 +145,9 @@ const parseComponentCodes = (existing, data) => {
   const result = existing ?? []
   result.concat(
     data.split(/;/).map((y) => {
-      const [code, concentration] = y.split(/=/).map((x) => x.trim())
+      const [_, code, concentration] = y
+        .match(/([^=]*)=(.*)/)
+        .map((x) => x.trim())
       return { code, concentration }
     })
   )
@@ -150,7 +157,9 @@ const parseComponentCodes = (existing, data) => {
 const parseComponentNames = (existing, data) => {
   const result = existing ?? []
   const parsed = data.split(/;/).flatMap((y) => {
-    const [name, concentration] = y.split(/=/).map((x) => x.trim())
+    const [_, name, concentration] = y
+      .match(/([^=]*)=(.*)/)
+      .map((x) => x.trim())
     return { code: name, concentration }
   })
   return result.concat(parsed)
