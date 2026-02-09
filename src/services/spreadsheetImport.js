@@ -5,7 +5,7 @@ const logger = createLogger()
 
 const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
   const elements = []
-  let errorOccured = false
+  const errors = []
   worksheet.eachRow((row, rowNumber) => {
     if (rowNumber > minRow) {
       if (row.getCell(keyCol).value) {
@@ -15,16 +15,19 @@ const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
             try {
               updateFn(r, colNumber, rowNumber, cell.value)
             } catch (e) {
-              errorOccured = true
-              updateError(worksheet, cell, e.message)
+              errors.push({
+                coords: [colNumber, rowNumber],
+                message: e.message
+              })
             }
           }
         })
+        r['--rowNumber'] = rowNumber
         elements.push(r)
       }
     }
   })
-  return elements
+  return { elements, errors }
 }
 
 const updateError = (worksheet, cell, message) => {
@@ -73,15 +76,36 @@ export const parseExcelFile = async (buffer) => {
     maxCol: 25,
     updateFn: itemColName
   })
-  return joinWasteItems(movements, items)
+  if (movements.errors.length > 0 || items.errors.length > 0) {
+    // TODO write errors somewhere - will need row numbers
+    console.log('errors on these rows: ', movements.errors, items.errors)
+    return []
+  } else {
+    return joinWasteItems(movements.elements, items.elements)
+  }
 }
 
 const joinWasteItems = (movements, items) => {
   const is = groupBy((x) => x['yourUniqueReference'], items)
   for (let i = 0; i < movements.length; i++) {
     const r = movements[i]['yourUniqueReference']
-    movements[i].wasteItems = is[r]
-    delete is[r]
+    if (is[r] && is[r].length > 0) {
+      movements[i].wasteItems = is[r].map((x) => {
+        delete x['--rowNumber']
+        return x
+      })
+      delete movements[i]['--rowNumber']
+      delete is[r]
+    } else {
+      console.log('missing waste items on row: ', movements[i]['--rowNumber'])
+    }
+  }
+  if (items.length > 0) {
+    // TODO write errors somewhere - will need row numbers
+    console.log(
+      'missing waste movements on rows: ',
+      Object.values(is).flatMap((y) => y.map((x) => x['--rowNumber']))
+    )
   }
   return { movements }
 }
