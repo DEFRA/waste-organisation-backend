@@ -5,13 +5,19 @@ const logger = createLogger()
 
 const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
   const a = []
+  let errorOccured = false
   worksheet.eachRow((row, rowNumber) => {
     if (rowNumber > minRow) {
       if (row.getCell(keyCol).value) {
         const r = {}
         row.eachCell((cell, colNumber) => {
           if (colNumber < maxCol) {
-            updateFn(r, colNumber, rowNumber, cell.value)
+            try {
+              updateFn(r, colNumber, rowNumber, cell.value)
+            } catch (e) {
+              errorOccured = true
+              updateError(worksheet, cell, e.message) // TODO update this worksheet???
+            }
           }
         })
         a.push(r)
@@ -62,7 +68,17 @@ export const parseExcelFile = async (buffer) => {
     maxCol: 25,
     updateFn: itemColName
   })
-  return { movements, items }
+  return joinWasteItems(movements, items)
+}
+
+const joinWasteItems = (movements, items) => {
+  const is = groupBy((x) => x['yourUniqueReference'], items)
+  for (let i = 0; i < movements.length; i++) {
+    const r = movements[i]['yourUniqueReference']
+    movements[i].wasteItems = is[r]
+    delete is[r]
+  }
+  return { movements }
 }
 
 const groupBy = (func, list) => {
@@ -84,22 +100,66 @@ const updateData = (cols) => {
   //   value: cell.value,
   //   coords: [colNumber, rowNumber]
   // }
+  let path = ['hazardous', 'sourceOfComponents']
 
-  return (colNum) => {
-    if (typeof cols[cols.length - 1] === 'function') {
-      return
+  let updateIn = (data, path, v, coords, func) => {
+    path.reduce((acc, x, i) => {
+      if (i === path.length - 1) {
+        // const value = func ? func(acc[x]?.value, v) : v
+        // acc[x] = { value, coords }
+        const value = func ? func(acc[x], v) : v
+        acc[x] = value
+      } else {
+        if (acc[x] == null) {
+          acc[x] = {}
+        }
+      }
+      return acc[x]
+    }, data)
+    return data
+  }
+
+  return (r, colNum, rowNum, value) => {
+    // console.log('cols[colNum]: ', cols[colNum])
+    const cs = cols[colNum]
+    if (typeof cs[cs.length - 1] === 'function') {
+      // const f = cols[cols.length - 1]
+      // const dataPath = cols[0,-1]
+      // const v = f(r[], value)
+      // console.log('cs[cs.length - 1]: ', cs[cs.length - 1])
+      updateIn(r, cs.slice(0, -1), value, [colNum, rowNum], cs[cs.length - 1])
+      return r
     } else {
-      return cols[colNum]
+      updateIn(r, cs, value, [colNum, rowNum])
+      return r
     }
   }
 }
 
-const parseComponents = (existing, data) => {
+const parseComponentCodes = (existing, data) => {
   const result = existing ?? []
+  result.concat(
+    data.split(/;/).map((y) => {
+      const [code, concentration] = y.split(/=/).map((x) => x.trim())
+      return { code, concentration }
+    })
+  )
   return result
 }
 
+const parseComponentNames = (existing, data) => {
+  const result = existing ?? []
+  const parsed = data.split(/;/).flatMap((y) => {
+    const [name, concentration] = y.split(/=/).map((x) => x.trim())
+    return { code: name, concentration }
+  })
+  return result.concat(parsed)
+}
+
 const mergeDate = (existing, data) => {
+  if ((!data) instanceof Date) {
+    throw new Exception('Cannot parse date')
+  }
   if (existing == null) {
     return data
   } else {
@@ -112,6 +172,9 @@ const mergeDate = (existing, data) => {
 }
 
 const mergeTime = (existing, data) => {
+  if ((!data) instanceof Date) {
+    throw new Exception('Cannot parse date')
+  }
   if (existing == null) {
     return data
   } else {
@@ -176,22 +239,14 @@ const itemColName = updateData([
   ['weight', 'amount'],
   ['weight', 'isEstimate'],
   ['containsPops'],
-  ['pops', 'components', parseComponents],
+  ['pops', 'components', parseComponentCodes],
   ['pops', 'sourceOfComponents'],
   ['containsHazardous'],
   ['hazardous', 'hazCodes'],
-  ['hazardous', 'components', parseComponents],
+  ['hazardous', 'components', parseComponentNames],
   ['hazardous', 'sourceOfComponents'],
   ['disposalOrRecoveryCodes', parseDisposalCodes]
 ])
-
-export const dataToRequest = ({ items, movements }) => {
-  const is = groupBy((x) => x[0].value, items)
-  for (const m of movements) {
-    m.wasteItems = is[m['yourUniqueReference']]
-  }
-  return m
-}
 
 /* v8 ignore start */
 /* v8 ignore stop */

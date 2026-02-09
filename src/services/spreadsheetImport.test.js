@@ -6,8 +6,69 @@ describe('excel proccessor', () => {
     const buffer = await fs.readFile(
       './test-resources/example-spreadsheet.xlsx'
     )
-    const data = await parseExcelFile(buffer)
-    expect(data).toEqual(dataFromSpreadsheet)
+    const { movements } = await parseExcelFile(buffer)
+    expect(movements[0].dateTimeReceived).toEqual(
+      new Date('2026-01-14T11:05:00.000Z')
+    )
+    expect(movements).toEqual([
+      {
+        carrier: {
+          organisationName: 'Qualitech Environmental Services Ltd',
+          registrationNumber: 'CBDU171976'
+        },
+        dateTimeReceived: new Date('2026-01-14T11:05:00.000Z'),
+        hazardousWasteConsignmentCode: 'KAWASA/19963',
+        receipt: {
+          address: {
+            fullAddress: 'Ernesettle Lane, Plumouth',
+            postcode: 'PL5 2SA'
+          }
+        },
+        receiver: {
+          siteName: 'Kawasaki Precision Machinery UK Ltd'
+        },
+        yourUniqueReference: 'KAWASA/19963',
+        wasteItems: [
+          {
+            containsHazardous: true,
+            containsPops: false,
+            disposalOrRecoveryCodes: {
+              code: 'D09',
+              weight: {
+                amount: 'kg',
+                isEstimate: 'estimate',
+                metric: '10,000'
+              }
+            },
+            ewcCodes: '06 01 10',
+            hazardous: {
+              components: [
+                {
+                  code: 'Hydrochloric Acid',
+                  concentration: '<'
+                },
+                {
+                  code: 'Water',
+                  concentration: 'Balance'
+                }
+              ],
+              hazCodes: 'HP5, HP8',
+              sourceOfComponents: 'PROVIDED_WITH_WASTE'
+            },
+            numberOfContainers: 1,
+            physicalForm: 'Liquid',
+            typeOfContainers: '[TAN] Tanker/Tank',
+            wasteDescription: 'Hydrochloric Pickling Acid',
+            weight: {
+              amount: 10000,
+              isEstimate: true,
+              metric: 'Kilograms'
+            },
+            yourUniqueReference: 'KAWASA/19963'
+          }
+        ]
+      }
+    ])
   })
 
   // test('should format as api request structure', () => {
