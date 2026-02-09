@@ -1,4 +1,5 @@
 import convict from 'convict'
+import dotenv from 'dotenv'
 import convictFormatWithValidator from 'convict-format-with-validator'
 
 import { convictValidateMongoUri } from './config/validate-mongo-uri.js'
@@ -9,12 +10,23 @@ convict.addFormats(convictFormatWithValidator)
 const isProduction = process.env.NODE_ENV === 'production'
 const isTest = process.env.NODE_ENV === 'test'
 
+dotenv.config()
+
 export const config = convict({
   auth: {
     clients: {
       doc: 'API Client pre-shared-keys',
       format: Array,
       default: []
+    }
+  },
+  notify: {
+    govNotifyKey: {
+      doc: 'Gov Notify Key',
+      format: String,
+      nullable: true,
+      default: null,
+      env: 'GOV_NOTIFY_KEY'
     }
   },
   aws: {
