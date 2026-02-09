@@ -24,7 +24,6 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - name: Running the tests
         env:
           GOV_NOTIFY_KEY: ${{ secrets.GOV_NOTIFY_KEY }}
         run: |
