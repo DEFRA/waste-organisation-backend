@@ -3,6 +3,11 @@ import { createLogger } from '../common/helpers/logging/logger.js'
 
 const logger = createLogger()
 
+const cellError = (colNumber, rowNumber, message) => ({
+  coords: [colNumber, rowNumber],
+  message: message
+})
+
 const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
   const elements = []
   const errors = []
@@ -15,10 +20,7 @@ const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
             try {
               updateFn(r, colNumber, rowNumber, cell.value)
             } catch (e) {
-              errors.push({
-                coords: [colNumber, rowNumber],
-                message: e.message
-              })
+              errors.push(cellError(colNumber, rowNumber, e.message))
             }
           }
         })
@@ -76,17 +78,22 @@ export const parseExcelFile = async (buffer) => {
     maxCol: 25,
     updateFn: itemColName
   })
-  if (movements.errors.length > 0 || items.errors.length > 0) {
-    // TODO write errors somewhere - will need row numbers
-    console.log('errors on these rows: ', movements.errors, items.errors)
-    return []
+  const joined = joinWasteItems(movements.elements, items.elements)
+  if (movements.errors.length > 0 || items.errors.length > 0 || joined.errors.length > 0) {
+    return {
+      errors: {
+        '7. Waste movement level': movements.errors.concat(joined.errors.movements),
+        '8. Waste item level': items.errors.concat(joined.errors.items)
+      }
+    }
   } else {
-    return joinWasteItems(movements.elements, items.elements)
+    return joined
   }
 }
 
 const joinWasteItems = (movements, items) => {
   const is = groupBy((x) => x['yourUniqueReference'], items)
+  const errors = { movements: [], items: [] }
   for (let i = 0; i < movements.length; i++) {
     const r = movements[i]['yourUniqueReference']
     if (is[r] && is[r].length > 0) {
@@ -98,16 +105,13 @@ const joinWasteItems = (movements, items) => {
       delete is[r]
     } else {
       console.log('missing waste items on row: ', movements[i]['--rowNumber'])
+      errors.movements.push(cellError(3, movements[i]['--rowNumber'], 'No waste items for unique reference'))
     }
   }
   if (items.length > 0) {
-    // TODO write errors somewhere - will need row numbers
-    console.log(
-      'missing waste movements on rows: ',
-      Object.values(is).flatMap((y) => y.map((x) => x['--rowNumber']))
-    )
+    errors.items.push(cellError(2, movements[i]['--rowNumber'], 'No waste movements for unique reference'))
   }
-  return { movements }
+  return { movements, errors }
 }
 
 const groupBy = (func, list) => {
@@ -167,31 +171,35 @@ const updateData = (cols) => {
 
 const parseComponentCodes = (existing, data) => {
   const result = existing ?? []
-  result.concat(
-    data.split(/;/).map((y) => {
-      const [_, code, concentration] = y
-        .match(/([^=]*)=(.*)/)
-        .map((x) => x.trim())
-      return { code, concentration }
-    })
-  )
-  return result
+  try {
+    result.concat(
+      data.split(/;/).map((y) => {
+        const [_, code, concentration] = y.match(/([^=]*)=(.*)/).map((x) => x.trim())
+        return { code, concentration }
+      })
+    )
+    return result
+  } catch (e) {
+    throw new Error('Cannot parse component codes')
+  }
 }
 
 const parseComponentNames = (existing, data) => {
   const result = existing ?? []
-  const parsed = data.split(/;/).flatMap((y) => {
-    const [_, name, concentration] = y
-      .match(/([^=]*)=(.*)/)
-      .map((x) => x.trim())
-    return { code: name, concentration }
-  })
-  return result.concat(parsed)
+  try {
+    const parsed = data.split(/;/).flatMap((y) => {
+      const [_, name, concentration] = y.match(/([^=]*)=(.*)/).map((x) => x.trim())
+      return { code: name, concentration }
+    })
+    return result.concat(parsed)
+  } catch (e) {
+    throw new Error('Cannot parse component names')
+  }
 }
 
 const mergeDate = (existing, data) => {
-  if ((!data) instanceof Date) {
-    throw new Exception('Cannot parse date')
+  if (!(data instanceof Date)) {
+    throw new Error('Cannot parse date')
   }
   if (existing == null) {
     return data
@@ -205,8 +213,8 @@ const mergeDate = (existing, data) => {
 }
 
 const mergeTime = (existing, data) => {
-  if ((!data) instanceof Date) {
-    throw new Exception('Cannot parse date')
+  if (!(data instanceof Date)) {
+    throw new Error('Cannot parse time')
   }
   if (existing == null) {
     return data
@@ -221,8 +229,12 @@ const mergeTime = (existing, data) => {
 
 const parseDisposalCodes = (existing, data) => {
   const [code, metric, amount, est] = data.split(/=/).map((x) => x.trim())
-  const isEstimate = est.toLowerCase()
-  return { code, weight: { metric, amount, isEstimate } }
+  if (est) {
+    const isEstimate = est.toLowerCase()
+    return { code, weight: { metric, amount, isEstimate } }
+  } else {
+    throw new Error('Cannot parse disposal codes.')
+  }
 }
 
 const movementColName = updateData([

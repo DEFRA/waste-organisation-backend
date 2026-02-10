@@ -1,12 +1,12 @@
 import fs from 'node:fs/promises'
-import { parseExcelFile, dataToRequest } from './spreadsheetImport.js'
+import { parseExcelFile } from './spreadsheetImport.js'
 
 describe('excel proccessor', () => {
   test('should parse buffer', { timeout: 10000 }, async () => {
     const buffer = await fs.readFile(
       './test-resources/example-spreadsheet.xlsx'
     )
-    const { movements } = await parseExcelFile(buffer)
+    const { movements, errors } = await parseExcelFile(buffer)
     expect(movements[0].dateTimeReceived).toEqual(
       new Date('2026-01-14T11:05:00.000Z')
     )
@@ -69,12 +69,40 @@ describe('excel proccessor', () => {
         ]
       }
     ])
+    expect(errors).toEqual([])
   })
 
-  // test('should format as api request structure', () => {
-  //   const data = dataToRequest(dataFromSpreadsheet)
-  //   expect(data).toEqual([])
-  // })
+  test('should parse buffer', { timeout: 10000 }, async () => {
+    const buffer = await fs.readFile(
+      './test-resources/example-spreadsheet-2.xlsx'
+    )
+    const { movements, errors } = await parseExcelFile(buffer)
+    expect(errors).toEqual({
+      '7. Waste movement level': [
+        {
+          coords: [12, 9],
+          message: 'Cannot parse time'
+        }
+      ],
+      '8. Waste item level': [
+        {
+          coords: [18, 9],
+          message: 'Cannot parse disposal codes.'
+        },
+        {
+          coords: [12, 10],
+          message: 'Cannot parse component codes'
+        },
+        {
+          coords: [16, 10],
+          message: 'Cannot parse component names'
+        }
+      ]
+    })
+    expect(movements[0].dateTimeReceived).toEqual(
+      new Date('2026-01-14T11:05:00.000Z')
+    )
+  })
 })
 
 const dataFromSpreadsheet = {
