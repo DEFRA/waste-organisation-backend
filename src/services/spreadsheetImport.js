@@ -18,7 +18,7 @@ const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
         row.eachCell((cell, colNumber) => {
           if (colNumber < maxCol) {
             try {
-              updateFn(r, colNumber, rowNumber, cell.value)
+              updateFn(r, [colNumber, rowNumber], cell.value)
             } catch (e) {
               errors.push(cellError(colNumber, rowNumber, e.message))
             }
@@ -79,10 +79,16 @@ export const parseExcelFile = async (buffer) => {
     updateFn: itemColName
   })
   const joined = joinWasteItems(movements.elements, items.elements)
-  if (movements.errors.length > 0 || items.errors.length > 0 || joined.errors.length > 0) {
+  if (
+    movements.errors.length > 0 ||
+    items.errors.length > 0 ||
+    joined.errors.length > 0
+  ) {
     return {
       errors: {
-        '7. Waste movement level': movements.errors.concat(joined.errors.movements),
+        '7. Waste movement level': movements.errors.concat(
+          joined.errors.movements
+        ),
         '8. Waste item level': items.errors.concat(joined.errors.items)
       }
     }
@@ -104,12 +110,25 @@ const joinWasteItems = (movements, items) => {
       delete movements[i]['--rowNumber']
       delete is[r]
     } else {
-      console.log('missing waste items on row: ', movements[i]['--rowNumber'])
-      errors.movements.push(cellError(3, movements[i]['--rowNumber'], 'No waste items for unique reference'))
+      errors.movements.push(
+        cellError(
+          3,
+          movements[i]['--rowNumber'],
+          'No waste items for unique reference'
+        )
+      )
     }
   }
-  if (items.length > 0) {
-    errors.items.push(cellError(2, movements[i]['--rowNumber'], 'No waste movements for unique reference'))
+  if (Object.keys(is).length > 0) {
+    for (const m of Object.values(is).flatMap((x) => x)) {
+      errors.items.push(
+        cellError(
+          2,
+          m['--rowNumber'],
+          'No waste movements for unique reference'
+        )
+      )
+    }
   }
   return { movements, errors }
 }
@@ -124,22 +143,10 @@ const groupBy = (func, list) => {
   }, {})
 }
 
-const identity = (x) => x
-
 const updateData = (cols) => {
-  // updateFn(r, colNumber, rowNumber, cell.value)
-
-  // r[colFunc(colNumber)] = {
-  //   value: cell.value,
-  //   coords: [colNumber, rowNumber]
-  // }
-  let path = ['hazardous', 'sourceOfComponents']
-
-  let updateIn = (data, path, v, coords, func) => {
+  const updateIn = (data, path, v, func) => {
     path.reduce((acc, x, i) => {
       if (i === path.length - 1) {
-        // const value = func ? func(acc[x]?.value, v) : v
-        // acc[x] = { value, coords }
         const value = func ? func(acc[x], v) : v
         acc[x] = value
       } else {
@@ -152,20 +159,14 @@ const updateData = (cols) => {
     return data
   }
 
-  return (r, colNum, rowNum, value) => {
-    // console.log('cols[colNum]: ', cols[colNum])
+  return (r, [colNum, _rowNum], value) => {
     const cs = cols[colNum]
     if (typeof cs[cs.length - 1] === 'function') {
-      // const f = cols[cols.length - 1]
-      // const dataPath = cols[0,-1]
-      // const v = f(r[], value)
-      // console.log('cs[cs.length - 1]: ', cs[cs.length - 1])
-      updateIn(r, cs.slice(0, -1), value, [colNum, rowNum], cs[cs.length - 1])
-      return r
+      updateIn(r, cs.slice(0, -1), value, cs[cs.length - 1])
     } else {
-      updateIn(r, cs, value, [colNum, rowNum])
-      return r
+      updateIn(r, cs, value)
     }
+    return r
   }
 }
 
@@ -174,7 +175,9 @@ const parseComponentCodes = (existing, data) => {
   try {
     result.concat(
       data.split(/;/).map((y) => {
-        const [_, code, concentration] = y.match(/([^=]*)=(.*)/).map((x) => x.trim())
+        const [_, code, concentration] = y
+          .match(/([^=]*)=(.*)/)
+          .map((x) => x.trim())
         return { code, concentration }
       })
     )
@@ -188,7 +191,9 @@ const parseComponentNames = (existing, data) => {
   const result = existing ?? []
   try {
     const parsed = data.split(/;/).flatMap((y) => {
-      const [_, name, concentration] = y.match(/([^=]*)=(.*)/).map((x) => x.trim())
+      const [_, name, concentration] = y
+        .match(/([^=]*)=(.*)/)
+        .map((x) => x.trim())
       return { code: name, concentration }
     })
     return result.concat(parsed)
