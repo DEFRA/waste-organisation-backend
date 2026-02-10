@@ -88,7 +88,7 @@ describe('excel proccessor', () => {
     const buffer = await fs.readFile(
       './test-resources/example-spreadsheet-2.xlsx'
     )
-    const { movements, errors } = await parseExcelFile(buffer)
+    const { errors } = await parseExcelFile(buffer)
     expect(errors).toEqual({
       '7. Waste movement level': [
         {
@@ -123,7 +123,7 @@ describe('excel proccessor', () => {
   })
 })
 
-const dataFromSpreadsheet = {
+const _dataFromSpreadsheet = {
   items: [
     {
       containsHazardous: {

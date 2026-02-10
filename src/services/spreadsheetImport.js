@@ -5,7 +5,7 @@ const logger = createLogger()
 
 const cellError = (colNumber, rowNumber, message) => ({
   coords: [colNumber, rowNumber],
-  message: message
+  message
 })
 
 const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
@@ -34,7 +34,7 @@ const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
 
 const updateError = (worksheet, cell, message) => {
   console.log('error message: ', message)
-  return worksheet, cell, message
+  return worksheet
 }
 
 export const parseExcelFile = async (buffer) => {
