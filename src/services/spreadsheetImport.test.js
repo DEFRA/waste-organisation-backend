@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises'
-import { parseExcelFile } from './spreadsheetImport.js'
+import Excel from 'exceljs'
+import { parseExcelFile, updateErrors } from './spreadsheetImport.js'
 
 describe('excel proccessor', () => {
   test('should parse buffer', { timeout: 10000 }, async () => {
@@ -84,11 +85,11 @@ describe('excel proccessor', () => {
     })
   })
 
-  test('should parse buffer', { timeout: 10000 }, async () => {
+  test('should write errors buffer', { timeout: 10000 }, async () => {
     const buffer = await fs.readFile(
       './test-resources/example-spreadsheet-2.xlsx'
     )
-    const { errors } = await parseExcelFile(buffer)
+    const { errors, workbook } = await parseExcelFile(buffer)
     expect(errors).toEqual({
       '7. Waste movement level': [
         {
@@ -119,6 +120,9 @@ describe('excel proccessor', () => {
         }
       ]
     })
+    await workbook.xlsx.writeFile(
+      './test-resources/output-spreadsheet-2-with-errors.xlsx'
+    )
     // expect(movements[0].dateTimeReceived).toEqual(new Date('2026-01-14T11:05:00.000Z'))
   })
 })

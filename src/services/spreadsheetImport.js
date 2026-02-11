@@ -32,15 +32,42 @@ const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
   return { elements, errors }
 }
 
-const updateError = (worksheet, cell, message) => {
-  console.log('error message: ', message)
-  return worksheet
-}
+export const updateErrors = (() => {
+  const font = { bold: true, size: 12, color: { argb: 'FFD4351C' } }
+  const borderStyle = {
+    left: { style: 'thick', color: { argb: 'FFD4351C' } },
+    right: { style: 'thick', color: { argb: 'FFD4351C' } },
+    top: { style: 'thick', color: { argb: 'FFD4351C' } },
+    bottom: { style: 'thick', color: { argb: 'FFD4351C' } }
+  }
+  return (workbook, cellsAndMessages) => {
+    for (const worksheetName of Object.keys(cellsAndMessages)) {
+      const worksheet = workbook.getWorksheet(worksheetName)
+      for (const { coords, message } of cellsAndMessages[worksheetName]) {
+        const [colNumber, rowNumber] = coords
+        const cell = worksheet.getRow(rowNumber).getCell(colNumber)
+        const errorCell = worksheet.getRow(rowNumber).getCell(1)
+        if (cell) {
+          cell.border = borderStyle
+        }
+        if (errorCell) {
+          const v = errorCell?.value?.richText
+            ? errorCell?.value
+            : { richText: [] }
+          v.richText.push({ font, text: message })
+          errorCell.value = v
+        }
+      }
+    }
+    return workbook
+  }
+})()
 
 export const parseExcelFile = async (buffer) => {
   const workbook = new Excel.Workbook()
   await workbook.xlsx.load(buffer, {
     ignoreNodes: [
+      /*
       'autoFilter',
       'cols',
       'conditionalFormatting',
@@ -62,6 +89,7 @@ export const parseExcelFile = async (buffer) => {
       'sheetProtection',
       'sheetViews',
       'tableParts'
+      */
     ]
   })
   const movements = worksheetToArray({
@@ -84,13 +112,16 @@ export const parseExcelFile = async (buffer) => {
     items.errors.length > 0 ||
     joined.errors.length > 0
   ) {
+    const errors = {
+      '7. Waste movement level': movements.errors.concat(
+        joined.errors.movements
+      ),
+      '8. Waste item level': items.errors.concat(joined.errors.items)
+    }
+    updateErrors(workbook, errors)
     return {
-      errors: {
-        '7. Waste movement level': movements.errors.concat(
-          joined.errors.movements
-        ),
-        '8. Waste item level': items.errors.concat(joined.errors.items)
-      }
+      errors,
+      workbook
     }
   } else {
     return joined
