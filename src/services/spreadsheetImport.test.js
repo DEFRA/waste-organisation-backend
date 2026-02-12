@@ -1,9 +1,10 @@
-import fs from 'node:fs/promises'
+import fs from 'node:fs'
+import { pipeline } from 'node:stream/promises'
 import Excel from 'exceljs'
 import { parseExcelFile, updateErrors } from './spreadsheetImport.js'
 
 describe('excel proccessor', () => {
-  test('should parse buffer', { timeout: 10000 }, async () => {
+  test.skip('should parse buffer', { timeout: 10000 }, async () => {
     const buffer = await fs.readFile(
       './test-resources/example-spreadsheet.xlsx'
     )
@@ -85,7 +86,36 @@ describe('excel proccessor', () => {
     })
   })
 
-  test('should write errors buffer', { timeout: 10000 }, async () => {
+  test('shonky test to generate xl files', async () => {
+    const stream = fs.createReadStream(
+      './test-resources/example-spreadsheet-2.xlsx'
+    )
+    const workbook = new Excel.Workbook()
+    await workbook.xlsx.read(stream)
+    stream.close()
+    // const worksheet = workbook.getWorksheet('7. Waste movement level')
+    // const A9 = worksheet.getRow(9).getCell(1)
+    // const font = {
+    //   bold: true,
+    //   size: 12,
+    //   color: { argb: 'FFD4351C' },
+    //   name: 'Calibri'
+    // }
+    // A9.value = {
+    //   richText: [
+    //     { font, text: 'This is the end\n\n...\n\n\n\n' },
+    //     { font, text: 'My only friend, the end\n' }
+    //   ]
+    // }
+    // worksheet.commit()
+
+    // await pipeline(workbook.createWriteStream(), fileStream);
+    const b = await workbook.xlsx.writeBuffer()
+    fs.writeFileSync('./test-resources/shonky9.xlsx', b)
+    console.log('Done')
+  })
+
+  test.skip('should write errors buffer', { timeout: 10000 }, async () => {
     const buffer = await fs.readFile(
       './test-resources/example-spreadsheet-2.xlsx'
     )

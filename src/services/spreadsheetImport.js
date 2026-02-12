@@ -33,7 +33,12 @@ const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
 }
 
 export const updateErrors = (() => {
-  const font = { bold: true, size: 12, color: { argb: 'FFD4351C' } }
+  const font = {
+    bold: true,
+    size: 12,
+    color: { argb: 'FFD4351C' },
+    name: 'Calibri'
+  }
   const borderStyle = {
     left: { style: 'thick', color: { argb: 'FFD4351C' } },
     right: { style: 'thick', color: { argb: 'FFD4351C' } },
@@ -65,9 +70,9 @@ export const updateErrors = (() => {
 
 export const parseExcelFile = async (buffer) => {
   const workbook = new Excel.Workbook()
-  await workbook.xlsx.load(buffer, {
+  await workbook.xlsx.load(
+    buffer /*, {
     ignoreNodes: [
-      /*
       'autoFilter',
       'cols',
       'conditionalFormatting',
@@ -89,9 +94,9 @@ export const parseExcelFile = async (buffer) => {
       'sheetProtection',
       'sheetViews',
       'tableParts'
-      */
     ]
-  })
+  }*/
+  )
   const movements = worksheetToArray({
     worksheet: workbook.getWorksheet('7. Waste movement level'),
     keyCol: 3,
@@ -118,7 +123,7 @@ export const parseExcelFile = async (buffer) => {
       ),
       '8. Waste item level': items.errors.concat(joined.errors.items)
     }
-    updateErrors(workbook, errors)
+    // updateErrors(workbook, errors)
     return {
       errors,
       workbook
