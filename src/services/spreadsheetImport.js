@@ -227,10 +227,8 @@ const updateData = (cols) => {
       if (i === path.length - 1) {
         const value = func ? func(acc[x], v) : v
         acc[x] = value
-      } else {
-        if (acc[x] == null) {
-          acc[x] = {}
-        }
+      } else if (acc[x] == null) {
+        acc[x] = {}
       }
       return acc[x]
     }, data)
