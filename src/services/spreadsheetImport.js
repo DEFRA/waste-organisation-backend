@@ -93,7 +93,6 @@ export const updateErrors = (() => {
             cell.value = { richText: [{ font, text: cell.value }] }
             cell.style.fill = fillStyle
           }
-          console.log('cell.value: ', cell.value)
         }
       }
     }
