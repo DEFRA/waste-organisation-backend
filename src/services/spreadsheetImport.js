@@ -8,17 +8,44 @@ const cellError = (colNumber, rowNumber, message) => ({
   message
 })
 
+const cellValueText = (() => {
+  const plainText = (x) => x?.text ?? x
+  return (v) => {
+    if (Array.isArray(v)) {
+      return v.reduce((acc, x) => acc + plainText(x.richText ?? x), '')
+    } else {
+      return plainText(v)
+    }
+  }
+})()
+
+const stripFormatting = (cell) => {
+  cell.style = {
+    border: {
+      left: { style: 'thin' },
+      right: { style: 'thin' },
+      top: { style: 'thin' },
+      bottom: { style: 'thin' }
+    }
+  }
+  return cell
+}
+
+const emptyErrorCell = () => ({ richText: [] })
+
 const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
   const elements = []
   const errors = []
   worksheet.eachRow((row, rowNumber) => {
     if (rowNumber > minRow) {
       if (row.getCell(keyCol).value) {
+        row.getCell(1).value = emptyErrorCell()
         const r = {}
         row.eachCell((cell, colNumber) => {
+          stripFormatting(cell)
           if (colNumber < maxCol) {
             try {
-              updateFn(r, [colNumber, rowNumber], cell.value)
+              updateFn(r, [colNumber, rowNumber], cellValueText(cell.value)) // TODO make sure there are no richtext formatting things in here
             } catch (e) {
               errors.push(cellError(colNumber, rowNumber, e.message))
             }
@@ -26,6 +53,11 @@ const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
         })
         r['--rowNumber'] = rowNumber
         elements.push(r)
+      }
+    } else {
+      if (rowNumber > 3 && rowNumber < 6) {
+        const c = row.getCell(3)
+        // console.log('row style ... ', rowNumber, c.value, c.style)
       }
     }
   })
@@ -39,28 +71,34 @@ export const updateErrors = (() => {
     color: { argb: 'FFD4351C' },
     name: 'Calibri'
   }
-  const borderStyle = {
-    left: { style: 'thick', color: { argb: 'FFD4351C' } },
-    right: { style: 'thick', color: { argb: 'FFD4351C' } },
-    top: { style: 'thick', color: { argb: 'FFD4351C' } },
-    bottom: { style: 'thick', color: { argb: 'FFD4351C' } }
+  const fillStyle = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFFFCCCC' },
+    bgColor: { argb: 'FFFFD9D9' }
   }
   return (workbook, cellsAndMessages) => {
     for (const worksheetName of Object.keys(cellsAndMessages)) {
       const worksheet = workbook.getWorksheet(worksheetName)
       for (const { coords, message } of cellsAndMessages[worksheetName]) {
         const [colNumber, rowNumber] = coords
-        const cell = worksheet.getRow(rowNumber).getCell(colNumber)
-        const errorCell = worksheet.getRow(rowNumber).getCell(1)
-        if (cell) {
-          cell.border = borderStyle
-        }
+        const row = worksheet.getRow(rowNumber)
+        const cell = row.getCell(colNumber)
+        const errorCell = row.getCell(1)
         if (errorCell) {
           const v = errorCell?.value?.richText
             ? errorCell?.value
             : { richText: [] }
-          v.richText.push({ font, text: message })
+          v.richText.push({
+            font,
+            text: v.richText.length > 0 ? '\n' : '' + message
+          })
           errorCell.value = v
+          if (cell?.value) {
+            cell.value = { richText: [{ font, text: cell.value }] }
+            cell.style.fill = fillStyle
+          }
+          console.log('cell.value: ', cell.value)
         }
       }
     }
@@ -70,33 +108,31 @@ export const updateErrors = (() => {
 
 export const parseExcelFile = async (buffer) => {
   const workbook = new Excel.Workbook()
-  await workbook.xlsx.load(
-    buffer /*, {
+  await workbook.xlsx.load(buffer, {
     ignoreNodes: [
-      'autoFilter',
-      'cols',
-      'conditionalFormatting',
-      'dataValidations',
-      'dimension',
-      'drawing',
-      'extLst',
-      'headerFooter',
-      'hyperlinks',
-      'mergeCells',
-      'pageMargins',
-      'pageSetup',
-      'picture',
-      'printOptions',
-      'rowBreaks',
+      // 'autoFilter',
+      // 'cols',
+      'conditionalFormatting' // breaks generated excel file
+      // 'dataValidations',
+      // 'dimension',
+      // 'drawing',
+      // 'extLst',
+      // 'headerFooter',
+      // 'hyperlinks',
+      // 'mergeCells',
+      // 'pageMargins',
+      // 'pageSetup',
+      // 'picture',
+      // 'printOptions',
+      // 'rowBreaks',
       // 'sheetData', // ignores actual data
-      'sheetFormatPr',
-      'sheetPr',
-      'sheetProtection',
-      'sheetViews',
-      'tableParts'
+      // 'sheetFormatPr',
+      // 'sheetPr',
+      // 'sheetProtection',
+      // 'sheetViews',
+      // 'tableParts'
     ]
-  }*/
-  )
+  })
   const movements = worksheetToArray({
     worksheet: workbook.getWorksheet('7. Waste movement level'),
     keyCol: 3,
@@ -123,7 +159,7 @@ export const parseExcelFile = async (buffer) => {
       ),
       '8. Waste item level': items.errors.concat(joined.errors.items)
     }
-    // updateErrors(workbook, errors)
+    updateErrors(workbook, errors)
     return {
       errors,
       workbook
