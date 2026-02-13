@@ -176,6 +176,8 @@ export const parseExcelFile = async (buffer) => {
 const joinWasteItems = (movements, items) => {
   const is = groupBy((x) => x['yourUniqueReference'], items)
   const errors = { movements: [], items: [] }
+  const movementRefCol = 3
+  const itemRefCol = 2
   for (let i = 0; i < movements.length; i++) {
     const r = movements[i]['yourUniqueReference']
     if (is[r] && is[r].length > 0) {
@@ -188,7 +190,7 @@ const joinWasteItems = (movements, items) => {
     } else {
       errors.movements.push(
         cellError(
-          3,
+          movementRefCol,
           movements[i]['--rowNumber'],
           'No waste items for unique reference'
         )
@@ -199,7 +201,7 @@ const joinWasteItems = (movements, items) => {
     for (const m of Object.values(is).flatMap((x) => x)) {
       errors.items.push(
         cellError(
-          2,
+          itemRefCol,
           m['--rowNumber'],
           'No waste movements for unique reference'
         )
