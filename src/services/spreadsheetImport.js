@@ -224,10 +224,11 @@ const groupBy = (func, list) => {
 const updateData = (cols) => {
   const updateIn = (data, path, v, func) => {
     path.reduce((acc, x, i) => {
+      // prettier-ignore
       if (i === path.length - 1) {
         const value = func ? func(acc[x], v) : v
         acc[x] = value
-      } else if (acc[x] == null) {
+      } else if (acc[x] == null) { // nosonar
         acc[x] = {}
       }
       return acc[x]
