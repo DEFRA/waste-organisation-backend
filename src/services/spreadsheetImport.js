@@ -51,19 +51,17 @@ const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
   const elements = []
   const errors = []
   worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber > minRow) {
-      if (row.getCell(keyCol).value) {
-        row.getCell(1).value = emptyErrorCell()
-        const r = {}
-        row.eachCell((cell, colNumber) => {
-          stripFormatting(cell)
-          if (colNumber < maxCol) {
-            collectCellErrors(errors, updateFn, r, [colNumber, rowNumber], cell)
-          }
-        })
-        r['--rowNumber'] = rowNumber
-        elements.push(r)
-      }
+    if (rowNumber > minRow && row.getCell(keyCol).value) {
+      row.getCell(1).value = emptyErrorCell()
+      const r = {}
+      row.eachCell((cell, colNumber) => {
+        stripFormatting(cell)
+        if (colNumber < maxCol) {
+          collectCellErrors(errors, updateFn, r, [colNumber, rowNumber], cell)
+        }
+      })
+      r['--rowNumber'] = rowNumber
+      elements.push(r)
     }
   })
   return { elements, errors }
