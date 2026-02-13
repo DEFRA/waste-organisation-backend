@@ -228,7 +228,6 @@ const parseComponentCodes = (existing, data) => {
   try {
     result.concat(
       data.split(/;/).map((y) => {
-        // eslint-disable-next-line no-unused-vars
         const [_, code, concentration] = y
           .match(/([^=]*)=(.*)/) // nosonar
           .map((x) => x.trim())
@@ -236,7 +235,7 @@ const parseComponentCodes = (existing, data) => {
       })
     )
     return result
-  } catch (e) {
+  } catch (_) {
     throw new Error('Cannot parse component codes')
   }
 }
@@ -245,14 +244,13 @@ const parseComponentNames = (existing, data) => {
   const result = existing ?? []
   try {
     const parsed = data.split(/;/).flatMap((y) => {
-      // eslint-disable-next-line no-unused-vars
       const [_, name, concentration] = y
         .match(/([^=]*)=(.*)/) // nosonar
         .map((x) => x.trim())
       return { code: name, concentration }
     })
     return result.concat(parsed)
-  } catch (e) {
+  } catch (_) {
     throw new Error('Cannot parse component names')
   }
 }
