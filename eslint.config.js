@@ -10,7 +10,18 @@ export default [
   {
     rules: {
       'max-len': ['error', { code: 160 }],
-      'no-unused-vars': ['error', { argsIgnorePattern: '^_.*', varsIgnorePattern: '^_.*' }]
+      'no-unused-vars': [
+        'error',
+        {
+          args: 'all',
+          argsIgnorePattern: '^_',
+          caughtErrors: 'all',
+          caughtErrorsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          ignoreRestSiblings: true
+        }
+      ]
     }
   }
 ]
