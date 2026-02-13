@@ -82,28 +82,29 @@ export const updateErrors = (() => {
     fgColor: { argb: 'FFFFCCCC' },
     bgColor: { argb: 'FFFFD9D9' }
   }
+  const updateCell = (worksheet, coords, message) => {
+    const [colNumber, rowNumber] = coords
+    const row = worksheet.getRow(rowNumber)
+    const cell = row.getCell(colNumber)
+    const errorCell = row.getCell(1)
+    if (errorCell) {
+      const v = errorCell?.value?.richText ? errorCell?.value : { richText: [] }
+      v.richText.push({
+        font,
+        text: v.richText.length > 0 ? '\n' : '' + message
+      })
+      errorCell.value = v
+    }
+    if (cell?.value) {
+      cell.value = { richText: [{ font, text: cell.value }] }
+      cell.style.fill = fillStyle
+    }
+  }
   return (workbook, cellsAndMessages) => {
     for (const worksheetName of Object.keys(cellsAndMessages)) {
       const worksheet = workbook.getWorksheet(worksheetName)
       for (const { coords, message } of cellsAndMessages[worksheetName]) {
-        const [colNumber, rowNumber] = coords
-        const row = worksheet.getRow(rowNumber)
-        const cell = row.getCell(colNumber)
-        const errorCell = row.getCell(1)
-        if (errorCell) {
-          const v = errorCell?.value?.richText
-            ? errorCell?.value
-            : { richText: [] }
-          v.richText.push({
-            font,
-            text: v.richText.length > 0 ? '\n' : '' + message
-          })
-          errorCell.value = v
-          if (cell?.value) {
-            cell.value = { richText: [{ font, text: cell.value }] }
-            cell.style.fill = fillStyle
-          }
-        }
+        updateCell(worksheet, coords, message)
       }
     }
     return workbook
