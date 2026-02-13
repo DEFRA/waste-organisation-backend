@@ -60,7 +60,7 @@ describe('excel proccessor', () => {
                   concentration: 'Balance'
                 }
               ],
-              hazCodes: 'HP5, HP8',
+              hazCodes: ['HP5', 'HP8'],
               sourceOfComponents: 'PROVIDED_WITH_WASTE'
             },
             numberOfContainers: 1,

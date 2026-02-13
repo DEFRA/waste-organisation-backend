@@ -287,11 +287,11 @@ const mergeTime = (existing, data) => {
 }
 
 const parseEstimate = (() => {
-  const estVals = ['estimate', 'est', 'yes', 'true', true]
-  const actVals = ['actual', 'act', 'no', 'false', false]
+  const estVals = ['estimate', 'est', 'y', 'yes', 'true', true, 'TRUE()']
+  const actVals = ['actual', 'act', 'n', 'no', 'false', false, 'FALSE()']
   return (_existing, est) => {
     if (est) {
-      const e = typeof est === 'string' || est instanceof String ? est.toLowerCase() : est
+      const e = typeof est === 'string' || est instanceof String ? est.toLowerCase() : (est.formula ?? est)
       return estVals.includes(e) ? true : actVals.includes(e) ? false : null
     } else {
       throw new Error('Cannot parse estimate.')
@@ -300,11 +300,11 @@ const parseEstimate = (() => {
 })()
 
 const parseBoolean = (() => {
-  const estVals = ['yes', 'true', true]
-  const actVals = ['no', 'false', false]
-  return (existing, est) => {
-    const e = typeof est === 'string' || est instanceof String ? est.toLowerCase() : est
-    return estVals.includes(e) ? true : actVals.includes(e) ? false : existing
+  const trueVals = ['y', 'yes', 'true', true, 'TRUE()']
+  const falseVals = ['n', 'no', 'false', false, 'FALSE()']
+  return (existing, data) => {
+    const e = typeof data === 'string' || data instanceof String ? data.toLowerCase() : (data.formula ?? data)
+    return trueVals.includes(e) ? true : falseVals.includes(e) ? false : existing
   }
 })()
 
@@ -323,9 +323,18 @@ const parseDisposalCodes = (() => {
 const parseEWCCodes = (existing, data) => {
   const result = existing ?? []
   try {
-    return result.concat(data.split(/;/).map((y) => y.replace(/[^0-9]/g, '')))
+    return result.concat(data.split(/[,;]/).map((y) => y.replace(/[^0-9]/g, '')))
   } catch {
     throw new Error('Cannot parse EWC codes')
+  }
+}
+
+const parseHazCodes = (existing, data) => {
+  const result = existing ?? []
+  try {
+    return result.concat(data.split(/[,;]/).map((y) => y.trim()))
+  } catch {
+    throw new Error('Cannot parse Haz codes')
   }
 }
 
@@ -379,7 +388,7 @@ const itemColName = updateData([
   ['pops', 'components', parseComponentCodes],
   ['pops', 'sourceOfComponents'],
   ['containsHazardous', parseBoolean],
-  ['hazardous', 'hazCodes'],
+  ['hazardous', 'hazCodes', parseHazCodes],
   ['hazardous', 'components', parseComponentNames],
   ['hazardous', 'sourceOfComponents'],
   ['disposalOrRecoveryCodes', parseDisposalCodes]
