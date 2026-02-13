@@ -146,7 +146,7 @@ export const parseExcelFile = async (buffer) => {
     updateFn: itemColName
   })
   const joined = joinWasteItems(movements.elements, items.elements)
-  if (movements.errors.length > 0 || items.errors.length > 0 || joined.errors.length > 0) {
+  if (movements.errors.length > 0 || items.errors.length > 0 || joined.errors.items.length > 0 || joined.errors.movements.length > 0) {
     const errors = {
       '7. Waste movement level': movements.errors.concat(joined.errors.movements),
       '8. Waste item level': items.errors.concat(joined.errors.items)
@@ -154,7 +154,8 @@ export const parseExcelFile = async (buffer) => {
     updateErrors(workbook, errors)
     return {
       errors,
-      workbook
+      workbook,
+      movements: joined.movements
     }
   } else {
     return joined
@@ -214,8 +215,8 @@ const updateData = (cols) => {
 
   return (r, [colNum, _rowNum], value) => {
     const cs = cols[colNum]
-    if (typeof cs[cs.length - 1] === 'function') {
-      updateIn(r, cs.slice(0, -1), value, cs[cs.length - 1])
+    if (typeof cs.at(-1) === 'function') {
+      updateIn(r, cs.slice(0, -1), value, cs.at(-1))
     } else {
       updateIn(r, cs, value)
     }
@@ -285,13 +286,46 @@ const mergeTime = (existing, data) => {
   }
 }
 
-const parseDisposalCodes = (_existing, data) => {
-  const [code, metric, amount, est] = data.split(/=/).map((x) => x.trim())
-  if (est) {
-    const isEstimate = est.toLowerCase()
-    return { code, weight: { metric, amount, isEstimate } }
-  } else {
-    throw new Error('Cannot parse disposal codes.')
+const parseEstimate = (() => {
+  const estVals = ['estimate', 'est', 'yes', 'true', true]
+  const actVals = ['actual', 'act', 'no', 'false', false]
+  return (_existing, est) => {
+    if (est) {
+      const e = typeof est === 'string' || est instanceof String ? est.toLowerCase() : est
+      return estVals.includes(e) ? true : actVals.includes(e) ? false : null
+    } else {
+      throw new Error('Cannot parse estimate.')
+    }
+  }
+})()
+
+const parseBoolean = (() => {
+  const estVals = ['yes', 'true', true]
+  const actVals = ['no', 'false', false]
+  return (existing, est) => {
+    const e = typeof est === 'string' || est instanceof String ? est.toLowerCase() : est
+    return estVals.includes(e) ? true : actVals.includes(e) ? false : existing
+  }
+})()
+
+const parseDisposalCodes = (() => {
+  return (_existing, data) => {
+    const [code, metric, amount, est] = data.split(/=/).map((x) => x.trim())
+    if (est) {
+      const isEstimate = parseEstimate(null, est)
+      return { code, weight: { metric, amount, isEstimate } }
+    } else {
+      throw new Error('Cannot parse disposal codes.')
+    }
+  }
+})()
+
+const parseEWCCodes = (existing, data) => {
+  const result = existing ?? []
+  try {
+    return result.concat(data.split(/;/).map((y) => y.replace(/[^0-9]/g, '')))
+  } catch {
+    throw new Error('Cannot parse EWC codes')
   }
 }
 
@@ -333,23 +367,20 @@ const itemColName = updateData([
   [],
   [],
   ['yourUniqueReference'],
-  ['ewcCodes'],
+  ['ewcCodes', parseEWCCodes],
   ['wasteDescription'],
   ['physicalForm'],
   ['numberOfContainers'],
   ['typeOfContainers'],
   ['weight', 'metric'],
   ['weight', 'amount'],
-  ['weight', 'isEstimate'],
-  ['containsPops'],
+  ['weight', 'isEstimate', parseEstimate],
+  ['containsPops', parseBoolean],
   ['pops', 'components', parseComponentCodes],
   ['pops', 'sourceOfComponents'],
-  ['containsHazardous'],
+  ['containsHazardous', parseBoolean],
   ['hazardous', 'hazCodes'],
   ['hazardous', 'components', parseComponentNames],
   ['hazardous', 'sourceOfComponents'],
   ['disposalOrRecoveryCodes', parseDisposalCodes]
 ])
-
-/* v8 ignore start */
-/* v8 ignore stop */

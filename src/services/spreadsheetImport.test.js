@@ -5,7 +5,19 @@ describe('excel proccessor', () => {
   test('should parse buffer', { timeout: 100000 }, async () => {
     const buffer = await fs.readFile('./test-resources/example-spreadsheet.xlsx')
     const { movements, errors } = await parseExcelFile(buffer)
-    expect(movements[0].dateTimeReceived).toEqual(new Date('2026-01-14T11:05:00.000Z'))
+    expect(errors).toEqual({
+      '7. Waste movement level': [],
+      '8. Waste item level': [
+        {
+          coords: [2, 10],
+          message: 'No waste movements for unique reference'
+        },
+        {
+          coords: [2, 11],
+          message: 'No waste movements for unique reference'
+        }
+      ]
+    })
     expect(movements).toEqual([
       {
         carrier: {
@@ -32,11 +44,11 @@ describe('excel proccessor', () => {
               code: 'D09',
               weight: {
                 amount: 'kg',
-                isEstimate: 'estimate',
+                isEstimate: true,
                 metric: '10,000'
               }
             },
-            ewcCodes: '06 01 10',
+            ewcCodes: ['060110'],
             hazardous: {
               components: [
                 {
@@ -65,19 +77,6 @@ describe('excel proccessor', () => {
         ]
       }
     ])
-    expect(errors).toEqual({
-      items: [
-        {
-          coords: [2, 10],
-          message: 'No waste movements for unique reference'
-        },
-        {
-          coords: [2, 11],
-          message: 'No waste movements for unique reference'
-        }
-      ],
-      movements: []
-    })
   })
 
   test('should write errors buffer', { timeout: 10000 }, async () => {
@@ -118,6 +117,64 @@ describe('excel proccessor', () => {
 })
 
 /*
+
+[
+  {
+    "submittingOrganisation": {
+      "defraCustomerOrganisationId": "537b0d7a-30d6-4fe5-a463-bcfb2d1bc4c6"
+    },
+    "dateTimeReceived": "2026-02-12T09:57:18.355Z",
+    "wasteItems": [
+      {
+        "ewcCodes": [
+          "020101"
+        ],
+        "wasteDescription": "Basic mixed construction and demolition waste",
+        "physicalForm": "Mixed",
+        "numberOfContainers": 3,
+        "typeOfContainers": "SKI",
+        "weight": {
+          "metric": "Tonnes",
+          "amount": 2.5,
+          "isEstimate": false
+        },
+        "containsHazardous": false,
+        "containsPops": false,
+        "disposalOrRecoveryCodes": [
+          {
+            "code": "R1",
+            "weight": {
+              "metric": "Tonnes",
+              "amount": 0.75,
+              "isEstimate": false
+            }
+          }
+        ]
+      }
+    ],
+    "carrier": {
+      "organisationName": "Carrier Ltd",
+      "registrationNumber": "CBDL999999",
+      "meansOfTransport": "Rail"
+    },
+    "receiver": {
+      "siteName": "Receiver Ltd",
+      "emailAddress": "receiver@test.com",
+      "authorisationNumber": "PPC/A/9999999"
+    },
+    "receipt": {
+      "address": {
+        "fullAddress": "123 Test Street, Test City",
+        "postcode": "TC1 2AB"
+      }
+    }
+  }
+]
+
+
+
+
+  
 const example = {
   apiCode: 'ba6eb330-4f7f-11eb-a2fb-67c34e9ac07cg',
   dateTimeReceived:
