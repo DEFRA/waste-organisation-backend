@@ -1,8 +1,4 @@
-import {
-  initialiseServer,
-  WASTE_CLIENT_AUTH_TEST_TOKEN,
-  stopServer
-} from '../common/helpers/initialse-test-server.js'
+import { initialiseServer, WASTE_CLIENT_AUTH_TEST_TOKEN, stopServer } from '../common/helpers/initialse-test-server.js'
 import { paths, pathTo } from '../config/paths.js'
 import { updateApiCode } from '../domain/organisation.js'
 
@@ -58,12 +54,8 @@ describe('api codes', () => {
     })
     expect(result.apiCodes[0].name).toEqual('Alice')
     expect(result.apiCodes[1].name).toEqual('Bob')
-    expect(result.apiCodes[0].code.toLowerCase()).toEqual(
-      expect.stringMatching(/[0-9a-f-]*/)
-    )
-    expect(result.apiCodes[1].code.toLowerCase()).toEqual(
-      expect.stringMatching(/[0-9a-f-]*/)
-    )
+    expect(result.apiCodes[0].code.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
+    expect(result.apiCodes[1].code.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
     expect(result.apiCodes[0].isDisabled).toEqual(false)
     expect(result.apiCodes[1].isDisabled).toEqual(false)
     expect(statusCode).toBe(200)
@@ -166,8 +158,7 @@ describe('api codes', () => {
         organisationId: 456
       }),
       headers: {
-        authorization:
-          'Basic d2FzdGUtbW92ZW1lbnQtZXh0ZXJuYWwtYXBpOjRkNWQ0OGNiLTQ1NmEtNDcwYS04ODE0LWVhZTI3NThiZTkwZA=='
+        authorization: 'Basic d2FzdGUtbW92ZW1lbnQtZXh0ZXJuYWwtYXBpOjRkNWQ0OGNiLTQ1NmEtNDcwYS04ODE0LWVhZTI3NThiZTkwZA=='
       },
       payload: {}
     })
@@ -192,8 +183,7 @@ describe('api codes', () => {
         organisationId: 456
       }),
       headers: {
-        authorization:
-          'Basic ' + Buffer.from('user:fish:invalid', 'utf8').toString('base64')
+        authorization: 'Basic ' + Buffer.from('user:fish:invalid', 'utf8').toString('base64')
       },
       payload: {}
     })

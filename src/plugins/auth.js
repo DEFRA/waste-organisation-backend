@@ -3,9 +3,7 @@ import boom from '@hapi/boom'
 
 const parseApiKey = (apiKey) => {
   if (apiKey.startsWith('Basic ')) {
-    const parts = Buffer.from(apiKey.split(' ')[1], 'base64')
-      .toString('utf8')
-      .split(':')
+    const parts = Buffer.from(apiKey.split(' ')[1], 'base64').toString('utf8').split(':')
     return parts[parts.length - 1]
   } else {
     return apiKey
@@ -14,9 +12,7 @@ const parseApiKey = (apiKey) => {
 
 const authScheme = (_server, _options) => ({
   authenticate: async (request, h) => {
-    const apiKey = parseApiKey(
-      request?.headers['x-auth-token'] || request?.headers['authorization']
-    )
+    const apiKey = parseApiKey(request?.headers['x-auth-token'] || request?.headers['authorization'])
     if (config?.get('auth.clients')?.includes(apiKey)) {
       return h.authenticated({ credentials: { valid: true } })
     } else {

@@ -3,13 +3,9 @@ import { parseExcelFile } from './spreadsheetImport.js'
 
 describe('excel proccessor', () => {
   test('should parse buffer', { timeout: 100000 }, async () => {
-    const buffer = await fs.readFile(
-      './test-resources/example-spreadsheet.xlsx'
-    )
+    const buffer = await fs.readFile('./test-resources/example-spreadsheet.xlsx')
     const { movements, errors } = await parseExcelFile(buffer)
-    expect(movements[0].dateTimeReceived).toEqual(
-      new Date('2026-01-14T11:05:00.000Z')
-    )
+    expect(movements[0].dateTimeReceived).toEqual(new Date('2026-01-14T11:05:00.000Z'))
     expect(movements).toEqual([
       {
         carrier: {
@@ -85,9 +81,7 @@ describe('excel proccessor', () => {
   })
 
   test('should write errors buffer', { timeout: 10000 }, async () => {
-    const buffer = await fs.readFile(
-      './test-resources/example-spreadsheet-2.xlsx'
-    )
+    const buffer = await fs.readFile('./test-resources/example-spreadsheet-2.xlsx')
     const { errors, workbook } = await parseExcelFile(buffer)
     expect(errors).toEqual({
       '7. Waste movement level': [
@@ -119,9 +113,7 @@ describe('excel proccessor', () => {
         }
       ]
     })
-    await workbook.xlsx.writeFile(
-      './test-resources/output-spreadsheet-2-with-errors.xlsx'
-    )
+    await workbook.xlsx.writeFile('./test-resources/output-spreadsheet-2-with-errors.xlsx')
   })
 })
 

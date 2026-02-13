@@ -1,8 +1,4 @@
-import {
-  initialiseServer,
-  WASTE_CLIENT_AUTH_TEST_TOKEN,
-  stopServer
-} from '../common/helpers/initialse-test-server.js'
+import { initialiseServer, WASTE_CLIENT_AUTH_TEST_TOKEN, stopServer } from '../common/helpers/initialse-test-server.js'
 import { paths, pathTo } from '../config/paths.js'
 
 describe('organisation API', () => {

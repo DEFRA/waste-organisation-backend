@@ -12,11 +12,7 @@ const mockSqs = () => ({
       server.decorate('request', 'sqsClient', {
         send: async () => ({ MessageId: 'dummy' })
       })
-      server.decorate(
-        'request',
-        'backgroundProcessSqsQueueUrl',
-        'http://example.com/sqs/queue/url'
-      )
+      server.decorate('request', 'backgroundProcessSqsQueueUrl', 'http://example.com/sqs/queue/url')
     }
   }
 })

@@ -1,10 +1,7 @@
 // import Boom from '@hapi/boom'
 import { paths } from '../config/paths.js'
 import { mergeAndValidate, createApiCode } from '../domain/organisation.js'
-import {
-  findAllOrganisationsForUser,
-  orgCollection
-} from '../repositories/organisation.js'
+import { findAllOrganisationsForUser, orgCollection } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 // DONE authentication - pre-shared key?
 
@@ -14,10 +11,7 @@ export const organisations = [
     path: paths.getOrganisations,
     options: { auth: 'api-key-auth' },
     handler: async (request, h) => {
-      const orgs = await findAllOrganisationsForUser(
-        request.db,
-        request.params.userId
-      )
+      const orgs = await findAllOrganisationsForUser(request.db, request.params.userId)
       orgs.forEach((o) => delete o.apiCodes)
       return h.response({ message: 'success', organisations: orgs })
     }

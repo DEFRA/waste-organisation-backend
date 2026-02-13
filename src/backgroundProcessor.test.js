@@ -1,13 +1,6 @@
 import { describe, expect } from 'vitest'
-import {
-  ReceiveMessageCommand,
-  DeleteMessageCommand
-} from '@aws-sdk/client-sqs'
-import {
-  fetchS3Object,
-  deleteMessage,
-  pollQueue
-} from './backgroundProcessor.js'
+import { ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs'
+import { fetchS3Object, deleteMessage, pollQueue } from './backgroundProcessor.js'
 
 describe('background processor', () => {
   test('fetch S3 object', async () => {
