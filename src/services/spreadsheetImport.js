@@ -310,7 +310,7 @@ const mergeTime = (existing, data) => {
   }
 }
 
-const parseDisposalCodes = (existing, data) => {
+const parseDisposalCodes = (_existing, data) => {
   const [code, metric, amount, est] = data.split(/=/).map((x) => x.trim())
   if (est) {
     const isEstimate = est.toLowerCase()
