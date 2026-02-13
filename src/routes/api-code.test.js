@@ -258,7 +258,7 @@ describe('api code domain tests', () => {
     try {
       updateApiCode({}, 'test', 'name')
       expect(true).toBe(false)
-    } catch (_) {
+    } catch {
       expect(true).toEqual(true)
     }
   })

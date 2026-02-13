@@ -235,7 +235,7 @@ const parseComponentCodes = (existing, data) => {
       })
     )
     return result
-  } catch (_) {
+  } catch {
     throw new Error('Cannot parse component codes')
   }
 }
@@ -250,7 +250,7 @@ const parseComponentNames = (existing, data) => {
       return { code: name, concentration }
     })
     return result.concat(parsed)
-  } catch (_) {
+  } catch {
     throw new Error('Cannot parse component names')
   }
 }
