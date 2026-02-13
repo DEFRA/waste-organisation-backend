@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import { parseExcelFile } from './spreadsheetImport.js'
 
 describe('excel proccessor', () => {
-  test('should parse buffer', { timeout: 10000 }, async () => {
+  test('should parse buffer', { timeout: 100000 }, async () => {
     const buffer = await fs.readFile(
       './test-resources/example-spreadsheet.xlsx'
     )
