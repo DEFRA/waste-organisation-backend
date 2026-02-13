@@ -4,7 +4,7 @@ import boom from '@hapi/boom'
 const parseApiKey = (apiKey) => {
   if (apiKey.startsWith('Basic ')) {
     const parts = Buffer.from(apiKey.split(' ')[1], 'base64').toString('utf8').split(':')
-    return parts[parts.length - 1]
+    return parts.at(-1)
   } else {
     return apiKey
   }
