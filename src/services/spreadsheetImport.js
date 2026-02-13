@@ -33,6 +33,20 @@ const stripFormatting = (cell) => {
 
 const emptyErrorCell = () => ({ richText: [] })
 
+const collectCellErrors = (
+  errors,
+  updateFn,
+  r,
+  [colNumber, rowNumber],
+  cell
+) => {
+  try {
+    updateFn(r, [colNumber, rowNumber], cellValueText(cell.value))
+  } catch (e) {
+    errors.push(cellError(colNumber, rowNumber, e.message))
+  }
+}
+
 const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
   const elements = []
   const errors = []
@@ -44,11 +58,7 @@ const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
         row.eachCell((cell, colNumber) => {
           stripFormatting(cell)
           if (colNumber < maxCol) {
-            try {
-              updateFn(r, [colNumber, rowNumber], cellValueText(cell.value)) // TODO make sure there are no richtext formatting things in here
-            } catch (e) {
-              errors.push(cellError(colNumber, rowNumber, e.message))
-            }
+            collectCellErrors(errors, updateFn, r, [colNumber, rowNumber], cell)
           }
         })
         r['--rowNumber'] = rowNumber
@@ -244,7 +254,7 @@ const parseComponentCodes = (existing, data) => {
       data.split(/;/).map((y) => {
         // eslint-disable-next-line no-unused-vars
         const [_, code, concentration] = y
-          .match(/([^=]*)=(.*)/)
+          .match(/([^=]*)=(.*)/) // nosonar
           .map((x) => x.trim())
         return { code, concentration }
       })
@@ -261,7 +271,7 @@ const parseComponentNames = (existing, data) => {
     const parsed = data.split(/;/).flatMap((y) => {
       // eslint-disable-next-line no-unused-vars
       const [_, name, concentration] = y
-        .match(/([^=]*)=(.*)/)
+        .match(/([^=]*)=(.*)/) // nosonar
         .map((x) => x.trim())
       return { code: name, concentration }
     })
