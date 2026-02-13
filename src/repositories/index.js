@@ -2,12 +2,7 @@ import { createLogger } from '../common/helpers/logging/logger.js'
 
 const logger = createLogger()
 
-export const updateWithOptimisticLock = async (
-  collection,
-  query,
-  updateFunction,
-  maxRetries = 5
-) => {
+export const updateWithOptimisticLock = async (collection, query, updateFunction, maxRetries = 5) => {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const doc = await collection.findOne(query)
     const updatedDoc = updateFunction(doc || query)
@@ -28,9 +23,7 @@ export const updateWithOptimisticLock = async (
         delete result['_id']
         return result
       }
-      logger.warn(
-        `Optimistic lock conflict, retrying... (attempt ${attempt + 1})`
-      )
+      logger.warn(`Optimistic lock conflict, retrying... (attempt ${attempt + 1})`)
     } else {
       return null
     }

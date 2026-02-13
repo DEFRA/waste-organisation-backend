@@ -1,11 +1,7 @@
 import Boom from '@hapi/boom'
 import { paths } from '../config/paths.js'
 import { createApiCode, updateApiCode } from '../domain/organisation.js'
-import {
-  findOrganisationByApiCode,
-  findOrganisationById,
-  orgCollection
-} from '../repositories/organisation.js'
+import { findOrganisationByApiCode, findOrganisationById, orgCollection } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 
@@ -32,9 +28,7 @@ export const apiCodeRoutes = [
     handler: async (request, h) => {
       const apiCode = request.params.apiCode
       const org = await findOrganisationByApiCode(request.db, apiCode)
-      if (
-        org?.apiCodes.find(({ code }) => code === apiCode).isDisabled === false
-      ) {
+      if (org?.apiCodes.find(({ code }) => code === apiCode).isDisabled === false) {
         return h.response({ defraOrganisationId: org.organisationId })
       } else {
         throw Boom.notFound()
@@ -46,10 +40,7 @@ export const apiCodeRoutes = [
     path: paths.listApiCodes,
     options,
     handler: async (request, h) => {
-      const r = await findOrganisationById(
-        request.db,
-        request.params.organisationId
-      )
+      const r = await findOrganisationById(request.db, request.params.organisationId)
       if (r) {
         return h.response({ apiCodes: r.apiCodes })
       } else {
@@ -63,10 +54,8 @@ export const apiCodeRoutes = [
     options,
     handler: async (request, h) => {
       try {
-        const organisation = await updateWithOptimisticLock(
-          request.db.collection(orgCollection),
-          { organisationId: request.params.organisationId },
-          (dbOrg) => createApiCode(dbOrg, request.payload?.apiCode?.name)
+        const organisation = await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId: request.params.organisationId }, (dbOrg) =>
+          createApiCode(dbOrg, request.payload?.apiCode?.name)
         )
         const apiCode = organisation.apiCodes[organisation.apiCodes.length - 1]
         return h.response(apiCode)
@@ -81,20 +70,10 @@ export const apiCodeRoutes = [
     options,
     handler: async (request, h) => {
       try {
-        const organisation = await updateWithOptimisticLock(
-          request.db.collection(orgCollection),
-          { organisationId: request.params.organisationId },
-          (dbOrg) =>
-            updateApiCode(
-              dbOrg,
-              request.params.apiCode,
-              request.payload?.apiCode?.name,
-              request.payload?.apiCode?.isDisabled
-            )
+        const organisation = await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId: request.params.organisationId }, (dbOrg) =>
+          updateApiCode(dbOrg, request.params.apiCode, request.payload?.apiCode?.name, request.payload?.apiCode?.isDisabled)
         )
-        const apiCode = organisation.apiCodes.find(
-          ({ code }) => code === request.params.apiCode
-        )
+        const apiCode = organisation.apiCodes.find(({ code }) => code === request.params.apiCode)
         return h.response(apiCode)
       } catch (e) {
         return handleErr(e)

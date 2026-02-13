@@ -15,23 +15,15 @@ describe('mongodb optimisic locking', () => {
   })
 
   test('domain function not updating document', async () => {
-    const entity = await updateWithOptimisticLock(
-      db.collection('thing'),
-      { id: 'test' },
-      () => null
-    )
+    const entity = await updateWithOptimisticLock(db.collection('thing'), { id: 'test' }, () => null)
     expect(entity).toBe(null)
   })
 
   test('domain function throws exception', async () => {
     try {
-      await updateWithOptimisticLock(
-        db.collection('thing'),
-        { id: 'test' },
-        () => {
-          throw Error('test error')
-        }
-      )
+      await updateWithOptimisticLock(db.collection('thing'), { id: 'test' }, () => {
+        throw Error('test error')
+      })
       expect(true).toBe(false)
     } catch (e) {
       expect(e.message).toEqual('test error')

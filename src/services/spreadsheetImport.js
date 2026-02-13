@@ -33,13 +33,7 @@ const stripFormatting = (cell) => {
 
 const emptyErrorCell = () => ({ richText: [] })
 
-const collectCellErrors = (
-  errors,
-  updateFn,
-  r,
-  [colNumber, rowNumber],
-  cell
-) => {
+const collectCellErrors = (errors, updateFn, r, [colNumber, rowNumber], cell) => {
   try {
     updateFn(r, [colNumber, rowNumber], cellValueText(cell.value))
   } catch (e) {
@@ -152,15 +146,9 @@ export const parseExcelFile = async (buffer) => {
     updateFn: itemColName
   })
   const joined = joinWasteItems(movements.elements, items.elements)
-  if (
-    movements.errors.length > 0 ||
-    items.errors.length > 0 ||
-    joined.errors.length > 0
-  ) {
+  if (movements.errors.length > 0 || items.errors.length > 0 || joined.errors.length > 0) {
     const errors = {
-      '7. Waste movement level': movements.errors.concat(
-        joined.errors.movements
-      ),
+      '7. Waste movement level': movements.errors.concat(joined.errors.movements),
       '8. Waste item level': items.errors.concat(joined.errors.items)
     }
     updateErrors(workbook, errors)
@@ -188,24 +176,12 @@ const joinWasteItems = (movements, items) => {
       delete movements[i]['--rowNumber']
       delete is[r]
     } else {
-      errors.movements.push(
-        cellError(
-          movementRefCol,
-          movements[i]['--rowNumber'],
-          'No waste items for unique reference'
-        )
-      )
+      errors.movements.push(cellError(movementRefCol, movements[i]['--rowNumber'], 'No waste items for unique reference'))
     }
   }
   if (Object.keys(is).length > 0) {
     for (const m of Object.values(is).flatMap((x) => x)) {
-      errors.items.push(
-        cellError(
-          itemRefCol,
-          m['--rowNumber'],
-          'No waste movements for unique reference'
-        )
-      )
+      errors.items.push(cellError(itemRefCol, m['--rowNumber'], 'No waste movements for unique reference'))
     }
   }
   return { movements, errors }
@@ -252,7 +228,6 @@ const parseComponentCodes = (existing, data) => {
   try {
     result.concat(
       data.split(/;/).map((y) => {
-        // eslint-disable-next-line no-unused-vars
         const [_, code, concentration] = y
           .match(/([^=]*)=(.*)/) // nosonar
           .map((x) => x.trim())
@@ -260,7 +235,7 @@ const parseComponentCodes = (existing, data) => {
       })
     )
     return result
-  } catch (e) {
+  } catch {
     throw new Error('Cannot parse component codes')
   }
 }
@@ -269,14 +244,13 @@ const parseComponentNames = (existing, data) => {
   const result = existing ?? []
   try {
     const parsed = data.split(/;/).flatMap((y) => {
-      // eslint-disable-next-line no-unused-vars
       const [_, name, concentration] = y
         .match(/([^=]*)=(.*)/) // nosonar
         .map((x) => x.trim())
       return { code: name, concentration }
     })
     return result.concat(parsed)
-  } catch (e) {
+  } catch {
     throw new Error('Cannot parse component names')
   }
 }
