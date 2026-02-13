@@ -54,11 +54,6 @@ const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
         r['--rowNumber'] = rowNumber
         elements.push(r)
       }
-    } else {
-      if (rowNumber > 3 && rowNumber < 6) {
-        const c = row.getCell(3)
-        // console.log('row style ... ', rowNumber, c.value, c.style)
-      }
     }
   })
   return { elements, errors }
@@ -107,6 +102,7 @@ export const updateErrors = (() => {
 })()
 
 export const parseExcelFile = async (buffer) => {
+  logger.info('Starting parsing spreadsheet')
   const workbook = new Excel.Workbook()
   await workbook.xlsx.load(buffer, {
     ignoreNodes: [
@@ -247,6 +243,7 @@ const parseComponentCodes = (existing, data) => {
   try {
     result.concat(
       data.split(/;/).map((y) => {
+        // eslint-disable-next-line no-unused-vars
         const [_, code, concentration] = y
           .match(/([^=]*)=(.*)/)
           .map((x) => x.trim())
@@ -263,6 +260,7 @@ const parseComponentNames = (existing, data) => {
   const result = existing ?? []
   try {
     const parsed = data.split(/;/).flatMap((y) => {
+      // eslint-disable-next-line no-unused-vars
       const [_, name, concentration] = y
         .match(/([^=]*)=(.*)/)
         .map((x) => x.trim())
