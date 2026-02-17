@@ -289,10 +289,16 @@ const mergeTime = (existing, data) => {
 const parseEstimate = (() => {
   const estVals = ['estimate', 'est', 'y', 'yes', 'true', true, 'TRUE()']
   const actVals = ['actual', 'act', 'n', 'no', 'false', false, 'FALSE()']
-  return (_existing, est) => {
+  return (existing, est) => {
     if (est) {
       const e = typeof est === 'string' || est instanceof String ? est.toLowerCase() : (est.formula ?? est)
-      return estVals.includes(e) ? true : actVals.includes(e) ? false : null
+      if (estVals.includes(e)) {
+        return true
+      }
+      if (actVals.includes(e)) {
+        return false
+      }
+      return existing
     } else {
       throw new Error('Cannot parse estimate.')
     }
@@ -304,7 +310,13 @@ const parseBoolean = (() => {
   const falseVals = ['n', 'no', 'false', false, 'FALSE()']
   return (existing, data) => {
     const e = typeof data === 'string' || data instanceof String ? data.toLowerCase() : (data.formula ?? data)
-    return trueVals.includes(e) ? true : falseVals.includes(e) ? false : existing
+    if (trueVals.includes(e)) {
+      return true
+    }
+    if (falseVals.includes(e)) {
+      return false
+    }
+    return existing
   }
 })()
 
