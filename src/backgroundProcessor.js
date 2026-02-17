@@ -7,6 +7,7 @@ import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk
 import { config } from './config.js'
 import { createLogger } from './common/helpers/logging/logger.js'
 import { parseExcelFile } from './services/spreadsheetImport.js'
+import { decrypt } from './services/decrypt.js'
 
 const logger = createLogger()
 
@@ -58,16 +59,32 @@ export const deleteMessage = async (client, QueueUrl, receiptHandle) => {
 /* v8 ignore start */
 // TODO write some tests for this
 export const processJob = async (s3Client, message) => {
-  logger.info(`Message: ${JSON.stringify(message)}`)
-  const { s3Bucket, s3Key } = JSON.parse(message.Body)
-  if (s3Key && s3Bucket) {
-    const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
-    logger.info(`Fetching bytes: ${buffer.length}`)
-    const workbook = await parseExcelFile(buffer)
-    return workbook
-  } else {
-    logger.info(`Message missing s3 coords: ${JSON.stringify(message)}`)
-    return null
+  logger.info(`Messagghye: ${JSON.stringify(message)}`)
+  const { s3Bucket, s3Key, encryptedEmail } = JSON.parse(message.Body)
+  const decryptedEmail = decrypt(encryptedEmail, config.get('encryptionKey'))
+
+  try {
+    if (s3Key && s3Bucket) {
+      const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
+
+      logger.info(`Fetching bytes: ${buffer.length}`)
+      const { workbook } = await parseExcelFile(buffer)
+
+      // send broken email
+
+      // callapi()
+
+      // create spreadsheet
+
+      // send email
+
+      return workbook
+    } else {
+      logger.info(`Message missing s3 coords: ${JSON.stringify(message)}`)
+      return null
+    }
+  } catch (e) {
+  
   }
 }
 /* v8 ignore stop */

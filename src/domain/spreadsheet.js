@@ -12,5 +12,6 @@ export const spreadsheetSchema = joi.object({
   s3Key: joi.string(),
   // statusUrl: joi.string().required(),
   uploadId: joi.string(),
-  uploadStatus: joi.string()
+  uploadStatus: joi.string(),
+  encryptedEmail: joi.array().items(joi.string())
 })
