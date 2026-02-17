@@ -45,6 +45,15 @@ export const config = convict({
       }
     }
   },
+  notify: {
+    govNotifyKey: {
+      doc: 'Gov Notify Key',
+      format: String,
+      nullable: true,
+      default: null,
+      env: 'GOV_NOTIFY_KEY'
+    }
+  },
   aws: {
     region: {
       doc: 'AWS region',
