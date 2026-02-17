@@ -43,9 +43,9 @@ describe('excel proccessor', () => {
             disposalOrRecoveryCodes: {
               code: 'D09',
               weight: {
-                amount: 'kg',
+                amount: '10,000',
                 isEstimate: true,
-                metric: '10,000'
+                metric: 'kg'
               }
             },
             ewcCodes: ['060110'],

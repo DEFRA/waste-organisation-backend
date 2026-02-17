@@ -310,7 +310,7 @@ const parseBoolean = (() => {
 
 const parseDisposalCodes = (() => {
   return (_existing, data) => {
-    const [code, metric, amount, est] = data.split(/=/).map((x) => x.trim())
+    const [code, amount, metric, est] = data.split(/=/).map((x) => x.trim())
     if (est) {
       const isEstimate = parseEstimate(null, est)
       return { code, weight: { metric, amount, isEstimate } }
