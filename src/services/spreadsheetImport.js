@@ -204,26 +204,24 @@ const groupBy = (func, list) => {
 
 const updateData = (cols) => {
   const updateIn = (data, path, v, func) => {
-    path.reduce((acc, x, i) => {
-      // prettier-ignore
-      if (i === path.length - 1) {
+    if (path) {
+      path.reduce((acc, x, i) => {
+        // prettier-ignore
+        if (i === path.length - 1) {
         const value = func ? func(acc[x], v) : v
         acc[x] = value
       } else if (acc[x] == null) { // nosonar
         acc[x] = {}
       }
-      return acc[x]
-    }, data)
+        return acc[x]
+      }, data)
+    }
     return data
   }
 
   return (r, [colNum, _rowNum], value) => {
-    const cs = cols[colNum]
-    if (typeof cs.at(-1) === 'function') {
-      updateIn(r, cs.slice(0, -1), value, cs.at(-1))
-    } else {
-      updateIn(r, cs, value)
-    }
+    const [cs, func] = cols[colNum]
+    updateIn(r, cs, value, func)
     return r
   }
 }
@@ -358,56 +356,56 @@ const movementColName = updateData([
   [],
   [],
   [],
-  ['yourUniqueReference'],
-  ['receiver', 'siteName'],
-  ['receipt', 'address', 'fullAddress'],
-  ['receipt', 'address', 'postcode'],
-  ['receiver', 'authorisationNumber'],
-  ['receiver', 'regulatoryPositionStatement'],
-  ['receiver', 'emailAddress'],
-  ['receiver', 'phoneNumber'],
-  ['dateTimeReceived', mergeDate],
-  ['dateTimeReceived', mergeTime],
-  ['hazardousWasteConsignmentCode'],
-  ['reasonForNoConsignmentCode'],
-  ['specialHandlingRequirements'],
-  ['carrier', 'registrationNumber'],
-  ['carrier', 'reasonForNoRegistrationNumber'],
-  ['carrier', 'organisationName'],
-  ['carrier', 'address', 'fullAddress'],
-  ['carrier', 'address', 'postcode'],
-  ['carrier', 'emailAddress'],
-  ['carrier', 'phoneNumber'],
-  ['carrier', 'meansOfTransport'],
-  ['carrier', 'vehicleRegistration'],
-  ['brokerOrDealer', 'organisationName'],
-  ['brokerOrDealer', 'address', 'fullAddress'],
-  ['brokerOrDealer', 'address', 'postcode'],
-  ['brokerOrDealer', 'emailAddress'],
-  ['brokerOrDealer', 'phoneNumber'],
-  ['brokerOrDealer', 'registrationNumber']
+  [['yourUniqueReference']],
+  [['receiver', 'siteName']],
+  [['receipt', 'address', 'fullAddress']],
+  [['receipt', 'address', 'postcode']],
+  [['receiver', 'authorisationNumber']],
+  [['receiver', 'regulatoryPositionStatement']],
+  [['receiver', 'emailAddress']],
+  [['receiver', 'phoneNumber']],
+  [['dateTimeReceived'], mergeDate],
+  [['dateTimeReceived'], mergeTime],
+  [['hazardousWasteConsignmentCode']],
+  [['reasonForNoConsignmentCode']],
+  [['specialHandlingRequirements']],
+  [['carrier', 'registrationNumber']],
+  [['carrier', 'reasonForNoRegistrationNumber']],
+  [['carrier', 'organisationName']],
+  [['carrier', 'address', 'fullAddress']],
+  [['carrier', 'address', 'postcode']],
+  [['carrier', 'emailAddress']],
+  [['carrier', 'phoneNumber']],
+  [['carrier', 'meansOfTransport']],
+  [['carrier', 'vehicleRegistration']],
+  [['brokerOrDealer', 'organisationName']],
+  [['brokerOrDealer', 'address', 'fullAddress']],
+  [['brokerOrDealer', 'address', 'postcode']],
+  [['brokerOrDealer', 'emailAddress']],
+  [['brokerOrDealer', 'phoneNumber']],
+  [['brokerOrDealer', 'registrationNumber']]
 ])
 
 const itemColName = updateData([
   [],
   [],
-  ['yourUniqueReference'],
-  ['ewcCodes', parseEWCCodes],
-  ['wasteDescription'],
-  ['physicalForm'],
-  ['numberOfContainers'],
-  ['typeOfContainers'],
-  ['weight', 'metric'],
-  ['weight', 'amount'],
-  ['weight', 'isEstimate', parseEstimate],
-  ['containsPops', parseBoolean],
-  ['pops', 'components', parseComponentCodes],
-  ['pops', 'sourceOfComponents'],
-  ['containsHazardous', parseBoolean],
-  ['hazardous', 'hazCodes', parseHazCodes],
-  ['hazardous', 'components', parseComponentNames],
-  ['hazardous', 'sourceOfComponents'],
-  ['disposalOrRecoveryCodes', parseDisposalCodes]
+  [['yourUniqueReference']],
+  [['ewcCodes'], parseEWCCodes],
+  [['wasteDescription']],
+  [['physicalForm']],
+  [['numberOfContainers']],
+  [['typeOfContainers']],
+  [['weight', 'metric']],
+  [['weight', 'amount']],
+  [['weight', 'isEstimate'], parseEstimate],
+  [['containsPops'], parseBoolean],
+  [['pops', 'components'], parseComponentCodes],
+  [['pops', 'sourceOfComponents']],
+  [['containsHazardous'], parseBoolean],
+  [['hazardous', 'hazCodes'], parseHazCodes],
+  [['hazardous', 'components'], parseComponentNames],
+  [['hazardous', 'sourceOfComponents']],
+  [['disposalOrRecoveryCodes'], parseDisposalCodes]
 ])
 
 const errorToCoords = (movementData, error) => {
