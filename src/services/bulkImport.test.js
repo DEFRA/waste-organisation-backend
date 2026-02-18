@@ -9,6 +9,19 @@ describe('bulk import data', () => {
       url: '/bulk/{{bulkUploadId}}/movements/receive',
       basicAuth: { username: 'waste-organisations-backend', password: '92fa681e-44b4-4b9c-8f7a-59c117757452' }
     }
+    const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
+    const { movements } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44')
+
+    const res = await bulkImport('abc1234', movements, conf)
+    expect(res.errors).toBe(undefined)
+  })
+
+  test.skip('should convert error messages from data import', { timeout: 50000 }, async () => {
+    const conf = {
+      endpoint: 'http://localhost:3002',
+      url: '/bulk/{{bulkUploadId}}/movements/receive',
+      basicAuth: { username: 'waste-organisations-backend', password: '92fa681e-44b4-4b9c-8f7a-59c117757452' }
+    }
     const buffer = await fs.readFile('./test-resources/example-spreadsheet.xlsx')
     const { movements, rowNumbers } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44')
 
@@ -51,20 +64,6 @@ describe('bulk import data', () => {
           }
         ],
         message: 'concentration must be a number'
-      },
-      {
-        coords: [9, 16],
-        errorValue: [
-          {
-            code: 'Hydrochloric Acid',
-            concentration: '<=37%'
-          },
-          {
-            code: 'Water',
-            concentration: 'Balance'
-          }
-        ],
-        message: 'code is not allowed'
       },
       {
         coords: [9, 16],

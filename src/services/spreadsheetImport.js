@@ -147,6 +147,7 @@ const joinWasteItems = (movements, items, defraCustomerOrganisationId) => {
       movements[i].wasteItems = is[r].map((x) => {
         rowNumbers[r].itemRows.push(x['--rowNumber'])
         delete x['--rowNumber']
+        delete x['yourUniqueReference']
         return x
       })
       delete movements[i]['--rowNumber']
@@ -187,10 +188,10 @@ const parseComponentCodes = (existing, data) => {
   try {
     result.concat(
       data.split(/;/).map((y) => {
-        const [_, code, concentration] = y
+        const [_, code, c] = y
           .match(/([^=]*)=(.*)/) // nosonar
           .map((x) => x.trim())
-        return { code, concentration }
+        return { code, concentration: c.match(/^([0-9.]+)$/) ? Number(c) : c }
       })
     )
     return result
@@ -203,10 +204,10 @@ const parseComponentNames = (existing, data) => {
   const result = existing ?? []
   try {
     const parsed = data.split(/;/).flatMap((y) => {
-      const [_, name, concentration] = y
+      const [_, name, c] = y
         .match(/([^=]*)=(.*)/) // nosonar
         .map((x) => x.trim())
-      return { code: name, concentration }
+      return { name, concentration: c.match(/^([0-9.]+)$/) ? Number(c) : c }
     })
     return result.concat(parsed)
   } catch {
@@ -279,14 +280,29 @@ const parseBoolean = (() => {
 })()
 
 const parseDisposalCodes = (() => {
-  return (_existing, data) => {
-    const [code, amount, metric, est] = data.split(/=/).map((x) => x.trim())
+  const metricConversions = {
+    grams: 'Grams',
+    kilograms: 'Kilograms',
+    tonnes: 'Tonnes',
+    g: 'Grams',
+    kg: 'Kilograms',
+    T: 'Tonnes'
+  }
+  const parseDC = (el) => {
+    const [codeStr, amountStr, metricStr, est] = el.split(/=/).map((x) => x.trim())
     if (est) {
       const isEstimate = parseEstimate(null, est)
+      const amount = amountStr?.match(/^[0-9,]+$/) ? Number(amountStr.replace(/,/g, '')) : amountStr
+      const code = codeStr.replace(/^([A-Z])([0_ ]*)([1-9][0-9]*)$/, '$1$3')
+      const metric = metricConversions[metricStr?.toLowerCase()] ?? metricStr
       return { code, weight: { metric, amount, isEstimate } }
     } else {
-      throw new Error('Cannot parse disposal codes.')
+      throw new Error(`Cannot parse disposal / recovery codes (${el})`)
     }
+  }
+  return (existing, data) => {
+    const result = existing ?? []
+    return result.concat(data.split(/;/).map(parseDC))
   }
 })()
 
@@ -308,6 +324,18 @@ const parseHazCodes = (existing, data) => {
   }
 }
 
+const parseContainerType = (existing, data) => {
+  const c = typeof data === 'string' || data instanceof String ? data.toUpperCase() : null
+  if (c) {
+    return c.replace(/^\[([A-Z]+)\].*$/, '$1')
+  }
+  return existing
+}
+
+const parseToString = (existing, data) => {
+  return data ? data.toString() : existing
+}
+
 const movementMapping = [
   [],
   [],
@@ -316,7 +344,7 @@ const movementMapping = [
   [['receiver', 'siteName']],
   [['receipt', 'address', 'fullAddress']],
   [['receipt', 'address', 'postcode']],
-  [['receiver', 'authorisationNumber']],
+  [['receiver', 'authorisationNumber'], parseToString],
   [['receiver', 'regulatoryPositionStatement']],
   [['receiver', 'emailAddress']],
   [['receiver', 'phoneNumber']],
@@ -350,7 +378,7 @@ const itemMapping = [
   [['wasteDescription']],
   [['physicalForm']],
   [['numberOfContainers']],
-  [['typeOfContainers']],
+  [['typeOfContainers'], parseContainerType],
   [['weight', 'metric']],
   [['weight', 'amount']],
   [['weight', 'isEstimate'], parseEstimate],

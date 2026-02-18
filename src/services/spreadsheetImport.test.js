@@ -43,23 +43,25 @@ describe('excel proccessor', () => {
           {
             containsHazardous: true,
             containsPops: false,
-            disposalOrRecoveryCodes: {
-              code: 'D09',
-              weight: {
-                amount: '10,000',
-                isEstimate: true,
-                metric: 'kg'
+            disposalOrRecoveryCodes: [
+              {
+                code: 'D9',
+                weight: {
+                  amount: 10000,
+                  isEstimate: true,
+                  metric: 'Kilograms'
+                }
               }
-            },
+            ],
             ewcCodes: ['060110'],
             hazardous: {
               components: [
                 {
-                  code: 'Hydrochloric Acid',
+                  name: 'Hydrochloric Acid',
                   concentration: '<=37%'
                 },
                 {
-                  code: 'Water',
+                  name: 'Water',
                   concentration: 'Balance'
                 }
               ],
@@ -68,14 +70,13 @@ describe('excel proccessor', () => {
             },
             numberOfContainers: 1,
             physicalForm: 'Liquid',
-            typeOfContainers: '[TAN] Tanker/Tank',
+            typeOfContainers: 'TAN',
             wasteDescription: 'Hydrochloric Pickling Acid',
             weight: {
               amount: 10000,
               isEstimate: true,
               metric: 'Kilograms'
-            },
-            yourUniqueReference: 'KAWASA/19963'
+            }
           }
         ]
       }
@@ -95,7 +96,7 @@ describe('excel proccessor', () => {
       '8. Waste item level': [
         {
           coords: [18, 9],
-          message: 'Cannot parse disposal codes.'
+          message: 'Cannot parse disposal / recovery codes (oneuthoenuth)'
         },
         {
           coords: [12, 10],
