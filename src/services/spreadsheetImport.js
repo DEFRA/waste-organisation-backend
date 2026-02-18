@@ -3,10 +3,16 @@ import { createLogger } from '../common/helpers/logging/logger.js'
 
 const logger = createLogger()
 
-const cellError = (colNumber, rowNumber, message) => ({
-  coords: [colNumber, rowNumber],
-  message
-})
+const cellError = (colNumber, rowNumber, message, errorValue) => {
+  const x = {
+    coords: [colNumber, rowNumber],
+    message
+  }
+  if (errorValue) {
+    x.errorValue = errorValue
+  }
+  return x
+}
 
 const cellValueText = (() => {
   const plainText = (x) => x?.text ?? x
@@ -103,62 +109,27 @@ export const updateErrors = (() => {
   }
 })()
 
-export const parseExcelFile = async (buffer, defraCustomerOrganisationId) => {
-  logger.info('Starting parsing spreadsheet')
-  const workbook = new Excel.Workbook()
-  await workbook.xlsx.load(buffer, {
-    ignoreNodes: [
-      // 'autoFilter',
-      // 'cols',
-      'conditionalFormatting' // breaks generated excel file
-      // 'dataValidations',
-      // 'dimension',
-      // 'drawing',
-      // 'extLst',
-      // 'headerFooter',
-      // 'hyperlinks',
-      // 'mergeCells',
-      // 'pageMargins',
-      // 'pageSetup',
-      // 'picture',
-      // 'printOptions',
-      // 'rowBreaks',
-      // 'sheetData', // ignores actual data
-      // 'sheetFormatPr',
-      // 'sheetPr',
-      // 'sheetProtection',
-      // 'sheetViews',
-      // 'tableParts'
-    ]
-  })
-  const movements = worksheetToArray({
-    worksheet: workbook.getWorksheet('7. Waste movement level'),
-    keyCol: 3,
-    minRow: 8,
-    maxCol: 32,
-    updateFn: movementColName
-  })
-  const items = worksheetToArray({
-    worksheet: workbook.getWorksheet('8. Waste item level'),
-    keyCol: 2,
-    minRow: 8,
-    maxCol: 25,
-    updateFn: itemColName
-  })
-  const joined = joinWasteItems(movements.elements, items.elements, defraCustomerOrganisationId)
-  if (movements.errors.length > 0 || items.errors.length > 0 || joined.errors.items.length > 0 || joined.errors.movements.length > 0) {
-    const errors = {
-      '7. Waste movement level': movements.errors.concat(joined.errors.movements),
-      '8. Waste item level': items.errors.concat(joined.errors.items)
+const updateData = (cols) => {
+  const updateIn = (data, path, v, func) => {
+    if (path) {
+      path.reduce((acc, x, i) => {
+        // prettier-ignore
+        if (i === path.length - 1) {
+        const value = func ? func(acc[x], v) : v
+        acc[x] = value
+      } else if (acc[x] == null) { // nosonar
+        acc[x] = {}
+      }
+        return acc[x]
+      }, data)
     }
-    updateErrors(workbook, errors)
-    return {
-      errors,
-      workbook,
-      movements: joined.movements
-    }
-  } else {
-    return joined
+    return data
+  }
+
+  return (r, [colNum, _rowNum], value) => {
+    const [cs, func] = cols[colNum]
+    updateIn(r, cs, value, func)
+    return r
   }
 }
 
@@ -202,28 +173,13 @@ const groupBy = (func, list) => {
   }, {})
 }
 
-const updateData = (cols) => {
-  const updateIn = (data, path, v, func) => {
-    if (path) {
-      path.reduce((acc, x, i) => {
-        // prettier-ignore
-        if (i === path.length - 1) {
-        const value = func ? func(acc[x], v) : v
-        acc[x] = value
-      } else if (acc[x] == null) { // nosonar
-        acc[x] = {}
-      }
-        return acc[x]
-      }, data)
-    }
-    return data
-  }
-
-  return (r, [colNum, _rowNum], value) => {
-    const [cs, func] = cols[colNum]
-    updateIn(r, cs, value, func)
-    return r
-  }
+const distinct = (xs) => {
+  const seen = new Set()
+  return xs.filter((x) => {
+    const r = seen.has(x)
+    seen.add(x)
+    return !r
+  })
 }
 
 const parseComponentCodes = (existing, data) => {
@@ -346,13 +302,13 @@ const parseEWCCodes = (existing, data) => {
 const parseHazCodes = (existing, data) => {
   const result = existing ?? []
   try {
-    return result.concat(data.split(/[,;]/).map((y) => y.trim().replace(/^HP([0_ ]*)([1-9][0-9]*)$/, 'HP_$2 TODO fix error reporting')))
+    return result.concat(data.split(/[,;]/).map((y) => y.trim().replace(/^HP([0_ ]*)([1-9][0-9]*)$/, 'HP_$2')))
   } catch {
     throw new Error('Cannot parse Haz codes')
   }
 }
 
-const movementColName = updateData([
+const movementMapping = [
   [],
   [],
   [],
@@ -384,9 +340,9 @@ const movementColName = updateData([
   [['brokerOrDealer', 'emailAddress']],
   [['brokerOrDealer', 'phoneNumber']],
   [['brokerOrDealer', 'registrationNumber']]
-])
+]
 
-const itemColName = updateData([
+const itemMapping = [
   [],
   [],
   [['yourUniqueReference']],
@@ -406,9 +362,117 @@ const itemColName = updateData([
   [['hazardous', 'components'], parseComponentNames],
   [['hazardous', 'sourceOfComponents']],
   [['disposalOrRecoveryCodes'], parseDisposalCodes]
-])
+]
 
-const errorToCoords = (movementData, error) => {
-  const errKeyPath = error.key.split('.')
-  return cellError(movementRefCol, movements[i]['--rowNumber'], 'No waste items for unique reference')
-}
+export const parseExcelFile = (() => {
+  const movementColName = updateData(movementMapping)
+  const itemColName = updateData(itemMapping)
+
+  return async (buffer, defraCustomerOrganisationId) => {
+    logger.info('Starting parsing spreadsheet')
+    const workbook = new Excel.Workbook()
+    await workbook.xlsx.load(buffer, {
+      ignoreNodes: [
+        // 'autoFilter',
+        // 'cols',
+        'conditionalFormatting' // breaks generated excel file
+        // 'dataValidations',
+        // 'dimension',
+        // 'drawing',
+        // 'extLst',
+        // 'headerFooter',
+        // 'hyperlinks',
+        // 'mergeCells',
+        // 'pageMargins',
+        // 'pageSetup',
+        // 'picture',
+        // 'printOptions',
+        // 'rowBreaks',
+        // 'sheetData', // ignores actual data
+        // 'sheetFormatPr',
+        // 'sheetPr',
+        // 'sheetProtection',
+        // 'sheetViews',
+        // 'tableParts'
+      ]
+    })
+    const movements = worksheetToArray({
+      worksheet: workbook.getWorksheet('7. Waste movement level'),
+      keyCol: 3,
+      minRow: 8,
+      maxCol: 32,
+      updateFn: movementColName
+    })
+    const items = worksheetToArray({
+      worksheet: workbook.getWorksheet('8. Waste item level'),
+      keyCol: 2,
+      minRow: 8,
+      maxCol: 25,
+      updateFn: itemColName
+    })
+    const joined = joinWasteItems(movements.elements, items.elements, defraCustomerOrganisationId)
+    if (movements.errors.length > 0 || items.errors.length > 0 || joined.errors.items.length > 0 || joined.errors.movements.length > 0) {
+      const errors = {
+        '7. Waste movement level': movements.errors.concat(joined.errors.movements),
+        '8. Waste item level': items.errors.concat(joined.errors.items)
+      }
+      updateErrors(workbook, errors)
+      return {
+        errors,
+        workbook,
+        movements: joined.movements,
+        rowNumbers: joined.rowNumbers
+      }
+    } else {
+      return joined
+    }
+  }
+})()
+
+export const errorToCoords = (() => {
+  const cleanErrorMessage = ({ message, key }) => {
+    const name = key
+      .split('.')
+      .reduce((n, x) => (x.match(/^[0-9]+$/) ? n : x), '')
+      .replace(/([A-Z])/g, ' $1')
+      .trim()
+      .toLowerCase()
+    return message.replace(/^"[^"]*"/, name)
+  }
+
+  const keyPathToColNum = (path, mappings) => {
+    const numIdx = path.findIndex((x) => x.match(/^[0-9]+$/))
+    const p = numIdx >= 0 ? path.slice(0, numIdx + 1) : path
+    return mappings.findIndex((x) => x[0]?.every((y, i) => y == p[i]))
+  }
+
+  const wasteMovementErr = (movementData, idx, rowNumbers, errKeyPath, error) => {
+    const ref = movementData[idx]?.yourUniqueReference
+    const msg = cleanErrorMessage(error)
+    const colNum = keyPathToColNum(errKeyPath.slice(1), movementMapping)
+    const errorValue = movementMapping[colNum][0].reduce((x, y) => x[y], movementData[idx])
+    return cellError(rowNumbers[ref].movementRow, colNum, msg, errorValue)
+  }
+
+  const wasteItemErr = (movementData, movementIdx, itemIdx, rowNumbers, errKeyPath, error) => {
+    const ref = movementData[movementIdx]?.yourUniqueReference
+    const msg = cleanErrorMessage(error)
+    const colNum = keyPathToColNum(errKeyPath.slice(3), itemMapping)
+    const errorValue = itemMapping[colNum][0].reduce((x, y) => x[y], movementData[movementIdx].wasteItems[itemIdx])
+    return cellError(rowNumbers[ref].itemRows[itemIdx], colNum, msg, errorValue)
+  }
+
+  return (movementData, rowNumbers, error) => {
+    const errKeyPath = error.key.split('.')
+    if (errKeyPath[0].match(/^[0-9]+$/)) {
+      if (errKeyPath[1] === 'wasteItems' && errKeyPath[2].match(/^[0-9]+$/)) {
+        return wasteItemErr(movementData, errKeyPath[0], errKeyPath[2], rowNumbers, errKeyPath, error)
+      } else {
+        return wasteMovementErr(movementData, errKeyPath[0], rowNumbers, errKeyPath, error)
+      }
+    }
+    return cellError(1, 9, error.message)
+  }
+})()
+
+export const transformBulkApiErrors = (movementData, rowNumbers, errors) => distinct(errors.map((e) => errorToCoords(movementData, rowNumbers, e)))
