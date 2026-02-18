@@ -348,7 +348,7 @@ const parseEWCCodes = (existing, data) => {
 const parseHazCodes = (existing, data) => {
   const result = existing ?? []
   try {
-    return result.concat(data.split(/[,;]/).map((y) => y.trim()))
+    return result.concat(data.split(/[,;]/).map((y) => y.trim().replace(/^HP([0_ ]*)([1-9][0-9]*)$/, 'HP_$2 TODO fix error reporting')))
   } catch {
     throw new Error('Cannot parse Haz codes')
   }
