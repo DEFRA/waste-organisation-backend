@@ -409,3 +409,8 @@ const itemColName = updateData([
   ['hazardous', 'sourceOfComponents'],
   ['disposalOrRecoveryCodes', parseDisposalCodes]
 ])
+
+const errorToCoords = (movementData, error) => {
+  const errKeyPath = error.key.split('.')
+  return cellError(movementRefCol, movements[i]['--rowNumber'], 'No waste items for unique reference')
+}
