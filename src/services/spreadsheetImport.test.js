@@ -20,6 +20,9 @@ describe('excel proccessor', () => {
     })
     expect(movements).toEqual([
       {
+        submittingOrganisation: {
+          defraCustomerOrganisationId: undefined
+        },
         carrier: {
           organisationName: 'Qualitech Environmental Services Ltd',
           registrationNumber: 'CBDU171976'

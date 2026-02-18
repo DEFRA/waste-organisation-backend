@@ -63,7 +63,7 @@ export const processJob = async (s3Client, message) => {
   if (s3Key && s3Bucket) {
     const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
     logger.info(`Fetching bytes: ${buffer.length}`)
-    const workbook = await parseExcelFile(buffer)
+    const workbook = await parseExcelFile(buffer, 'TODO pass org id in')
     return workbook
   } else {
     logger.info(`Message missing s3 coords: ${JSON.stringify(message)}`)

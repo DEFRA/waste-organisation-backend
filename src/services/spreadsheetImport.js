@@ -103,7 +103,7 @@ export const updateErrors = (() => {
   }
 })()
 
-export const parseExcelFile = async (buffer) => {
+export const parseExcelFile = async (buffer, defraCustomerOrganisationId) => {
   logger.info('Starting parsing spreadsheet')
   const workbook = new Excel.Workbook()
   await workbook.xlsx.load(buffer, {
@@ -145,7 +145,7 @@ export const parseExcelFile = async (buffer) => {
     maxCol: 25,
     updateFn: itemColName
   })
-  const joined = joinWasteItems(movements.elements, items.elements)
+  const joined = joinWasteItems(movements.elements, items.elements, defraCustomerOrganisationId)
   if (movements.errors.length > 0 || items.errors.length > 0 || joined.errors.items.length > 0 || joined.errors.movements.length > 0) {
     const errors = {
       '7. Waste movement level': movements.errors.concat(joined.errors.movements),
@@ -162,15 +162,19 @@ export const parseExcelFile = async (buffer) => {
   }
 }
 
-const joinWasteItems = (movements, items) => {
+const joinWasteItems = (movements, items, defraCustomerOrganisationId) => {
   const is = groupBy((x) => x['yourUniqueReference'], items)
   const errors = { movements: [], items: [] }
   const movementRefCol = 3
   const itemRefCol = 2
+  const rowNumbers = {}
   for (let i = 0; i < movements.length; i++) {
     const r = movements[i]['yourUniqueReference']
+    rowNumbers[r] = { movementRow: movements[i]['--rowNumber'], itemRows: [] }
     if (is[r] && is[r].length > 0) {
+      movements[i].submittingOrganisation = { defraCustomerOrganisationId }
       movements[i].wasteItems = is[r].map((x) => {
+        rowNumbers[r].itemRows.push(x['--rowNumber'])
         delete x['--rowNumber']
         return x
       })
@@ -185,7 +189,7 @@ const joinWasteItems = (movements, items) => {
       errors.items.push(cellError(itemRefCol, m['--rowNumber'], 'No waste movements for unique reference'))
     }
   }
-  return { movements, errors }
+  return { movements, errors, rowNumbers }
 }
 
 const groupBy = (func, list) => {

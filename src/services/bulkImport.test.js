@@ -9,8 +9,8 @@ describe('bulk import data', () => {
       url: '/bulk/{{bulkUploadId}}/movements/receive',
       basicAuth: { username: 'waste-organisations-backend', password: '92fa681e-44b4-4b9c-8f7a-59c117757452' }
     }
-    const buffer = await fs.readFile('./test-resources/example-spreadsheet.xlsx')
-    const { movements } = await parseExcelFile(buffer)
+    const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
+    const { movements } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44')
 
     const res = await bulkImport('abc1234', movements, conf)
 
@@ -81,11 +81,6 @@ describe('bulk import data', () => {
         errorType: 'UnexpectedError',
         key: '0.receiver.authorisationNumber',
         message: '"[0].receiver.authorisationNumber" is required'
-      },
-      {
-        errorType: 'NotProvided',
-        key: '0',
-        message: '"ReceiveMovementRequest" must contain at least one of [apiCode, submittingOrganisation]'
       }
     ])
   })
