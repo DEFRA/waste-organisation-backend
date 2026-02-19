@@ -97,6 +97,48 @@ services:
   #   networks:
   #     - cdp-tenant
 
+  waste-movement-backend:
+    image: defradigital/waste-movement-backend:latest
+    ports:
+      - '3002:3001'
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      waste-tracking-id-backend:
+        condition: service_started
+    environment:
+      PORT: 3001
+      NODE_ENV: development
+      ENVIRONMENT: local
+      MONGO_URI: mongodb://mongodb:27017/
+      ORG_API_CODES: "MGUyMWM0NzctODg1My00NTg5LTk5MGMtYWE3ODJiNzQzMWVlPTBlMjFjNDc3LTg4NTMtNDU4OS05OTBjLWFhNzgyYjc0MzFlZQ=="
+      MONGO_READ_PREFERENCE: primary
+      ACCESS_CRED_WASTE_MOVEMENT_BACKEND: d2FzdGUtbW92ZW1lbnQtYmFja2VuZD05MmZhNjgxZS00NGI0LTRiOWMtOGY3YS01OWMxMTc3NTc0NTI=
+      ACCESS_CRED_WASTE_MOVEMENT_EXTERNAL_API: d2FzdGUtbW92ZW1lbnQtZXh0ZXJuYWwtYXBpPTkyZmE2ODFlLTQ0YjQtNGI5Yy04ZjdhLTU5YzExNzc1NzQ1Mg==
+      ACCESS_CRED_WASTE_ORGANISATIONS_BACKEND: d2FzdGUtb3JnYW5pc2F0aW9ucy1iYWNrZW5kPTkyZmE2ODFlLTQ0YjQtNGI5Yy04ZjdhLTU5YzExNzc1NzQ1Mg==
+      SERVICE_AUTH_PASSWORD: 92fa681e-44b4-4b9c-8f7a-59c117757452
+      SERVICE_AUTH_PASSWORD_WASTE_MOVEMENT_BACKEND: 92fa681e-44b4-4b9c-8f7a-59c117757452
+      WASTE_TRACKING_SERVICE_URL: http://waste-tracking-id-backend:3001
+    networks:
+      - cdp-tenant
+
+  waste-tracking-id-backend:
+    image: defradigital/waste-tracking-id-backend:latest
+    ports:
+      - '3003:3001'
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      PORT: 3001
+      NODE_ENV: development
+      ENVIRONMENT: local
+      MONGO_URI: mongodb://mongodb:27017/?replicaSet=rs0&directConnection=true
+      ACCESS_CRED_WASTE_MOVEMENT_EXTERNAL_API: d2FzdGUtbW92ZW1lbnQtZXh0ZXJuYWwtYXBpPTkyZmE2ODFlLTQ0YjQtNGI5Yy04ZjdhLTU5YzExNzc1NzQ1Mg==
+      ACCESS_CRED_WASTE_MOVEMENT_BACKEND: d2FzdGUtbW92ZW1lbnQtYmFja2VuZD05MmZhNjgxZS00NGI0LTRiOWMtOGY3YS01OWMxMTc3NTc0NTI=
+    networks:
+      - cdp-tenant
+
   waste-organisation-backend:
     build:
       context: .
@@ -120,6 +162,9 @@ services:
       MONGO_URI: mongodb://mongodb:27017/
       AWS_S3_FORCE_PATH_STYLE: true
       SPREADSHEET_SQS_QUEUE: waste-receiver-background-process
+      BULK_UPLOAD_ENDPOINT: "http://waste-movement-backend:3002"
+      BULK_UPLOAD_USERNAME: "waste-organisations-backend"
+      BULK_UPLOAD_PASSWORD: "92fa681e-44b4-4b9c-8f7a-59c117757452"
     networks:
       - cdp-tenant
     volumes:
