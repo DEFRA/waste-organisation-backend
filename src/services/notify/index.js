@@ -1,7 +1,7 @@
 import { NotifyClient } from 'notifications-node-client'
 
-import { config } from '../../config'
-import { createLogger } from '../../common/helpers/logging/logger'
+import { config } from '../../config.js'
+import { createLogger } from '../../common/helpers/logging/logger.js'
 const apiKey = config.get('notify.govNotifyKey')
 
 const formatValidationFailed = '8ad2881f-4904-4c22-a0fb-b001d8d72349'
