@@ -24,6 +24,8 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+        env:
+          GOV_NOTIFY_KEY: ${{ secrets.GOV_NOTIFY_KEY }}
         run: |
           npm ci
           npm run format:check
