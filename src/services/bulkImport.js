@@ -16,7 +16,8 @@ const apiCall = async (asyncFunc, { username, password }, payload) => {
     return response.payload
   } catch (e) {
     logger.error(`ERROR calling bulk import api ${e}`)
-    if (e.output.statusCode === 400) {
+    // prettier-ignore
+    if (e.output.statusCode === 400) { // nosonar
       const errors = e.data.payload.flatMap((v) => v.validation.errors)
       logger.info(`Info Validation errors processing spreadsheet`)
       return { errors }

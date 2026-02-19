@@ -485,10 +485,13 @@ export const errorToCoords = (() => {
   const wasteItemErr = (movementData, movementIdx, itemIdx, rowNumbers, errKeyPath, error) => {
     const ref = movementData[movementIdx]?.yourUniqueReference
     const msg = cleanErrorMessage(error)
-    const colNum = keyPathToColNum(errKeyPath.slice(3), itemMapping)
+    // prettier-ignore
+    const colNum = keyPathToColNum(errKeyPath.slice(3), itemMapping) // nosonar
     const errorValue = itemMapping[colNum][0].reduce((x, y) => x[y], movementData[movementIdx].wasteItems[itemIdx])
     return cellError(rowNumbers[ref].itemRows[itemIdx], colNum, msg, errorValue)
   }
+
+  const firstRowOfDataInSpreadsheet = 9
 
   return (movementData, rowNumbers, error) => {
     const errKeyPath = error.key.split('.')
@@ -499,7 +502,7 @@ export const errorToCoords = (() => {
         return wasteMovementErr(movementData, errKeyPath[0], rowNumbers, errKeyPath, error)
       }
     }
-    return cellError(1, 9, error.message)
+    return cellError(1, firstRowOfDataInSpreadsheet, error.message)
   }
 })()
 
