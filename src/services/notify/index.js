@@ -12,14 +12,12 @@ const logger = createLogger()
 
 export const sendEmail = {
   sendSuccess: async ({ email }) => send(successfulSubmission, email),
-  sendFailed: async ({ email }) => send(formatValidationFailed, email),
+  sendFailed: async ({ email, file }) => send(formatValidationFailed, email, file),
   sendValidationFailed: async ({ email }) => send(dataValidationFailed, email)
 }
 
-const send = async (template, email) => {
+const send = async (template, email, file) => {
   const notifyClient = new NotifyClient(apiKey)
-
-  const file = Buffer.from('{"test": "123"}', 'utf8')
 
   try {
     const response = await notifyClient.sendEmail(template, email, {
@@ -28,6 +26,7 @@ const send = async (template, email) => {
         link_to_file: notifyClient.prepareUpload(file)
       }
     })
+    logger.log(`Email Response ${JSON.stringify(response)}`)
     return response
   } catch (err) {
     logger.error(`Error sending emails: ${err}`)

@@ -9,6 +9,7 @@ import { createLogger } from './common/helpers/logging/logger.js'
 import { parseExcelFile } from './services/spreadsheetImport.js'
 import { decrypt } from './services/decrypt.js'
 import { sendEmail } from './services/notify/index.js'
+import { bulkImport } from './services/bulkImport.js'
 
 const logger = createLogger()
 
@@ -61,27 +62,33 @@ export const deleteMessage = async (client, QueueUrl, receiptHandle) => {
 // TODO write some tests for this
 export const processJob = async (s3Client, message) => {
   logger.info(`Message: ${JSON.stringify(message)}`)
-  const { s3Bucket, s3Key, encryptedEmail } = JSON.parse(message.Body)
+  const { s3Bucket, s3Key, encryptedEmail, organisationId, uploadId } = JSON.parse(message.Body)
   const decryptedEmail = decrypt(encryptedEmail, config.get('encryptionKey'))
 
   if (s3Key && s3Bucket) {
-    const emailResponse = await sendEmail.sendFailed({ email: decryptedEmail })
-    logger.log(`Email Response ${JSON.stringify(emailResponse)}`)
-
     const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
-
     logger.info(`Fetching bytes: ${buffer.length}`)
-    const { workbook } = await parseExcelFile(buffer, 'TODO pass org id in')
-
-    // send broken email
+    const { outputErrorWorkbook, movements } = await parseExcelFile(buffer, organisationId)
+    if (outputErrorWorkbook) {
+      await sendEmail.sendFailed({ email: decryptedEmail, file: outputErrorWorkbook })
+      return null
+    }
 
     // callapi()
+    const apiResponse = await bulkImport(uploadId, movements)
+    if (apiResponse.errors) {
+      const outputErrorWorkbook = '' // TODO convert errors into a byte array of xl data
+      await sendEmail.sendFailed({ email: decryptedEmail, file: outputErrorWorkbook })
+      return null
+    }
 
     // create spreadsheet
+    if (apiResponse.wasteTrackingIds) {
+      // TODO
+      // send email
+    }
 
-    // send email
-
-    return workbook
+    return outputErrorWorkbook
   } else {
     logger.info(`Message missing s3 coords: ${JSON.stringify(message)}`)
     return null
