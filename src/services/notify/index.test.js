@@ -1,10 +1,11 @@
+import { expect, it } from 'vitest'
 import { sendEmail } from '.'
 import { config } from '../../config'
 const apiKey = config.get('notify.govNotifyKey')
 
 const emailAddress = 'someone@example.com'
 
-describe.skipIf(!apiKey)('notify', () => {
+describe.skipIf(!apiKey)('Intergration tests when apiCode is set', () => {
   it('should send success email', async () => {
     const emailResonse = await sendEmail.sendSuccess({ email: emailAddress })
     expect(emailResonse.status).toBe(201)
