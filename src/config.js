@@ -17,6 +17,34 @@ export const config = convict({
       default: []
     }
   },
+  bulkUpload: {
+    endpoint: {
+      doc: 'Endpoint for Bulk Import API',
+      format: String,
+      env: 'BULK_UPLOAD_ENDPOINT',
+      default: ''
+    },
+    url: {
+      doc: 'Path for Bulk Import API',
+      format: String,
+      default: '/bulk/{{bulkUploadId}}/movements/receive',
+      env: 'BULK_UPLOAD_URL'
+    },
+    basicAuth: {
+      username: {
+        doc: 'Username for Bulk Import API',
+        format: String,
+        env: 'BULK_UPLOAD_USERNAME',
+        default: ''
+      },
+      password: {
+        doc: 'Password for Bulk Import API',
+        format: String,
+        env: 'BULK_UPLOAD_PASSWORD',
+        default: ''
+      }
+    }
+  },
   notify: {
     govNotifyKey: {
       doc: 'Gov Notify Key',

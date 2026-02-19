@@ -71,7 +71,7 @@ export const processJob = async (s3Client, message) => {
     const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
 
     logger.info(`Fetching bytes: ${buffer.length}`)
-    const { workbook } = await parseExcelFile(buffer)
+    const { workbook } = await parseExcelFile(buffer, 'TODO pass org id in')
 
     // send broken email
 
