@@ -471,7 +471,7 @@ export const errorToCoords = (() => {
   const keyPathToColNum = (path, mappings) => {
     const numIdx = path.findIndex((x) => x.match(/^[0-9]+$/))
     const p = numIdx >= 0 ? path.slice(0, numIdx + 1) : path
-    return mappings.findIndex((x) => x[0]?.every((y, i) => y == p[i]))
+    return mappings.findIndex((x) => x[0]?.every((y, i) => y === p[i]))
   }
 
   const wasteMovementErr = (movementData, idx, rowNumbers, errKeyPath, error) => {
