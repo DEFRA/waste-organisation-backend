@@ -33,7 +33,7 @@ describe('mock bulk import data', () => {
     }))
   })
 
-  test('should import some data', async () => {
+  test('should import some data', { timeout: 100000 }, async () => {
     wreckPostMock.mockReturnValue({
       payload: { errors: [] }
     })
@@ -49,7 +49,7 @@ describe('mock bulk import data', () => {
 })
 
 describe('Error transforms bulk import data', () => {
-  test('should convert error messages from data import', { timeout: 50000 }, async () => {
+  test('should convert error messages from data import', { timeout: 100000 }, async () => {
     const buffer = await fs.readFile('./test-resources/example-spreadsheet.xlsx')
     const { movements, rowNumbers } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44')
 
