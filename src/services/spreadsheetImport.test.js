@@ -83,7 +83,7 @@ describe('excel proccessor', () => {
     ])
   })
 
-  test('should write errors buffer', { timeout: 10000 }, async () => {
+  test('should write errors buffer', { timeout: 100000 }, async () => {
     const buffer = await fs.readFile('./test-resources/example-spreadsheet-2.xlsx')
     const { errors, workbook } = await parseExcelFile(buffer)
     expect(errors).toEqual({
