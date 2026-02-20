@@ -3,20 +3,20 @@ services:
   localstack:
     image: localstack/localstack:3.0.2
     ports:
-      - '4566:4566'            # LocalStack Gateway
-      - '4510-4559:4510-4559'  # external services port range
+      - '4566:4566' # LocalStack Gateway
+      - '4510-4559:4510-4559' # external services port range
     env_file:
       - 'compose/aws.env'
     environment:
       DEBUG: ${DEBUG:-1}
-      LS_LOG: WARN             # Localstack DEBUG Level
+      LS_LOG: WARN # Localstack DEBUG Level
       SERVICES: s3,sqs,sns,firehose
       LOCALSTACK_HOST: 127.0.0.1
     volumes:
       - '${TMPDIR:-/tmp}/localstack:/var/lib/localstack:z'
       - ./compose/start-localstack.sh:/etc/localstack/init/ready.d/start-localstack.sh:z
     healthcheck:
-      test: ['CMD', 'curl', 'localhost:4566']
+      test: ['CMD', 'stat', '/tmp/READY']
       interval: 5s
       start_period: 5s
       retries: 3
@@ -71,7 +71,6 @@ services:
   #     ACCEPT_EULA: "Y"
   #     MSSQL_SA_PASSWORD: 'Pas_w0rd'
 
-
   ################################################################################
 
   # frontend:
@@ -103,7 +102,7 @@ services:
       - '3002:3001'
     depends_on:
       mongodb:
-        condition: service_healthy
+        condition: service_started
       waste-tracking-id-backend:
         condition: service_started
     environment:
@@ -111,7 +110,7 @@ services:
       NODE_ENV: development
       ENVIRONMENT: local
       MONGO_URI: mongodb://mongodb:27017/
-      ORG_API_CODES: "MGUyMWM0NzctODg1My00NTg5LTk5MGMtYWE3ODJiNzQzMWVlPTBlMjFjNDc3LTg4NTMtNDU4OS05OTBjLWFhNzgyYjc0MzFlZQ=="
+      ORG_API_CODES: 'MGUyMWM0NzctODg1My00NTg5LTk5MGMtYWE3ODJiNzQzMWVlPTBlMjFjNDc3LTg4NTMtNDU4OS05OTBjLWFhNzgyYjc0MzFlZQ=='
       MONGO_READ_PREFERENCE: primary
       ACCESS_CRED_WASTE_MOVEMENT_BACKEND: d2FzdGUtbW92ZW1lbnQtYmFja2VuZD05MmZhNjgxZS00NGI0LTRiOWMtOGY3YS01OWMxMTc3NTc0NTI=
       ACCESS_CRED_WASTE_MOVEMENT_EXTERNAL_API: d2FzdGUtbW92ZW1lbnQtZXh0ZXJuYWwtYXBpPTkyZmE2ODFlLTQ0YjQtNGI5Yy04ZjdhLTU5YzExNzc1NzQ1Mg==
@@ -128,7 +127,7 @@ services:
       - '3003:3001'
     depends_on:
       mongodb:
-        condition: service_healthy
+        condition: service_started
     environment:
       PORT: 3001
       NODE_ENV: development
@@ -162,9 +161,9 @@ services:
       MONGO_URI: mongodb://mongodb:27017/
       AWS_S3_FORCE_PATH_STYLE: true
       SPREADSHEET_SQS_QUEUE: waste-receiver-background-process
-      BULK_UPLOAD_ENDPOINT: "http://waste-movement-backend:3002"
-      BULK_UPLOAD_USERNAME: "waste-organisations-backend"
-      BULK_UPLOAD_PASSWORD: "92fa681e-44b4-4b9c-8f7a-59c117757452"
+      BULK_UPLOAD_ENDPOINT: 'http://waste-movement-backend:3002'
+      BULK_UPLOAD_USERNAME: 'waste-organisations-backend'
+      BULK_UPLOAD_PASSWORD: '92fa681e-44b4-4b9c-8f7a-59c117757452'
     networks:
       - cdp-tenant
     volumes:

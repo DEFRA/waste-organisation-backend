@@ -9,3 +9,4 @@ coverage
 .cache
 .eslintcache
 .env
+test-resources/output-spreadsheet-2-with-errors.xlsx
