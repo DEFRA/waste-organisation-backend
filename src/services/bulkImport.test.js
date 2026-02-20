@@ -1,16 +1,17 @@
 import { vi } from 'vitest'
 import fs from 'node:fs/promises'
-import { parseExcelFile, transformBulkApiErrors, updateErrors, workbookToByteArray } from './spreadsheetImport.js'
+import { parseExcelFile, transformBulkApiErrors, updateErrors, workbookToByteArray, wasteTrackingIdsToCoords, updateCellContent } from './spreadsheetImport.js'
+import { v4 as uuidv4 } from 'uuid'
 
 const conf = {
   endpoint: 'http://localhost:3002',
-  url: '/bulk/{{bulkUploadId}}/movements/receive',
+  url: '/bulk/{bulkUploadId}/movements/receive',
   // password is also in compose.yml file
   basicAuth: { username: 'waste-organisations-backend', password: '92fa681e-44b4-4b9c-8f7a-59c117757452' }
 }
 
-describe('bulk import api calls data - requires service dependencies to be running', () => {
-  test.skip('should import some data', { timeout: 50000 }, async () => {
+describe.skip('bulk import api calls data - requires service dependencies to be running', () => {
+  test('should import some data', { timeout: 50000 }, async () => {
     const { bulkImport } = await import('./bulkImport.js')
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
     const { movements } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44')
