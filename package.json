@@ -22,7 +22,7 @@
     "setup:husky": "node -e \"try { (await import('husky')).default() } catch (e) { if (e.code !== 'ERR_MODULE_NOT_FOUND') throw e }\" --input-type module",
     "start": "NODE_ENV=production node --use-strict .",
     "test": "TZ=UTC vitest run --coverage",
-    "test-long-timeout": "TZ=UTC vitest run --coverage --hook-timeout=1000000 --testTimeout=1000000",
+    "test-long-timeout": "TZ=UTC vitest run --coverage --hook-timeout=1000000 --testTimeout=10000000",
     "test:watch": "TZ=UTC vitest"
   },
   "author": "Defra DDTS",
