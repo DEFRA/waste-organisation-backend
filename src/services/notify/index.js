@@ -18,7 +18,6 @@ export const sendEmail = {
 
 const send = async (template, email, file) => {
   const notifyClient = new NotifyClient(apiKey)
-
   try {
     const personalisation = {
       'first name': 'Joe Bloggs'
@@ -26,8 +25,10 @@ const send = async (template, email, file) => {
     if (file) {
       personalisation.link_to_file = notifyClient.prepareUpload(file)
     }
+
     const response = await notifyClient.sendEmail(template, email, { personalisation })
-    // TODO write the email response into the mongo db record for later debugging (not in prod - don't store PII)
+    //   // TODO write the email response into the mongo db record for later debugging (not in prod - don't store PII)
+
     logger.info(`Email Response ${response}`)
     return response
   } catch (err) {
