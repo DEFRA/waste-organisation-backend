@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises'
-import { parseExcelFile } from './spreadsheetImport.js'
+import { parseExcelFile, wasteTrackingIdsToCoords, updateCellContent } from './spreadsheetImport.js'
 
 describe('excel proccessor', () => {
   test('should parse buffer', { timeout: 100000 }, async () => {
@@ -117,6 +117,24 @@ describe('excel proccessor', () => {
       ]
     })
     // await outputErrorWorkbook.xlsx.writeFile('./test-resources/output-spreadsheet-2-with-errors.xlsx')
+  })
+
+  test('should write waste tracking ids', async () => {
+    const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
+    const { workbook, movements, rowNumbers } = await parseExcelFile(buffer)
+    const bulkImportResult = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
+    const coords = wasteTrackingIdsToCoords(movements, rowNumbers, bulkImportResult.movements)
+    expect(coords).toEqual({
+      '7. Waste movement level': [
+        {
+          coords: [2, 9],
+          sheet: '7. Waste movement level',
+          value: '26WR8B1H'
+        }
+      ]
+    })
+    updateCellContent(workbook, coords)
+    await workbook.xlsx.writeFile('./test-resources/output-spreadsheet-with-waste-tracking-ids.xlsx')
   })
 })
 
