@@ -6,7 +6,7 @@ import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
 import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs'
 import { config } from './config.js'
 import { createLogger } from './common/helpers/logging/logger.js'
-import { parseExcelFile } from './services/spreadsheetImport.js'
+import { parseExcelFile, workbookToByteArray, transformBulkApiErrors, updateErrors } from './services/spreadsheetImport.js'
 import { decrypt } from './services/decrypt.js'
 import { sendEmail } from './services/notify/index.js'
 import { bulkImport } from './services/bulkImport.js'
@@ -68,17 +68,19 @@ export const processJob = async (s3Client, message) => {
   if (s3Key && s3Bucket) {
     const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
     logger.info(`Fetching bytes: ${buffer.length}`)
-    const { outputErrorWorkbook, movements } = await parseExcelFile(buffer, organisationId)
-    if (outputErrorWorkbook) {
-      await sendEmail.sendFailed({ email: decryptedEmail, file: outputErrorWorkbook })
+    const { hasErrors, workbook, movements } = await parseExcelFile(buffer, organisationId)
+    if (hasErrors) {
+      const file = await workbookToByteArray(workbook)
+      await sendEmail.sendFailed({ email: decryptedEmail, file })
       return null
     }
 
     // callapi()
     const apiResponse = await bulkImport(uploadId, movements)
     if (apiResponse.errors) {
-      const apiErrorWorkbook = '' // TODO convert errors into a byte array of xl data
-      await sendEmail.sendFailed({ email: decryptedEmail, file: apiErrorWorkbook })
+      updateErrors(workbook, transformBulkApiErrors(apiResponse.errors))
+      const file = await workbookToByteArray(workbook)
+      await sendEmail.sendFailed({ email: decryptedEmail, file })
       return null
     }
 
@@ -88,7 +90,7 @@ export const processJob = async (s3Client, message) => {
       // send email
     }
 
-    return outputErrorWorkbook
+    return workbook
   } else {
     logger.info(`Message missing s3 coords: ${JSON.stringify(message)}`)
     return null

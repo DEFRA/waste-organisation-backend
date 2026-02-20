@@ -3,13 +3,16 @@ import { createLogger } from '../common/helpers/logging/logger.js'
 
 const logger = createLogger()
 
-const cellError = (colNumber, rowNumber, message, errorValue) => {
+const cellError = (colNumber, rowNumber, message, sheet, errorValue) => {
   const x = {
     coords: [colNumber, rowNumber],
     message
   }
   if (errorValue) {
     x.errorValue = errorValue
+  }
+  if (sheet) {
+    x.sheet = sheet
   }
   return x
 }
@@ -392,6 +395,12 @@ const itemMapping = [
   [['disposalOrRecoveryCodes'], parseDisposalCodes]
 ]
 
+// '7. Waste movement level': movements.errors.concat(joined.errors.movements),
+// '8. Waste item level': items.errors.concat(joined.errors.items)
+
+const movementWorksheetName = '7. Waste movement level'
+const itemWorksheetName = '8. Waste item level'
+
 export const parseExcelFile = (() => {
   const movementColName = updateData(movementMapping)
   const itemColName = updateData(itemMapping)
@@ -425,14 +434,14 @@ export const parseExcelFile = (() => {
       ]
     })
     const movements = worksheetToArray({
-      worksheet: workbook.getWorksheet('7. Waste movement level'),
+      worksheet: workbook.getWorksheet(movementWorksheetName),
       keyCol: 3,
       minRow: 8,
       maxCol: 32,
       updateFn: movementColName
     })
     const items = worksheetToArray({
-      worksheet: workbook.getWorksheet('8. Waste item level'),
+      worksheet: workbook.getWorksheet(itemWorksheetName),
       keyCol: 2,
       minRow: 8,
       maxCol: 25,
@@ -441,13 +450,14 @@ export const parseExcelFile = (() => {
     const joined = joinWasteItems(movements.elements, items.elements, defraCustomerOrganisationId)
     if (movements.errors.length > 0 || items.errors.length > 0 || joined.errors.items.length > 0 || joined.errors.movements.length > 0) {
       const errors = {
-        '7. Waste movement level': movements.errors.concat(joined.errors.movements),
-        '8. Waste item level': items.errors.concat(joined.errors.items)
+        [movementWorksheetName]: movements.errors.concat(joined.errors.movements),
+        [itemWorksheetName]: items.errors.concat(joined.errors.items)
       }
       updateErrors(workbook, errors)
       return {
+        hasErrors: true,
         errors,
-        outputErrorWorkbook: workbook.xlsx.writeBuffer(),
+        workbook,
         movements: joined.movements,
         rowNumbers: joined.rowNumbers
       }
@@ -456,6 +466,10 @@ export const parseExcelFile = (() => {
     }
   }
 })()
+
+export const workbookToByteArray = async (workbook) => {
+  return await workbook.xlsx.writeBuffer()
+}
 
 export const errorToCoords = (() => {
   const cleanErrorMessage = ({ message, key }) => {
@@ -479,7 +493,7 @@ export const errorToCoords = (() => {
     const msg = cleanErrorMessage(error)
     const colNum = keyPathToColNum(errKeyPath.slice(1), movementMapping)
     const errorValue = movementMapping[colNum][0].reduce((x, y) => x[y], movementData[idx])
-    return cellError(rowNumbers[ref].movementRow, colNum, msg, errorValue)
+    return cellError(rowNumbers[ref].movementRow, colNum, msg, movementWorksheetName, errorValue)
   }
 
   const wasteItemErr = (movementData, movementIdx, itemIdx, rowNumbers, errKeyPath, error) => {
@@ -488,7 +502,7 @@ export const errorToCoords = (() => {
     // prettier-ignore
     const colNum = keyPathToColNum(errKeyPath.slice(3), itemMapping) // nosonar
     const errorValue = itemMapping[colNum][0].reduce((x, y) => x[y], movementData[movementIdx].wasteItems[itemIdx])
-    return cellError(rowNumbers[ref].itemRows[itemIdx], colNum, msg, errorValue)
+    return cellError(rowNumbers[ref].itemRows[itemIdx], colNum, msg, itemWorksheetName, errorValue)
   }
 
   const firstRowOfDataInSpreadsheet = 9
@@ -506,4 +520,5 @@ export const errorToCoords = (() => {
   }
 })()
 
-export const transformBulkApiErrors = (movementData, rowNumbers, errors) => distinct(errors.map((e) => errorToCoords(movementData, rowNumbers, e)))
+export const transformBulkApiErrors = (movementData, rowNumbers, errors) =>
+  groupBy(({ sheet }) => sheet, distinct(errors.map((e) => errorToCoords(movementData, rowNumbers, e))))
