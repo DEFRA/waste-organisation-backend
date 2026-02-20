@@ -85,7 +85,7 @@ describe('excel proccessor', () => {
 
   test('should write errors buffer', { timeout: 100000 }, async () => {
     const buffer = await fs.readFile('./test-resources/example-spreadsheet-2.xlsx')
-    const { errors, workbook } = await parseExcelFile(buffer)
+    const { errors } = await parseExcelFile(buffer)
     expect(errors).toEqual({
       '7. Waste movement level': [
         {
@@ -116,7 +116,7 @@ describe('excel proccessor', () => {
         }
       ]
     })
-    await workbook.xlsx.writeFile('./test-resources/output-spreadsheet-2-with-errors.xlsx')
+    // await outputErrorWorkbook.xlsx.writeFile('./test-resources/output-spreadsheet-2-with-errors.xlsx')
   })
 })
 

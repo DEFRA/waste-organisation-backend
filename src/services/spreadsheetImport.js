@@ -447,7 +447,7 @@ export const parseExcelFile = (() => {
       updateErrors(workbook, errors)
       return {
         errors,
-        workbook,
+        outputErrorWorkbook: workbook.xlsx.writeBuffer(),
         movements: joined.movements,
         rowNumbers: joined.rowNumbers
       }
