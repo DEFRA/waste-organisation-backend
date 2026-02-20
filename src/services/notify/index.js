@@ -11,22 +11,23 @@ const successfulSubmission = '2ffe3792-f097-421d-b3e2-9de5af81609f'
 const logger = createLogger()
 
 export const sendEmail = {
-  sendSuccess: async ({ email }) => send(successfulSubmission, email),
+  sendSuccess: async ({ email, file }) => send(successfulSubmission, email, file),
   sendFailed: async ({ email, file }) => send(formatValidationFailed, email, file),
-  sendValidationFailed: async ({ email }) => send(dataValidationFailed, email)
+  sendValidationFailed: async ({ email, file }) => send(dataValidationFailed, email, file)
 }
 
 const send = async (template, email, file) => {
   const notifyClient = new NotifyClient(apiKey)
 
   try {
-    const response = await notifyClient.sendEmail(template, email, {
-      personalisation: {
-        'first name': 'Joe Bloggs',
-        link_to_file: notifyClient.prepareUpload(file)
-      }
-    })
-    logger.log(`Email Response ${JSON.stringify(response)}`)
+    const personalisation = {
+      'first name': 'Joe Bloggs'
+    }
+    if (file) {
+      personalisation.link_to_file = notifyClient.prepareUpload(file)
+    }
+    const response = await notifyClient.sendEmail(template, email, { personalisation })
+    logger.info(`Email Response ${response}`)
     return response
   } catch (err) {
     logger.error(`Error sending emails: ${err}`)
