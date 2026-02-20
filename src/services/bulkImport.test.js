@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 import fs from 'node:fs/promises'
-import { parseExcelFile, transformBulkApiErrors, workbookToByteArray } from './spreadsheetImport.js'
+import { parseExcelFile, transformBulkApiErrors, updateErrors, workbookToByteArray } from './spreadsheetImport.js'
 
 const conf = {
   endpoint: 'http://localhost:3002',
@@ -135,6 +135,7 @@ describe('Error transforms bulk import data', () => {
         }
       ]
     })
-    expect(e)
+    updateErrors(workbook, e)
+    expect(await workbookToByteArray(workbook)).toBeInstanceOf(Buffer)
   })
 })
