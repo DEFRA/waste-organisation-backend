@@ -1,13 +1,17 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { config } from '../../config'
 const apiKey = config.get('notify.govNotifyKey')
 
 const email = 'someone@example.com'
 
-describe.skipIf(!apiKey)('Intergration tests when apiCode is set', async () => {
-  const { sendEmail } = await import('./index.js')
+describe.skipIf(!apiKey)('Intergration tests when apiCode is set', () => {
+  let sendEmail
   const file = Buffer.from('{"test": "123"}', 'utf8')
+
+  beforeAll(async () => {
+    sendEmail = (await import('./index.js')).sendEmail
+  })
 
   it('should send success email', async () => {
     const emailResonse = await sendEmail.sendSuccess({ email, file })
@@ -37,8 +41,6 @@ describe('Notify', () => {
   const loggerInfoMock = vi.fn()
   const email = 'foo@example.com'
 
-  // const formatValidationFailed = '8ad2881f-4904-4c22-a0fb-b001d8d72349'
-  // const dataValidationFailed = 'e6f9eb36-c2cc-4838-b7ae-1e79847afdd6'
   const successfulSubmission = '2ffe3792-f097-421d-b3e2-9de5af81609f'
 
   beforeAll(() => {
