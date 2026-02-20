@@ -5,7 +5,8 @@ const apiKey = config.get('notify.govNotifyKey')
 
 const email = 'someone@example.com'
 
-describe.skipIf(!apiKey)('Intergration tests when apiCode is set', () => {
+describe.skipIf(!apiKey)('Intergration tests when apiCode is set', async () => {
+  const { sendEmail } = await import('./index.js')
   const file = Buffer.from('{"test": "123"}', 'utf8')
 
   it('should send success email', async () => {
