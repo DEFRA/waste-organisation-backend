@@ -94,7 +94,7 @@ describe('processJob', () => {
 
     const response = await processJob(s3Client, message)
 
-    expect(response).toBe(null)
+    expect(response).toBe(undefined)
     expect(mockSendFailed).toBeCalled()
   })
 })

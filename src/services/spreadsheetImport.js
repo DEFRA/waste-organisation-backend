@@ -218,7 +218,7 @@ const parseComponentNames = (existing, data) => {
   }
 }
 
-const mergeDate = (existing, data) => {
+export const mergeDate = (existing, data) => {
   if (!(data instanceof Date)) {
     throw new Error('Cannot parse date')
   }
@@ -233,7 +233,7 @@ const mergeDate = (existing, data) => {
   }
 }
 
-const mergeTime = (existing, data) => {
+export const mergeTime = (existing, data) => {
   if (!(data instanceof Date)) {
     throw new Error('Cannot parse time')
   }
