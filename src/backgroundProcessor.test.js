@@ -71,7 +71,7 @@ describe('background processor', () => {
 describe('processJob', () => {
   it('should pass', { timeout: 50000 }, async () => {
     vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
-    const mockSendFailed = vi.spyOn(sendEmail, 'sendFailed').mockImplementation(vi.fn())
+    const mockSendFailed = vi.spyOn(sendEmail, 'sendValidationFailed').mockImplementation(vi.fn())
 
     const message = {
       Body: JSON.stringify({
