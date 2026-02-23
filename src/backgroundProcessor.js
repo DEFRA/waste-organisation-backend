@@ -66,7 +66,16 @@ export const deleteMessage = async (client, QueueUrl, receiptHandle) => {
 }
 
 /* v8 ignore start */
-// TODO write some tests for this
+const sendInitalFailedEmail = async (workbook, decryptedEmail) => {
+  if (workbook) {
+    const file = await workbookToByteArray(workbook)
+    logger.info(`sending validation failed message ${file ? 'with file' : 'without file'}`)
+    await sendEmail.sendValidationFailed({ email: decryptedEmail, file })
+  } else {
+    await sendEmail.sendFailed({ email: decryptedEmail })
+  }
+}
+
 export const processJob = async (s3Client, message) => {
   logger.info(`Message: ${JSON.stringify(message)}`)
   const { s3Bucket, s3Key, encryptedEmail, organisationId, uploadId } = JSON.parse(message.Body)
@@ -76,14 +85,8 @@ export const processJob = async (s3Client, message) => {
     logger.info(`Fetching bytes: ${buffer.length}`)
     const { hasErrors, workbook, movements, rowNumbers } = await parseExcelFile(buffer, organisationId)
     if (hasErrors) {
-      if (workbook) {
-        const file = await workbookToByteArray(workbook)
-        await sendEmail.sendValidationFailed({ email: decryptedEmail, file })
-        return
-      } else {
-        await sendEmail.sendFailed({ email: decryptedEmail })
-        return
-      }
+      await sendInitalFailedEmail(workbook, decryptedEmail)
+      return
     }
 
     // callapi()

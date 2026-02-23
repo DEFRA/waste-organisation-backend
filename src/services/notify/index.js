@@ -23,6 +23,7 @@ const send = async (template, email, file) => {
       'first name': 'Joe Bloggs'
     }
     if (file) {
+      logger.info(`Attaching file`)
       personalisation.link_to_file = notifyClient.prepareUpload(file)
     }
 

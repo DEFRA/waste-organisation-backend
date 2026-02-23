@@ -172,7 +172,7 @@ describe('api codes', () => {
         'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
       }
     })
-    expect(result.defraOrganisationId).toEqual('456')
+    expect(result.defraCustomerOrganisationId).toEqual('456')
     expect(statusCode).toBe(200)
   })
 
