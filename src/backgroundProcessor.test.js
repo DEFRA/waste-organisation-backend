@@ -1,6 +1,9 @@
-import { describe, expect } from 'vitest'
+import { describe, expect, vi } from 'vitest'
 import { ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs'
-import { fetchS3Object, deleteMessage, pollQueue } from './backgroundProcessor.js'
+import { processJob, fetchS3Object, deleteMessage, pollQueue } from './backgroundProcessor.js'
+import * as encryption from './services/decrypt.js'
+import fs from 'node:fs/promises'
+import { sendEmail } from './services/notify/index.js'
 
 describe('background processor', () => {
   test('fetch S3 object', async () => {
@@ -62,5 +65,36 @@ describe('background processor', () => {
       expect(sideEffect.deletedMessages).toContain(ReceiptHandle)
       expect(sideEffect.processedMessages).toContain(test)
     }
+  })
+})
+
+describe('processJob', () => {
+  it('should pass', { timeout: 50000 }, async () => {
+    vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
+    const mockSendFailed = vi.spyOn(sendEmail, 'sendFailed').mockImplementation(vi.fn())
+
+    const message = {
+      Body: JSON.stringify({
+        s3Bucket: 'ghjghj',
+        s3Key: 'ghjghj',
+        encryptedEmail: 'ghjghj',
+        organisationId: 'ghjghj',
+        uploadId: 'ghjghj'
+      })
+    }
+
+    const s3Client = {
+      send: async (_) => {
+        const buffer = await fs.readFile('./test-resources/example-spreadsheet.xlsx')
+        return {
+          Body: [buffer]
+        }
+      }
+    }
+
+    const response = await processJob(s3Client, message)
+
+    expect(response).toBe(null)
+    expect(mockSendFailed).toBeCalled()
   })
 })

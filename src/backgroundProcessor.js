@@ -64,16 +64,21 @@ export const processJob = async (s3Client, message) => {
   logger.info(`Message: ${JSON.stringify(message)}`)
   const { s3Bucket, s3Key, encryptedEmail, organisationId, uploadId } = JSON.parse(message.Body)
   const decryptedEmail = decrypt(encryptedEmail, config.get('encryptionKey'))
-
   if (s3Key && s3Bucket) {
     const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
     logger.info(`Fetching bytes: ${buffer.length}`)
+
     const { hasErrors, workbook, movements } = await parseExcelFile(buffer, organisationId)
-    if (hasErrors) {
+    if (hasErrors && workbook) {
       const file = await workbookToByteArray(workbook)
       await sendEmail.sendFailed({ email: decryptedEmail, file })
       return null
     }
+
+    // const { outputErrorWorkbook, movements } = await parseExcelFile(buffer, organisationId)
+
+    //if error no workbook
+    // send failed email with no file
 
     // callapi()
     const apiResponse = await bulkImport(uploadId, movements)

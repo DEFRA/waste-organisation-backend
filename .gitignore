@@ -10,3 +10,4 @@ coverage
 .eslintcache
 .env
 test-resources/output-spreadsheet-2-with-errors.xlsx
+test-resources/output-spreadsheet-with-waste-tracking-ids.xlsx
