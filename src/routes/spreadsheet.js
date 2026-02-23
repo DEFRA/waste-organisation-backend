@@ -5,6 +5,7 @@ import { updateWithOptimisticLock } from '../repositories/index.js'
 import { spreadsheetCollection, findAllSpreadsheets } from '../repositories/spreadsheet.js'
 import { SendMessageCommand } from '@aws-sdk/client-sqs'
 import { createLogger } from '../common/helpers/logging/logger.js'
+import { apiKeyAuthStrategy } from '../plugins/auth.js'
 import { getSpreadsheetsResponseSchema, putSpreadsheetResponseSchema } from './schemas/spreadsheet.js'
 
 const logger = createLogger()
@@ -14,8 +15,8 @@ const getHandler = async (request, h) => {
   return h.response({ spreadsheets, message: 'success' })
 }
 
-const getOptions = { auth: 'api-key-auth', tags: ['api'], response: { schema: getSpreadsheetsResponseSchema, sample: 0 } }
-const putOptions = { auth: 'api-key-auth', tags: ['api'], response: { schema: putSpreadsheetResponseSchema, sample: 0 } }
+const getOptions = { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: getSpreadsheetsResponseSchema, sample: 0 } }
+const putOptions = { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: putSpreadsheetResponseSchema, sample: 0 } }
 
 const sendJob = async (client, QueueUrl, jobData) => {
   const params = {

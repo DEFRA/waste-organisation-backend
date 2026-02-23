@@ -21,13 +21,15 @@ const authScheme = (_server, _options) => ({
   }
 })
 
+export const apiKeyAuthStrategy = 'api-key-auth'
+
 export const authentication = {
   plugin: {
     name: 'auth',
     version: '1.0.0',
     register: async function (server, _options) {
       server.auth.scheme('api-key-authentication', authScheme)
-      server.auth.strategy('api-key-auth', 'api-key-authentication', {})
+      server.auth.strategy(apiKeyAuthStrategy, 'api-key-authentication', {})
     }
   }
 }
