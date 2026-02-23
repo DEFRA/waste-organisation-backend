@@ -94,7 +94,7 @@ export const processJob = async (s3Client, message) => {
     const apiResponse = await bulkImport(uploadId, movements)
     if (apiResponse.errors) {
       logger.warn(`Errors from import API ${JSON.stringify(apiResponse.errors)}`)
-      updateErrors(workbook, transformBulkApiErrors(apiResponse.errors))
+      updateErrors(workbook, transformBulkApiErrors(movements, rowNumbers, apiResponse.errors))
       const file = await workbookToByteArray(workbook)
       await sendEmail.sendFailed({ email: decryptedEmail, file })
       return
