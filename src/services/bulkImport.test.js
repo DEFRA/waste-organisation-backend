@@ -19,6 +19,17 @@ describe.skip('bulk import api calls data - requires service dependencies to be 
     const res = await bulkImport('abc1234', movements, conf)
     expect(res.errors).toBe(undefined)
   })
+
+  test('should update waste tracking IDs', { timeout: 50000 }, async () => {
+    // const { bulkImport } = await import('./bulkImport.js')
+    const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
+    const { workbook, movements, rowNumbers } = await parseExcelFile(buffer, uuidv4().toString())
+    expect(movements.length).toBe(1)
+    // const res = await bulkImport(uuidv4().toString(), movements, conf)
+    const res = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
+    const coords = wasteTrackingIdsToCoords(workbook, movements, rowNumbers, res.movements)
+    expect(coords).toEqual([])
+  })
 })
 
 describe('mock bulk import data', () => {

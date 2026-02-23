@@ -401,14 +401,11 @@ const itemMapping = [
 const movementWorksheetName = '7. Waste movement level'
 const itemWorksheetName = '8. Waste item level'
 
-export const parseExcelFile = (() => {
-  const movementColName = updateData(movementMapping)
-  const itemColName = updateData(itemMapping)
-
-  return async (buffer, defraCustomerOrganisationId) => {
-    logger.info('Starting parsing spreadsheet')
+const readExcelBuffer = async (buffer) => {
+  logger.info('Starting parsing spreadsheet')
+  try {
     const workbook = new Excel.Workbook()
-    await workbook.xlsx.load(buffer, {
+    return await workbook.xlsx.load(buffer, {
       ignoreNodes: [
         // 'autoFilter',
         // 'cols',
@@ -433,6 +430,21 @@ export const parseExcelFile = (() => {
         // 'tableParts'
       ]
     })
+  } catch {
+    return null
+  }
+}
+
+export const parseExcelFile = (() => {
+  const movementColName = updateData(movementMapping)
+  const itemColName = updateData(itemMapping)
+
+  return async (buffer, defraCustomerOrganisationId) => {
+    logger.info('Starting parsing spreadsheet')
+    const workbook = await readExcelBuffer(buffer)
+    if (workbook == null) {
+      return { hasErrors: true }
+    }
     const movements = worksheetToArray({
       worksheet: workbook.getWorksheet(movementWorksheetName),
       keyCol: 3,
