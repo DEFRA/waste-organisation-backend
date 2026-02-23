@@ -79,17 +79,12 @@ export const processJob = async (s3Client, message) => {
       if (workbook) {
         const file = await workbookToByteArray(workbook)
         await sendEmail.sendValidationFailed({ email: decryptedEmail, file })
-        return null
+        return
       } else {
         await sendEmail.sendFailed({ email: decryptedEmail })
-        return null
+        return
       }
     }
-
-    // const { outputErrorWorkbook, movements } = await parseExcelFile(buffer, organisationId)
-
-    //if error no workbook
-    // send failed email with no file
 
     // callapi()
     const apiResponse = await bulkImport(uploadId, movements)
@@ -97,7 +92,7 @@ export const processJob = async (s3Client, message) => {
       updateErrors(workbook, transformBulkApiErrors(apiResponse.errors))
       const file = await workbookToByteArray(workbook)
       await sendEmail.sendFailed({ email: decryptedEmail, file })
-      return null
+      return
     }
 
     // create spreadsheet
@@ -106,13 +101,11 @@ export const processJob = async (s3Client, message) => {
       updateCellContent(workbook, coords)
       const file = await workbookToByteArray(workbook)
       await sendEmail.sendSuccess({ email: decryptedEmail, file })
-      return null
+      return
     }
     logger.error(`Unhandled case. No errors or waste tracking ids generated for ${uploadId}`)
-    return null
   } else {
     logger.info(`Message missing s3 coords: ${JSON.stringify(message)}`)
-    return null
   }
 }
 /* v8 ignore stop */
