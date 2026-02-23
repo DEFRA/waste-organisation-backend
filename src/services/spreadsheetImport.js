@@ -40,7 +40,7 @@ const stripFormatting = (cell) => {
   return cell
 }
 
-const emptyErrorCell = () => ({ richText: [] })
+const emptyCell = () => ({ richText: [] })
 
 const collectCellErrors = (errors, updateFn, r, [colNumber, rowNumber], cell) => {
   try {
@@ -55,7 +55,7 @@ const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
   const errors = []
   worksheet.eachRow((row, rowNumber) => {
     if (rowNumber > minRow && row.getCell(keyCol).value) {
-      row.getCell(1).value = emptyErrorCell()
+      row.getCell(1).value = emptyCell()
       const r = {}
       row.eachCell((cell, colNumber) => {
         stripFormatting(cell)
@@ -89,7 +89,7 @@ export const updateErrors = (() => {
     const cell = row.getCell(colNumber)
     const errorCell = row.getCell(1)
     if (errorCell) {
-      const v = errorCell?.value?.richText ? errorCell?.value : { richText: [] }
+      const v = errorCell?.value?.richText ? errorCell?.value : emptyCell()
       v.richText.push({
         font,
         text: v.richText.length > 0 ? '\n' : '' + message
@@ -471,7 +471,7 @@ export const workbookToByteArray = async (workbook) => {
   return await workbook.xlsx.writeBuffer()
 }
 
-export const errorToCoords = (() => {
+const errorToCoords = (() => {
   const cleanErrorMessage = ({ message, key }) => {
     const name = key
       .split('.')
@@ -522,3 +522,40 @@ export const errorToCoords = (() => {
 
 export const transformBulkApiErrors = (movementData, rowNumbers, errors) =>
   groupBy(({ sheet }) => sheet, distinct(errors.map((e) => errorToCoords(movementData, rowNumbers, e))))
+
+export const updateCellContent = (() => {
+  const font = {
+    bold: true,
+    size: 12,
+    color: { argb: '00000000' },
+    name: 'Calibri'
+  }
+  const updateCell = (worksheet, coords, value) => {
+    const [colNumber, rowNumber] = coords
+    const row = worksheet.getRow(rowNumber)
+    const cell = row.getCell(colNumber)
+    cell.value = { richText: [{ font, text: value }] }
+  }
+  return (workbook, cellsAndValues) => {
+    for (const worksheetName of Object.keys(cellsAndValues)) {
+      const worksheet = workbook.getWorksheet(worksheetName)
+      for (const { coords, value } of cellsAndValues[worksheetName]) {
+        updateCell(worksheet, coords, value)
+      }
+    }
+    return workbook
+  }
+})()
+
+export const wasteTrackingIdsToCoords = (movementData, rowNumbers, wastTrackingIds) => {
+  return {
+    [movementWorksheetName]: wastTrackingIds.map(({ wasteTrackingId }, idx) => {
+      const { movementRow } = rowNumbers[movementData[idx]['yourUniqueReference']]
+      return {
+        coords: [2, movementRow],
+        value: wasteTrackingId,
+        sheet: movementWorksheetName
+      }
+    })
+  }
+}
