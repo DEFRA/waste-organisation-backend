@@ -75,18 +75,16 @@ export const processJob = async (s3Client, message) => {
     const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
     logger.info(`Fetching bytes: ${buffer.length}`)
     const { hasErrors, workbook, movements, rowNumbers } = await parseExcelFile(buffer, organisationId)
-    if (hasErrors) {
-      if (workbook) {
-        const file = await workbookToByteArray(workbook)
-        logger.info(`sending validation failed message ${file ? 'with file' : 'without file'}`)
-        await sendEmail.sendValidationFailed({ email: decryptedEmail, file })
-        return
-      } else {
-        await sendEmail.sendFailed({ email: decryptedEmail })
-        return
-      }
+    if (hasErrors && workbook) {
+      const file = await workbookToByteArray(workbook)
+      logger.info(`sending validation failed message ${file ? 'with file' : 'without file'}`)
+      await sendEmail.sendValidationFailed({ email: decryptedEmail, file })
+      return
     }
-
+    if (hasErrors && !workbook) {
+      await sendEmail.sendFailed({ email: decryptedEmail })
+      return
+    }
     // callapi()
     const apiResponse = await bulkImport(uploadId, movements)
     if (apiResponse.errors) {
