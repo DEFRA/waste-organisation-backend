@@ -1,7 +1,23 @@
 import fs from 'node:fs/promises'
-import { parseExcelFile, wasteTrackingIdsToCoords, updateCellContent } from './spreadsheetImport.js'
+import { parseExcelFile, wasteTrackingIdsToCoords, updateCellContent, mergeDate, mergeTime } from './spreadsheetImport.js'
+
+describe('some unit tests', () => {
+  test('should merge dates and times out of order', () => {
+    const d = new Date('2001-01-01T12:00:00Z')
+    const t = new Date('2005-01-01T13:12:45Z')
+    expect(mergeTime(mergeDate(null, d), t)).toEqual(new Date('2001-01-01T13:12:45Z'))
+    expect(mergeTime(null, t)).toEqual(new Date('2005-01-01T13:12:45Z'))
+    expect(mergeDate(mergeTime(null, t), d)).toEqual(new Date('2001-01-01T13:12:45Z'))
+  })
+})
 
 describe('excel proccessor', () => {
+  test('should reject not excel files', async () => {
+    const { hasErrors, workbook } = await parseExcelFile(Buffer.from('fish'))
+    expect(hasErrors).toEqual(true)
+    expect(workbook).toEqual(undefined)
+  })
+
   test('should parse buffer', { timeout: 100000 }, async () => {
     const buffer = await fs.readFile('./test-resources/example-spreadsheet.xlsx')
     const { movements, errors } = await parseExcelFile(buffer)

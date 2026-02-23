@@ -4,10 +4,7 @@ import { createLogger } from '../common/helpers/logging/logger.js'
 const logger = createLogger()
 
 const cellError = (colNumber, rowNumber, message, sheet, errorValue) => {
-  const x = {
-    coords: [colNumber, rowNumber],
-    message
-  }
+  const x = { coords: [colNumber, rowNumber], message }
   if (errorValue) {
     x.errorValue = errorValue
   }
@@ -71,18 +68,8 @@ const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
 }
 
 export const updateErrors = (() => {
-  const font = {
-    bold: true,
-    size: 12,
-    color: { argb: 'FFD4351C' },
-    name: 'Calibri'
-  }
-  const fillStyle = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FFFFCCCC' },
-    bgColor: { argb: 'FFFFD9D9' }
-  }
+  const font = { bold: true, size: 12, color: { argb: 'FFD4351C' }, name: 'Calibri' }
+  const fillStyle = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFCCCC' }, bgColor: { argb: 'FFFFD9D9' } }
   const updateCell = (worksheet, coords, message) => {
     const [colNumber, rowNumber] = coords
     const row = worksheet.getRow(rowNumber)
@@ -218,7 +205,7 @@ const parseComponentNames = (existing, data) => {
   }
 }
 
-const mergeDate = (existing, data) => {
+export const mergeDate = (existing, data) => {
   if (!(data instanceof Date)) {
     throw new Error('Cannot parse date')
   }
@@ -233,7 +220,7 @@ const mergeDate = (existing, data) => {
   }
 }
 
-const mergeTime = (existing, data) => {
+export const mergeTime = (existing, data) => {
   if (!(data instanceof Date)) {
     throw new Error('Cannot parse time')
   }
@@ -283,14 +270,7 @@ const parseBoolean = (() => {
 })()
 
 const parseDisposalCodes = (() => {
-  const metricConversions = {
-    grams: 'Grams',
-    kilograms: 'Kilograms',
-    tonnes: 'Tonnes',
-    g: 'Grams',
-    kg: 'Kilograms',
-    T: 'Tonnes'
-  }
+  const metricConversions = { grams: 'Grams', kilograms: 'Kilograms', tonnes: 'Tonnes', g: 'Grams', kg: 'Kilograms', T: 'Tonnes' }
   const parseDC = (el) => {
     const [codeStr, amountStr, metricStr, est] = el.split(/=/).map((x) => x.trim())
     if (est) {
@@ -395,11 +375,20 @@ const itemMapping = [
   [['disposalOrRecoveryCodes'], parseDisposalCodes]
 ]
 
-// '7. Waste movement level': movements.errors.concat(joined.errors.movements),
-// '8. Waste item level': items.errors.concat(joined.errors.items)
-
 const movementWorksheetName = '7. Waste movement level'
 const itemWorksheetName = '8. Waste item level'
+
+const readExcelBuffer = async (buffer) => {
+  logger.info('Starting parsing spreadsheet')
+  try {
+    const workbook = new Excel.Workbook()
+    return await workbook.xlsx.load(buffer, {
+      ignoreNodes: ['conditionalFormatting'] // breaks generated excel file
+    })
+  } catch {
+    return null
+  }
+}
 
 export const parseExcelFile = (() => {
   const movementColName = updateData(movementMapping)
@@ -407,32 +396,10 @@ export const parseExcelFile = (() => {
 
   return async (buffer, defraCustomerOrganisationId) => {
     logger.info('Starting parsing spreadsheet')
-    const workbook = new Excel.Workbook()
-    await workbook.xlsx.load(buffer, {
-      ignoreNodes: [
-        // 'autoFilter',
-        // 'cols',
-        'conditionalFormatting' // breaks generated excel file
-        // 'dataValidations',
-        // 'dimension',
-        // 'drawing',
-        // 'extLst',
-        // 'headerFooter',
-        // 'hyperlinks',
-        // 'mergeCells',
-        // 'pageMargins',
-        // 'pageSetup',
-        // 'picture',
-        // 'printOptions',
-        // 'rowBreaks',
-        // 'sheetData', // ignores actual data
-        // 'sheetFormatPr',
-        // 'sheetPr',
-        // 'sheetProtection',
-        // 'sheetViews',
-        // 'tableParts'
-      ]
-    })
+    const workbook = await readExcelBuffer(buffer)
+    if (workbook == null) {
+      return { hasErrors: true }
+    }
     const movements = worksheetToArray({
       worksheet: workbook.getWorksheet(movementWorksheetName),
       keyCol: 3,
@@ -462,7 +429,7 @@ export const parseExcelFile = (() => {
         rowNumbers: joined.rowNumbers
       }
     } else {
-      return joined
+      return { hasErrors: false, workbook, ...joined }
     }
   }
 })()
@@ -524,12 +491,7 @@ export const transformBulkApiErrors = (movementData, rowNumbers, errors) =>
   groupBy(({ sheet }) => sheet, distinct(errors.map((e) => errorToCoords(movementData, rowNumbers, e))))
 
 export const updateCellContent = (() => {
-  const font = {
-    bold: true,
-    size: 12,
-    color: { argb: '00000000' },
-    name: 'Calibri'
-  }
+  const font = { bold: true, size: 12, color: { argb: '00000000' }, name: 'Calibri' }
   const updateCell = (worksheet, coords, value) => {
     const [colNumber, rowNumber] = coords
     const row = worksheet.getRow(rowNumber)

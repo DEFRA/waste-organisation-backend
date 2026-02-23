@@ -12,7 +12,7 @@ const logger = createLogger()
 
 export const sendEmail = {
   sendSuccess: async ({ email, file }) => send(successfulSubmission, email, file),
-  sendFailed: async ({ email, file }) => send(formatValidationFailed, email, file),
+  sendFailed: async ({ email }) => send(formatValidationFailed, email),
   sendValidationFailed: async ({ email, file }) => send(dataValidationFailed, email, file)
 }
 
