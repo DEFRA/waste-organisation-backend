@@ -395,9 +395,6 @@ const itemMapping = [
   [['disposalOrRecoveryCodes'], parseDisposalCodes]
 ]
 
-// '7. Waste movement level': movements.errors.concat(joined.errors.movements),
-// '8. Waste item level': items.errors.concat(joined.errors.items)
-
 const movementWorksheetName = '7. Waste movement level'
 const itemWorksheetName = '8. Waste item level'
 
@@ -406,29 +403,7 @@ const readExcelBuffer = async (buffer) => {
   try {
     const workbook = new Excel.Workbook()
     return await workbook.xlsx.load(buffer, {
-      ignoreNodes: [
-        // 'autoFilter',
-        // 'cols',
-        'conditionalFormatting' // breaks generated excel file
-        // 'dataValidations',
-        // 'dimension',
-        // 'drawing',
-        // 'extLst',
-        // 'headerFooter',
-        // 'hyperlinks',
-        // 'mergeCells',
-        // 'pageMargins',
-        // 'pageSetup',
-        // 'picture',
-        // 'printOptions',
-        // 'rowBreaks',
-        // 'sheetData', // ignores actual data
-        // 'sheetFormatPr',
-        // 'sheetPr',
-        // 'sheetProtection',
-        // 'sheetViews',
-        // 'tableParts'
-      ]
+      ignoreNodes: ['conditionalFormatting'] // breaks generated excel file
     })
   } catch {
     return null
