@@ -83,8 +83,9 @@ export const processJob = async (s3Client, message) => {
   if (s3Key && s3Bucket) {
     const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
     logger.info(`Fetching bytes: ${buffer.length}`)
-    const { hasErrors, workbook, movements, rowNumbers } = await parseExcelFile(buffer, organisationId)
+    const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, organisationId)
     if (hasErrors) {
+      logger.warn(`Errors before sending to import API ${JSON.stringify(errors)}`)
       await sendInitalFailedEmail(workbook, decryptedEmail)
       return
     }
@@ -92,6 +93,7 @@ export const processJob = async (s3Client, message) => {
     // callapi()
     const apiResponse = await bulkImport(uploadId, movements)
     if (apiResponse.errors) {
+      logger.warn(`Errors from import API ${JSON.stringify(apiResponse.errors)}`)
       updateErrors(workbook, transformBulkApiErrors(apiResponse.errors))
       const file = await workbookToByteArray(workbook)
       await sendEmail.sendFailed({ email: decryptedEmail, file })
