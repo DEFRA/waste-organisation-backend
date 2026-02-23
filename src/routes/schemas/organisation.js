@@ -6,7 +6,8 @@ const organisationResponseSchema = joi.object({
   organisationId: joi.string().required(),
   users: joi.array().items(joi.string()),
   name: joi.string(),
-  isWasteReceiver: joi.boolean()
+  isWasteReceiver: joi.boolean(),
+  version: joi.number().integer()
 })
 
 export const getOrganisationsResponseSchema = joi.object({
