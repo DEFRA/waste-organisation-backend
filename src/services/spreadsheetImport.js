@@ -491,12 +491,7 @@ export const transformBulkApiErrors = (movementData, rowNumbers, errors) =>
   groupBy(({ sheet }) => sheet, distinct(errors.map((e) => errorToCoords(movementData, rowNumbers, e))))
 
 export const updateCellContent = (() => {
-  const font = {
-    bold: true,
-    size: 12,
-    color: { argb: '00000000' },
-    name: 'Calibri'
-  }
+  const font = { bold: true, size: 12, color: { argb: '00000000' }, name: 'Calibri' }
   const updateCell = (worksheet, coords, value) => {
     const [colNumber, rowNumber] = coords
     const row = worksheet.getRow(rowNumber)
