@@ -1,4 +1,7 @@
 import Hapi from '@hapi/hapi'
+import Inert from '@hapi/inert'
+import Vision from '@hapi/vision'
+import HapiSwagger from 'hapi-swagger'
 
 import { secureContext } from '@defra/hapi-secure-context'
 
@@ -36,6 +39,32 @@ export const plugins = {
   }
 }
 
+function getSwaggerPlugins() {
+  return [
+    Inert,
+    Vision,
+    {
+      plugin: HapiSwagger,
+      options: {
+        info: {
+          title: 'Waste Organisation API Documentation',
+          version: '1'
+        },
+        documentationPath: '/swagger',
+        grouping: 'tags',
+        securityDefinitions: {
+          ApiKey: {
+            type: 'apiKey',
+            name: 'x-auth-token',
+            in: 'header'
+          }
+        },
+        security: [{ ApiKey: [] }]
+      }
+    }
+  ]
+}
+
 export async function createServer(pluginOverrides) {
   setupProxy()
   const server = Hapi.server({
@@ -66,7 +95,13 @@ export async function createServer(pluginOverrides) {
 
   // Hapi Plugins:
 
-  await server.register(Object.values({ ...plugins, ...pluginOverrides }))
+  const allPlugins = Object.values({ ...plugins, ...pluginOverrides })
+
+  if (config.get('isSwaggerEnabled')) {
+    allPlugins.push(...getSwaggerPlugins())
+  }
+
+  await server.register(allPlugins)
   return server
 }
 

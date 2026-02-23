@@ -4,6 +4,7 @@ import { createApiCode, updateApiCode } from '../domain/organisation.js'
 import { findOrganisationByApiCode, findOrganisationById, orgCollection } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
+import { lookupOrgResponseSchema, listApiCodesResponseSchema, apiCodeResponseSchema } from './schemas/api-code.js'
 
 const logger = createLogger()
 
@@ -18,13 +19,11 @@ const handleErr = (e) => {
   throw Boom.badRequest(`${e}`)
 }
 
-const options = { auth: 'api-key-auth' }
-
 export const apiCodeRoutes = [
   {
     method: 'GET',
     path: paths.lookupOrgFromApiCode,
-    options,
+    options: { auth: 'api-key-auth', tags: ['api'], response: { schema: lookupOrgResponseSchema, sample: 0 } },
     handler: async (request, h) => {
       const apiCode = request.params.apiCode
       const org = await findOrganisationByApiCode(request.db, apiCode)
@@ -38,7 +37,7 @@ export const apiCodeRoutes = [
   {
     method: 'GET',
     path: paths.listApiCodes,
-    options,
+    options: { auth: 'api-key-auth', tags: ['api'], response: { schema: listApiCodesResponseSchema, sample: 0 } },
     handler: async (request, h) => {
       const r = await findOrganisationById(request.db, request.params.organisationId)
       if (r) {
@@ -51,7 +50,7 @@ export const apiCodeRoutes = [
   {
     method: 'POST',
     path: paths.createApiCode,
-    options,
+    options: { auth: 'api-key-auth', tags: ['api'], response: { schema: apiCodeResponseSchema, sample: 0 } },
     handler: async (request, h) => {
       try {
         const organisation = await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId: request.params.organisationId }, (dbOrg) =>
@@ -67,7 +66,7 @@ export const apiCodeRoutes = [
   {
     method: 'PUT',
     path: paths.saveApiCode,
-    options,
+    options: { auth: 'api-key-auth', tags: ['api'], response: { schema: apiCodeResponseSchema, sample: 0 } },
     handler: async (request, h) => {
       try {
         const organisation = await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId: request.params.organisationId }, (dbOrg) =>

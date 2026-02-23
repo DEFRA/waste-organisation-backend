@@ -3,13 +3,14 @@ import { paths } from '../config/paths.js'
 import { mergeAndValidate, createApiCode } from '../domain/organisation.js'
 import { findAllOrganisationsForUser, orgCollection } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
+import { getOrganisationsResponseSchema, putOrganisationResponseSchema } from './schemas/organisation.js'
 // DONE authentication - pre-shared key?
 
 export const organisations = [
   {
     method: 'GET',
     path: paths.getOrganisations,
-    options: { auth: 'api-key-auth' },
+    options: { auth: 'api-key-auth', tags: ['api'], response: { schema: getOrganisationsResponseSchema, sample: 0 } },
     handler: async (request, h) => {
       const orgs = await findAllOrganisationsForUser(request.db, request.params.userId)
       orgs.forEach((o) => delete o.apiCodes)
@@ -19,7 +20,7 @@ export const organisations = [
   {
     method: 'PUT',
     path: paths.putOrganisation,
-    options: { auth: 'api-key-auth' },
+    options: { auth: 'api-key-auth', tags: ['api'], response: { schema: putOrganisationResponseSchema, sample: 0 } },
     handler: async (request, h) => {
       try {
         const organisation = await updateWithOptimisticLock(
