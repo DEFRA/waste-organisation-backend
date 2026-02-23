@@ -48,8 +48,10 @@ describe('mock bulk import data', () => {
   test('should update waste tracking IDs', { timeout: 50000 }, async () => {
     // const { bulkImport } = await import('./bulkImport.js')
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-    const { workbook, movements, rowNumbers } = await parseExcelFile(buffer, uuidv4().toString())
+    const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, uuidv4().toString())
     expect(movements.length).toBe(1)
+    expect(errors).toEqual({ items: [], movements: [] })
+    expect(hasErrors).toEqual(false)
     const bulkImportResult = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
     const coords = wasteTrackingIdsToCoords(movements, rowNumbers, bulkImportResult.movements)
     expect(coords).toEqual({

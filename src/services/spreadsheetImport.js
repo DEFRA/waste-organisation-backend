@@ -449,7 +449,7 @@ export const parseExcelFile = (() => {
         rowNumbers: joined.rowNumbers
       }
     } else {
-      return joined
+      return { hasErrors: false, workbook, ...joined }
     }
   }
 })()
