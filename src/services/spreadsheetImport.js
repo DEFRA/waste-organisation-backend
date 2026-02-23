@@ -4,10 +4,7 @@ import { createLogger } from '../common/helpers/logging/logger.js'
 const logger = createLogger()
 
 const cellError = (colNumber, rowNumber, message, sheet, errorValue) => {
-  const x = {
-    coords: [colNumber, rowNumber],
-    message
-  }
+  const x = { coords: [colNumber, rowNumber], message }
   if (errorValue) {
     x.errorValue = errorValue
   }
@@ -71,18 +68,8 @@ const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
 }
 
 export const updateErrors = (() => {
-  const font = {
-    bold: true,
-    size: 12,
-    color: { argb: 'FFD4351C' },
-    name: 'Calibri'
-  }
-  const fillStyle = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FFFFCCCC' },
-    bgColor: { argb: 'FFFFD9D9' }
-  }
+  const font = { bold: true, size: 12, color: { argb: 'FFD4351C' }, name: 'Calibri' }
+  const fillStyle = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFCCCC' }, bgColor: { argb: 'FFFFD9D9' } }
   const updateCell = (worksheet, coords, message) => {
     const [colNumber, rowNumber] = coords
     const row = worksheet.getRow(rowNumber)
@@ -283,14 +270,7 @@ const parseBoolean = (() => {
 })()
 
 const parseDisposalCodes = (() => {
-  const metricConversions = {
-    grams: 'Grams',
-    kilograms: 'Kilograms',
-    tonnes: 'Tonnes',
-    g: 'Grams',
-    kg: 'Kilograms',
-    T: 'Tonnes'
-  }
+  const metricConversions = { grams: 'Grams', kilograms: 'Kilograms', tonnes: 'Tonnes', g: 'Grams', kg: 'Kilograms', T: 'Tonnes' }
   const parseDC = (el) => {
     const [codeStr, amountStr, metricStr, est] = el.split(/=/).map((x) => x.trim())
     if (est) {
