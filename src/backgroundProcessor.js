@@ -85,7 +85,8 @@ export const processJob = async (s3Client, message) => {
     logger.info(`Fetching bytes: ${buffer.length}`)
     const { hasErrors, workbook, movements, rowNumbers } = await parseExcelFile(buffer, organisationId)
     if (hasErrors) {
-      return await sendInitalFailedEmail(workbook, decryptedEmail)
+      await sendInitalFailedEmail(workbook, decryptedEmail)
+      return
     }
 
     // callapi()
