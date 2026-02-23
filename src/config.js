@@ -27,7 +27,7 @@ export const config = convict({
     url: {
       doc: 'Path for Bulk Import API',
       format: String,
-      default: '/bulk/{{bulkUploadId}}/movements/receive',
+      default: '/bulk/{bulkUploadId}/movements/receive',
       env: 'BULK_UPLOAD_URL'
     },
     basicAuth: {
