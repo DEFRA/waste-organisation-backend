@@ -134,7 +134,7 @@ export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {
             await deleteMessage(sqsClient, QueueUrl, message.ReceiptHandle)
           } catch (err) {
             // Message will become visible again after VisibilityTimeout
-            logger.error(`Error processing message: ${err}`)
+            logger.error(`Error processing message: ${err.stack}`)
           }
         })
       )
