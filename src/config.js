@@ -7,6 +7,7 @@ convict.addFormat(convictValidateMongoUri)
 convict.addFormats(convictFormatWithValidator)
 
 const isProduction = process.env.NODE_ENV === 'production'
+const isDevelopment = process.env.NODE_ENV === 'development'
 const isTest = process.env.NODE_ENV === 'test'
 
 export const config = convict({
@@ -209,6 +210,12 @@ export const config = convict({
     format: String,
     env: 'ENCRYPTION_KEY',
     default: '1r1S98SiPcNEN0vtKm3uiXchW0KYzScxArmmKrYkfKg='
+  },
+  isSwaggerEnabled: {
+    doc: 'Enable swagger documentation',
+    format: Boolean,
+    default: isDevelopment || isTest,
+    env: 'ENABLE_SWAGGER'
   }
 })
 
