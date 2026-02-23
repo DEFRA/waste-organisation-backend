@@ -7,6 +7,7 @@ describe('some unit tests', () => {
     const t = new Date('2005-01-01T13:12:45Z')
     expect(mergeTime(mergeDate(null, d), t)).toEqual(new Date('2001-01-01T13:12:45Z'))
     expect(mergeTime(null, t)).toEqual(new Date('2005-01-01T13:12:45Z'))
+    expect(mergeDate(mergeTime(null, t), d)).toEqual(new Date('2001-01-01T13:12:45Z'))
   })
 })
 
