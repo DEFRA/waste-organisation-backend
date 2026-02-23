@@ -34,6 +34,25 @@ describe('mock bulk import data', () => {
     }))
   })
 
+  test('should update waste tracking IDs', { timeout: 50000 }, async () => {
+    // const { bulkImport } = await import('./bulkImport.js')
+    const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
+    const { workbook, movements, rowNumbers } = await parseExcelFile(buffer, uuidv4().toString())
+    expect(movements.length).toBe(1)
+    const bulkImportResult = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
+    const coords = wasteTrackingIdsToCoords(movements, rowNumbers, bulkImportResult.movements)
+    expect(coords).toEqual({
+      '7. Waste movement level': [
+        {
+          coords: [2, 9],
+          sheet: '7. Waste movement level',
+          value: '26WR8B1H'
+        }
+      ]
+    })
+    updateCellContent(workbook, coords)
+  })
+
   test('should import some data', { timeout: 100000 }, async () => {
     wreckPostMock.mockReturnValue({
       payload: { errors: [] }
