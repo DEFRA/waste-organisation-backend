@@ -78,7 +78,7 @@ export const processJob = async (s3Client, message) => {
     if (hasErrors) {
       if (workbook) {
         const file = await workbookToByteArray(workbook)
-        logger.info('sending validation failed message ${file ? "with file" : "without file"}')
+        logger.info(`sending validation failed message ${file ? 'with file' : 'without file'}`)
         await sendEmail.sendValidationFailed({ email: decryptedEmail, file })
         return
       } else {
