@@ -102,7 +102,7 @@ export const processJob = async (s3Client, message) => {
 
     // create spreadsheet
     if (apiResponse.movements) {
-      const coords = wasteTrackingIdsToCoords(workbook, movements, rowNumbers, apiResponse.movements)
+      const coords = wasteTrackingIdsToCoords(movements, rowNumbers, apiResponse.movements)
       updateCellContent(workbook, coords)
       const file = await workbookToByteArray(workbook)
       await sendEmail.sendSuccess({ email: decryptedEmail, file })
