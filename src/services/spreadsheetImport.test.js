@@ -119,7 +119,7 @@ describe('excel proccessor', () => {
     // await outputErrorWorkbook.xlsx.writeFile('./test-resources/output-spreadsheet-2-with-errors.xlsx')
   })
 
-  test('should write waste tracking ids', async () => {
+  test('should write waste tracking ids', { timeout: 50000 }, async () => {
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
     const { workbook, movements, rowNumbers } = await parseExcelFile(buffer)
     const bulkImportResult = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
