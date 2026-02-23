@@ -12,6 +12,12 @@ describe('some unit tests', () => {
 })
 
 describe('excel proccessor', () => {
+  test('should reject not excel files', async () => {
+    const { hasErrors, workbook } = await parseExcelFile(Buffer.from('fish'))
+    expect(hasErrors).toEqual(true)
+    expect(workbook).toEqual(undefined)
+  })
+
   test('should parse buffer', { timeout: 100000 }, async () => {
     const buffer = await fs.readFile('./test-resources/example-spreadsheet.xlsx')
     const { movements, errors } = await parseExcelFile(buffer)
