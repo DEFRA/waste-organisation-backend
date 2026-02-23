@@ -30,7 +30,7 @@ const send = async (template, email, file) => {
     const response = await notifyClient.sendEmail(template, email, { personalisation })
     //   // TODO write the email response into the mongo db record for later debugging (not in prod - don't store PII)
 
-    logger.info(`Email Response ${response}`)
+    logger.info(`Email Response data: ${response?.data}`)
     return response
   } catch (err) {
     logger.error(`Error sending emails: ${err}`)

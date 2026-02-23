@@ -26,7 +26,7 @@ describe('Notify', () => {
   })
 
   it('should return email response', async () => {
-    sendEmailMock.mockReturnValue('response')
+    sendEmailMock.mockReturnValue({ data: 'response' })
     const { sendEmail } = await import('./index.js')
     const actualResponse = await sendEmail.sendSuccess({ email })
     const personalisation = {
@@ -35,7 +35,7 @@ describe('Notify', () => {
 
     expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
     expect(actualResponse).toBe(sendEmailMock())
-    expect(loggerInfoMock).toBeCalledWith('Email Response response')
+    expect(loggerInfoMock).toBeCalledWith('Email Response data: response')
   })
 
   it('should return email response with file link', async () => {
