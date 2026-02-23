@@ -106,20 +106,24 @@ describe('excel proccessor', () => {
       '7. Waste movement level': [
         {
           coords: [12, 9],
+          errorValue: 8888,
           message: 'Cannot parse time'
         }
       ],
       '8. Waste item level': [
         {
           coords: [18, 9],
+          errorValue: 'oneuthoenuth',
           message: 'Cannot parse disposal / recovery codes (oneuthoenuth)'
         },
         {
           coords: [12, 10],
+          errorValue: 'onetuhoentuhoent',
           message: 'Cannot parse component codes'
         },
         {
           coords: [16, 10],
+          errorValue: 'onetuhonetuhtn',
           message: 'Cannot parse component names'
         },
         {

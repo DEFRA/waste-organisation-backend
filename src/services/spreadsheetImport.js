@@ -43,7 +43,7 @@ const collectCellErrors = (errors, updateFn, r, [colNumber, rowNumber], cell) =>
   try {
     updateFn(r, [colNumber, rowNumber], cellValueText(cell.value))
   } catch (e) {
-    errors.push(cellError(colNumber, rowNumber, e.message))
+    errors.push(cellError(colNumber, rowNumber, e.message, null, cell.value))
   }
 }
 

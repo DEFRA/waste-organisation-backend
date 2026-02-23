@@ -28,12 +28,17 @@ const apiCall = async (asyncFunc, { username, password }, payload) => {
 }
 
 const urlFor = (bulkUploadId, conf) => {
-  const u = conf.endpoint.replace(/\/$/, '')
-  return u + pathTo(conf.url, { bulkUploadId })
+  try {
+    const u = conf.endpoint.replace(/\/$/, '')
+    return u + pathTo(conf.url, { bulkUploadId })
+  } catch (e) {
+    logger.error(`Error generating bulk endpoint url ${conf}`)
+    throw e
+  }
 }
 
 export const bulkImport = async (bulkUploadId, movements, conf) => {
-  const c = conf ?? config.get('bulkUpload.endpoint')
+  const c = conf ?? config.get('bulkUpload')
   const url = urlFor(bulkUploadId, c)
   const response = await apiCall((r) => wreck.post(url, r), c.basicAuth, movements)
   return response
