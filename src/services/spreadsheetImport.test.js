@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises'
 import { parseExcelFile, wasteTrackingIdsToCoords, updateCellContent } from './spreadsheetImport.js'
-import { mergeDate, mergeTime, parseEWCCodes, parseRegStatements } from './spreadsheetImport/parsers.js'
+import { mergeDate, mergeTime, parseEWCCodes, parseRegStatements, parseEstimate } from './spreadsheetImport/parsers.js'
 import { expect } from 'vitest'
 
 describe('some unit tests', () => {
@@ -10,6 +10,8 @@ describe('some unit tests', () => {
     expect(mergeTime(mergeDate(null, d), t)).toEqual(new Date('2001-01-01T13:12:45Z'))
     expect(mergeTime(null, t)).toEqual(new Date('2005-01-01T13:12:45Z'))
     expect(mergeDate(mergeTime(null, t), d)).toEqual(new Date('2001-01-01T13:12:45Z'))
+    expect(() => mergeDate(null, 'fish')).toThrowError()
+    expect(() => mergeTime(null, 'fish')).toThrowError()
   })
 
   test('ewc codes can be numbers', () => {
@@ -25,6 +27,10 @@ describe('some unit tests', () => {
   test('parseRegStatements', () => {
     expect(parseRegStatements(null, '123;456')).toEqual([123, 456])
     expect(parseRegStatements([123], '456')).toEqual([123, 456])
+  })
+
+  test('parseEstimate', () => {
+    expect(parseEstimate(null, String('est'))).toEqual(true)
   })
 })
 
