@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises'
-import { parseExcelFile, wasteTrackingIdsToCoords, updateCellContent, mergeDate, mergeTime } from './spreadsheetImport.js'
+import { parseExcelFile, wasteTrackingIdsToCoords, updateCellContent } from './spreadsheetImport.js'
+import { mergeDate, mergeTime } from './spreadsheetImport/parsers.js'
 
 describe('some unit tests', () => {
   test('should merge dates and times out of order', () => {
