@@ -4,16 +4,16 @@ import { config } from '../../config.js'
 import { createLogger } from '../../common/helpers/logging/logger.js'
 const apiKey = config.get('notify.govNotifyKey')
 
-const formatValidationFailed = config.get('notify.failedTemplate')
-const dataValidationFailed = config.get('notify.failedWithFileTemplate')
-const successfulSubmission = config.get('notify.successTemplate')
+const successTemplate = config.get('notify.successTemplate')
+const failedTemplate = config.get('notify.failedTemplate')
+const failedWithFileTemplate = config.get('notify.failedWithFileTemplate')
 
 const logger = createLogger()
 
 export const sendEmail = {
-  sendSuccess: async ({ email, file }) => send(successfulSubmission, email, file),
-  sendFailed: async ({ email }) => send(formatValidationFailed, email),
-  sendValidationFailed: async ({ email, file }) => send(dataValidationFailed, email, file)
+  sendSuccess: async ({ email, file }) => send(successTemplate, email, file),
+  sendFailed: async ({ email }) => send(failedTemplate, email),
+  sendValidationFailed: async ({ email, file }) => send(failedWithFileTemplate, email, file)
 }
 
 const send = async (template, email, file) => {
