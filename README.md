@@ -52,7 +52,25 @@ npm install
 
 ### Development
 
-To run the application in `development` mode run:
+To run the application and all its dependencies (Localstack, Redis, MongoDB) in Docker:
+
+```bash
+npm run start:docker
+```
+
+To run headless (detached mode):
+
+```bash
+npm run start:docker -- -d
+```
+
+To stop all services:
+
+```bash
+npm run stop:docker
+```
+
+To run the application outside of Docker (requires infrastructure services to be running separately):
 
 ```bash
 npm run dev
@@ -216,12 +234,11 @@ A local environment with:
 - Localstack for AWS services (S3, SQS)
 - Redis
 - MongoDB
-- This service.
-- A commented out frontend example.
+- This service
+- waste-movement-backend
+- waste-tracking-id-backend
 
-```bash
-docker compose up --build -d
-```
+The frontend's `compose.yml` uses the Docker Compose `include` directive to pull in this file, so infrastructure services (Localstack, Redis, MongoDB) are defined once here and shared across both projects. See the [frontend README](../waste-organisation-frontend/README.md#docker-compose-include) for details.
 
 ### Dependabot
 
