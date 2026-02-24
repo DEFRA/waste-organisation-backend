@@ -157,9 +157,10 @@ const joinWasteItems = (movements, items, defraCustomerOrganisationId) => {
 const distinct = (xs) => {
   const seen = new Set()
   return xs.filter((x) => {
-    const r = seen.has(x)
-    seen.add(x)
-    return !r
+    const key = JSON.stringify(x)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
   })
 }
 

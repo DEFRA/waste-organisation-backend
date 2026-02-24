@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises'
-import { parseExcelFile, wasteTrackingIdsToCoords, updateCellContent, mergeDate, mergeTime } from './spreadsheetImport.js'
+import { parseExcelFile, wasteTrackingIdsToCoords, updateCellContent, transformBulkApiErrors, mergeDate, mergeTime } from './spreadsheetImport.js'
 
 describe('some unit tests', () => {
   test('should merge dates and times out of order', () => {
@@ -8,6 +8,18 @@ describe('some unit tests', () => {
     expect(mergeTime(mergeDate(null, d), t)).toEqual(new Date('2001-01-01T13:12:45Z'))
     expect(mergeTime(null, t)).toEqual(new Date('2005-01-01T13:12:45Z'))
     expect(mergeDate(mergeTime(null, t), d)).toEqual(new Date('2001-01-01T13:12:45Z'))
+  })
+})
+
+describe('transformBulkApiErrors', () => {
+  test('distinct should deduplicate identical errors for the same cell', () => {
+    const movementData = [{ yourUniqueReference: 'REF1', carrier: { organisationName: 'Carrier Ltd' } }]
+    const rowNumbers = { REF1: { movementRow: 9 } }
+    const duplicateError = { key: '0.carrier.organisationName', message: '"0.carrier.organisationName" is required' }
+
+    const result = transformBulkApiErrors(movementData, rowNumbers, [duplicateError, duplicateError])
+    const errors = result['7. Waste movement level']
+    expect(errors).toHaveLength(1)
   })
 })
 
