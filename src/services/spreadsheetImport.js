@@ -158,7 +158,9 @@ const distinct = (xs) => {
   const seen = new Set()
   return xs.filter((x) => {
     const key = JSON.stringify(x)
-    if (seen.has(key)) return false
+    if (seen.has(key)) {
+      return false
+    }
     seen.add(key)
     return true
   })
