@@ -1,6 +1,17 @@
 import fs from 'node:fs/promises'
 import { parseExcelFile, wasteTrackingIdsToCoords, updateCellContent } from './spreadsheetImport.js'
-import { mergeDate, mergeTime, parseEWCCodes, parseRegStatements, parseEstimate } from './spreadsheetImport/parsers.js'
+import {
+  mergeDate,
+  mergeTime,
+  parseBoolean,
+  parseContainerType,
+  parseDisposalCodes,
+  parseEstimate,
+  parseEWCCodes,
+  parseHazCodes,
+  parseRegStatements,
+  parseToString
+} from './spreadsheetImport/parsers.js'
 import { expect } from 'vitest'
 
 describe('some unit tests', () => {
@@ -22,15 +33,70 @@ describe('some unit tests', () => {
     expect(parseEWCCodes(['01 01 01'], 101010)).toEqual(['01 01 01', '101010'])
     expect(parseEWCCodes(null, ';01 01 01;;010101;')).toEqual(['010101', '010101'])
     expect(parseEWCCodes(['01 01 01'], ';101010')).toEqual(['01 01 01', '101010'])
+    expect(() =>
+      parseEWCCodes(null, {
+        toString: () => {
+          throw new Error('error')
+        }
+      })
+    ).toThrowError()
   })
 
   test('parseRegStatements', () => {
     expect(parseRegStatements(null, '123;456')).toEqual([123, 456])
     expect(parseRegStatements([123], '456')).toEqual([123, 456])
+    expect(() => parseEstimate(null, null)).toThrowError()
   })
 
   test('parseEstimate', () => {
     expect(parseEstimate(null, String('est'))).toEqual(true)
+    expect(parseEstimate(null, 'act')).toEqual(false)
+    expect(() => parseEstimate(null, null)).toThrowError()
+  })
+
+  test('parseBoolean', () => {
+    expect(parseBoolean(null, String('true'))).toEqual(true)
+    expect(parseBoolean(null, false)).toEqual(false)
+    expect(parseBoolean(null, { formula: 'FALSE()' })).toEqual(false)
+    expect(() => parseBoolean(null, null)).toThrowError()
+  })
+
+  test('parseDisposalCodes', () => {
+    expect(parseDisposalCodes(null, 'D09 = 10,000 = kg = Estimate')).toEqual([
+      {
+        code: 'D9',
+        weight: {
+          amount: 10000,
+          isEstimate: true,
+          metric: 'Kilograms'
+        }
+      }
+    ])
+    expect(parseDisposalCodes(null, 'D90 = 10,000 = fish = Estimate')).toEqual([
+      {
+        code: 'D90',
+        weight: {
+          amount: 10000,
+          isEstimate: true,
+          metric: 'fish'
+        }
+      }
+    ])
+  })
+
+  test('parseHazCodes', () => {
+    expect(parseHazCodes(null, 'HP0120')).toEqual(['HP_120'])
+    expect(() => parseHazCodes(null, null)).toThrowError()
+  })
+
+  test('parseContainerType', () => {
+    expect(parseContainerType(null, '[ABC] fish')).toEqual('ABC')
+    expect(parseContainerType('ABC', null)).toEqual('ABC')
+  })
+
+  test('parseToString', () => {
+    expect(parseToString(null, 123)).toEqual('123')
+    expect(parseToString('ABC', null)).toEqual('ABC')
   })
 })
 
