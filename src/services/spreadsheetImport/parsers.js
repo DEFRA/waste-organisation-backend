@@ -147,3 +147,17 @@ export const parseContainerType = (existing, data) => {
 export const parseToString = (existing, data) => {
   return data ? data.toString() : existing
 }
+
+export const parseRegStatements = (existing, data) => {
+  const result = existing ?? []
+  try {
+    const codes = `${data}`
+      .split(/[,;]/)
+      .map((x) => x.trim())
+      .filter((x) => x)
+      .map((x) => Number(x))
+    return result.concat(codes)
+  } catch {
+    throw new Error('Cannot parse regulatory position statements')
+  }
+}

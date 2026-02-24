@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises'
 import { parseExcelFile, wasteTrackingIdsToCoords, updateCellContent } from './spreadsheetImport.js'
-import { mergeDate, mergeTime, parseEWCCodes } from './spreadsheetImport/parsers.js'
+import { mergeDate, mergeTime, parseEWCCodes, parseRegStatements } from './spreadsheetImport/parsers.js'
 import { expect } from 'vitest'
 
 describe('some unit tests', () => {
@@ -20,6 +20,11 @@ describe('some unit tests', () => {
     expect(parseEWCCodes(['01 01 01'], 101010)).toEqual(['01 01 01', '101010'])
     expect(parseEWCCodes(null, ';01 01 01;;010101;')).toEqual(['010101', '010101'])
     expect(parseEWCCodes(['01 01 01'], ';101010')).toEqual(['01 01 01', '101010'])
+  })
+
+  test('parseRegStatements', () => {
+    expect(parseRegStatements(null, '123;456')).toEqual([123, 456])
+    expect(parseRegStatements([123], '456')).toEqual([123, 456])
   })
 })
 

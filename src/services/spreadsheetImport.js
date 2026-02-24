@@ -11,6 +11,7 @@ import {
   parseEstimate,
   parseEWCCodes,
   parseHazCodes,
+  parseRegStatements,
   parseToString
 } from './spreadsheetImport/parsers.js'
 
@@ -195,7 +196,7 @@ const movementMapping = [
   [['receipt', 'address', 'fullAddress']],
   [['receipt', 'address', 'postcode']],
   [['receiver', 'authorisationNumber'], parseToString],
-  [['receiver', 'regulatoryPositionStatement']],
+  [['receiver', 'regulatoryPositionStatements'], parseRegStatements],
   [['receiver', 'emailAddress']],
   [['receiver', 'phoneNumber']],
   [['dateTimeReceived'], mergeDate],
