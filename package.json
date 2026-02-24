@@ -23,7 +23,8 @@
     "start": "NODE_ENV=production node --use-strict .",
     "test": "TZ=UTC vitest run --coverage",
     "test-long-timeout": "TZ=UTC vitest run --coverage --hook-timeout=1000000 --testTimeout=10000000",
-    "test:watch": "TZ=UTC vitest"
+    "test:watch": "TZ=UTC vitest",
+    "start:docker": "docker compose -f compose.yml -f compose-localstack.yml up --build"
   },
   "author": "Defra DDTS",
   "license": "OGL-UK-3.0",
