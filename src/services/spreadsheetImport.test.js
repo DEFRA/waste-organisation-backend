@@ -18,6 +18,8 @@ describe('some unit tests', () => {
     expect(parseEWCCodes(null, 101010)).toEqual(['101010'])
     expect(parseEWCCodes([], 101010)).toEqual(['101010'])
     expect(parseEWCCodes(['01 01 01'], 101010)).toEqual(['01 01 01', '101010'])
+    expect(parseEWCCodes(null, ';01 01 01;;010101;')).toEqual(['010101', '010101'])
+    expect(parseEWCCodes(['01 01 01'], ';101010')).toEqual(['01 01 01', '101010'])
   })
 })
 

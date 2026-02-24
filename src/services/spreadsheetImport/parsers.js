@@ -117,7 +117,11 @@ export const parseDisposalCodes = (() => {
 export const parseEWCCodes = (existing, data) => {
   const result = existing ?? []
   try {
-    return result.concat(`${data}`.split(/[,;]/).map((y) => y.replace(/[^0-9]/g, '')))
+    const codes = `${data}`
+      .split(/[,;]/)
+      .map((y) => y.replace(/[^0-9]/g, ''))
+      .filter((x) => x)
+    return result.concat(codes)
   } catch {
     throw new Error(`Cannot parse EWC codes`)
   }
