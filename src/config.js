@@ -53,6 +53,27 @@ export const config = convict({
       nullable: true,
       default: null,
       env: 'GOV_NOTIFY_KEY'
+    },
+    successTemplate: {
+      doc: 'Gov Notify success template Id',
+      format: String,
+      nullable: true,
+      default: '2ffe3792-f097-421d-b3e2-9de5af81609f',
+      env: 'GOV_NOTIFY_SUCCESSFUL_TEMPLATE'
+    },
+    failedTemplate: {
+      doc: 'Gov Notify failed template Id',
+      format: String,
+      nullable: true,
+      default: '8ad2881f-4904-4c22-a0fb-b001d8d72349',
+      env: 'GOV_NOTIFY_FAILED_TEMPLATE'
+    },
+    failedWithFileTemplate: {
+      doc: 'Gov Notify failed with file template Id',
+      format: String,
+      nullable: true,
+      default: 'e6f9eb36-c2cc-4838-b7ae-1e79847afdd6',
+      env: 'GOV_NOTIFY_FAILED_WITH_FILE_TEMPLATE'
     }
   },
   aws: {
