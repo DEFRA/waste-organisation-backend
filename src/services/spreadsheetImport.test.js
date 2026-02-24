@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import { parseExcelFile, wasteTrackingIdsToCoords, updateCellContent } from './spreadsheetImport.js'
-import { mergeDate, mergeTime } from './spreadsheetImport/parsers.js'
+import { mergeDate, mergeTime, parseEWCCodes } from './spreadsheetImport/parsers.js'
+import { expect } from 'vitest'
 
 describe('some unit tests', () => {
   test('should merge dates and times out of order', () => {
@@ -9,6 +10,14 @@ describe('some unit tests', () => {
     expect(mergeTime(mergeDate(null, d), t)).toEqual(new Date('2001-01-01T13:12:45Z'))
     expect(mergeTime(null, t)).toEqual(new Date('2005-01-01T13:12:45Z'))
     expect(mergeDate(mergeTime(null, t), d)).toEqual(new Date('2001-01-01T13:12:45Z'))
+  })
+
+  test('ewc codes can be numbers', () => {
+    expect(parseEWCCodes(null, '01 01 01')).toEqual(['010101'])
+    expect(parseEWCCodes(null, '01 01 01;010101')).toEqual(['010101', '010101'])
+    expect(parseEWCCodes(null, 101010)).toEqual(['101010'])
+    expect(parseEWCCodes([], 101010)).toEqual(['101010'])
+    expect(parseEWCCodes(['01 01 01'], 101010)).toEqual(['01 01 01', '101010'])
   })
 })
 
