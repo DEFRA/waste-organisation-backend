@@ -1,3 +1,6 @@
+include:
+  - path: compose-localstack.yml
+
 services:
   redis:
     image: redis:7.2.3-alpine3.18
@@ -90,12 +93,3 @@ services:
       - ./package.json:/home/node/package.json:z
       - ./package-lock.json:/home/node/package-lock.json:z
 
-################################################################################
-
-volumes:
-  mongodb-data:
-
-networks:
-  cdp-tenant:
-    driver: bridge
-    name: cdp-tenant
