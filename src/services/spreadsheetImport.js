@@ -262,7 +262,6 @@ export const parseExcelFile = (() => {
   const itemColName = updateData(itemMapping)
 
   return async (buffer, defraCustomerOrganisationId) => {
-    logger.info('Starting parsing spreadsheet')
     const workbook = await readExcelBuffer(buffer)
     if (workbook == null) {
       return { hasErrors: true }
