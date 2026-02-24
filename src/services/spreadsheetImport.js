@@ -509,9 +509,9 @@ export const updateCellContent = (() => {
   }
 })()
 
-export const wasteTrackingIdsToCoords = (movementData, rowNumbers, wastTrackingIds) => {
+export const wasteTrackingIdsToCoords = (movementData, rowNumbers, wasteTrackingIds) => {
   return {
-    [movementWorksheetName]: wastTrackingIds.map(({ wasteTrackingId }, idx) => {
+    [movementWorksheetName]: wasteTrackingIds.map(({ wasteTrackingId }, idx) => {
       const { movementRow } = rowNumbers[movementData[idx]['yourUniqueReference']]
       return {
         coords: [2, movementRow],
