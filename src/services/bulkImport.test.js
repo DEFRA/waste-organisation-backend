@@ -150,21 +150,6 @@ describe('Error transforms bulk import data', () => {
           ],
           message: 'concentration must be a number',
           sheet: '8. Waste item level'
-        },
-        {
-          coords: [9, 16],
-          errorValue: [
-            {
-              concentration: '<=37%',
-              name: 'Hydrochloric Acid'
-            },
-            {
-              concentration: 'Balance',
-              name: 'Water'
-            }
-          ],
-          message: 'concentration must be a number',
-          sheet: '8. Waste item level'
         }
       ]
     })

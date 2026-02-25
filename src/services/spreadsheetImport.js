@@ -124,7 +124,7 @@ const updateData = (cols) => {
 }
 
 const joinWasteItems = (movements, items, defraCustomerOrganisationId) => {
-  const is = groupBy((x) => x['yourUniqueReference'], items)
+  const is = Object.groupBy(items, (x) => x['yourUniqueReference'])
   const errors = { movements: [], items: [] }
   const movementRefCol = 3
   const itemRefCol = 2
@@ -154,22 +154,15 @@ const joinWasteItems = (movements, items, defraCustomerOrganisationId) => {
   return { movements, errors, rowNumbers }
 }
 
-const groupBy = (func, list) => {
-  return list.reduce((acc, x) => {
-    if (acc[func(x)] == null) {
-      acc[func(x)] = []
-    }
-    acc[func(x)].push(x)
-    return acc
-  }, {})
-}
-
 const distinct = (xs) => {
   const seen = new Set()
   return xs.filter((x) => {
-    const r = seen.has(x)
-    seen.add(x)
-    return !r
+    const key = JSON.stringify(x)
+    if (seen.has(key)) {
+      return false
+    }
+    seen.add(key)
+    return true
   })
 }
 
@@ -488,7 +481,7 @@ const errorToCoords = (() => {
 })()
 
 export const transformBulkApiErrors = (movementData, rowNumbers, errors) =>
-  groupBy(({ sheet }) => sheet, distinct(errors.map((e) => errorToCoords(movementData, rowNumbers, e))))
+  Object.groupBy(distinct(errors.map((e) => errorToCoords(movementData, rowNumbers, e))), ({ sheet }) => sheet)
 
 export const updateCellContent = (() => {
   const font = { bold: true, size: 12, color: { argb: '00000000' }, name: 'Calibri' }
