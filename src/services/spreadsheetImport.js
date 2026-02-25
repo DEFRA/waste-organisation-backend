@@ -83,7 +83,7 @@ export const updateErrors = (() => {
   const font = { bold: true, size: 12, color: { argb: 'FFD4351C' }, name: 'Calibri' }
   const fillStyle = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFCCCC' }, bgColor: { argb: 'FFFFD9D9' } }
   const updateCell = (worksheet, coords, message) => {
-    const [colNumber, rowNumber] = coords
+    const [rowNumber, colNumber] = coords
     const row = worksheet.getRow(rowNumber)
     const cell = row.getCell(colNumber)
     const errorCell = row.getCell(1)
