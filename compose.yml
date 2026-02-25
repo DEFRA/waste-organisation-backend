@@ -23,14 +23,14 @@ services:
   waste-movement-backend:
     image: defradigital/waste-movement-backend:latest
     ports:
-      - '3002:3001'
+      - '3002:3002'
     depends_on:
       mongodb:
         condition: service_started
       waste-tracking-id-backend:
         condition: service_started
     environment:
-      PORT: 3001
+      PORT: 3002
       NODE_ENV: development
       ENVIRONMENT: local
       MONGO_URI: mongodb://mongodb:27017/
