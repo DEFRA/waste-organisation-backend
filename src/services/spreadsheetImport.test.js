@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises'
-import { parseExcelFile, wasteTrackingIdsToCoords, updateCellContent } from './spreadsheetImport.js'
+import { parseExcelFile, transformBulkApiErrors, updateCellContent, wasteTrackingIdsToCoords } from './spreadsheetImport.js'
 import {
   mergeDate,
   mergeTime,
@@ -10,13 +10,9 @@ import {
   parseDisposalCodes,
   parseEstimate,
   parseEWCCodes,
-  parseExcelFile,
   parseHazCodes,
   parseRegStatements,
-  parseToString,
-  transformBulkApiErrors,
-  updateCellContent,
-  wasteTrackingIdsToCoords
+  parseToString
 } from './spreadsheetImport/parsers.js'
 import { expect } from 'vitest'
 
