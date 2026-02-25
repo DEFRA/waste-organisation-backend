@@ -86,6 +86,8 @@ services:
       BULK_UPLOAD_ENDPOINT: 'http://waste-movement-backend:3002'
       BULK_UPLOAD_USERNAME: 'waste-organisations-backend'
       BULK_UPLOAD_PASSWORD: '92fa681e-44b4-4b9c-8f7a-59c117757452'
+      WASTE_CLIENT_AUTH_TEST: test
+      AWS_S3_CHECKSUM_MODE: DISABLED
     networks:
       - cdp-tenant
     volumes:
