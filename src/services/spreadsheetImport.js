@@ -1,8 +1,6 @@
 import Excel from 'exceljs'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import {
-  mergeDate,
-  mergeTime,
   parseBoolean,
   parseComponentCodes,
   parseComponentNames,
@@ -192,8 +190,7 @@ const movementMapping = [
   [['receiver', 'regulatoryPositionStatements'], parseRegStatements],
   [['receiver', 'emailAddress']],
   [['receiver', 'phoneNumber']],
-  [['dateTimeReceived'], mergeDate],
-  [['dateTimeReceived'], mergeTime],
+  [['dateTimeReceived']],
   [['hazardousWasteConsignmentCode']],
   [['reasonForNoConsignmentCode']],
   [['specialHandlingRequirements']],

@@ -119,7 +119,7 @@ describe('Error transforms bulk import data', () => {
     expect(e).toEqual({
       '7. Waste movement level': [
         {
-          coords: [9, 23],
+          coords: [9, 22],
           message: 'means of transport is required',
           sheet: '7. Waste movement level'
         },

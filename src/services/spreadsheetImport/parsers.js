@@ -29,36 +29,6 @@ export const parseComponentNames = (existing, data) => {
   }
 }
 
-export const mergeDate = (existing, data) => {
-  if (!(data instanceof Date)) {
-    throw new Error('Cannot parse date')
-  }
-  if (existing == null) {
-    return data
-  } else {
-    const date = new Date(existing.getTime())
-    date.setFullYear(data.getFullYear())
-    date.setMonth(data.getMonth())
-    date.setDate(data.getDate())
-    return date
-  }
-}
-
-export const mergeTime = (existing, data) => {
-  if (!(data instanceof Date)) {
-    throw new Error('Cannot parse time')
-  }
-  if (existing == null) {
-    return data
-  } else {
-    const date = new Date(existing.getTime())
-    date.setHours(data.getHours())
-    date.setMinutes(data.getMinutes())
-    date.setSeconds(data.getSeconds())
-    return date
-  }
-}
-
 export const parseEstimate = (() => {
   const estVals = ['estimate', 'est', 'y', 'yes', 'true', true, 'TRUE()']
   const actVals = ['actual', 'act', 'n', 'no', 'false', false, 'FALSE()']

@@ -1,8 +1,6 @@
 import fs from 'node:fs/promises'
 import { parseExcelFile, transformBulkApiErrors, updateCellContent, wasteTrackingIdsToCoords } from './spreadsheetImport.js'
 import {
-  mergeDate,
-  mergeTime,
   parseBoolean,
   parseComponentCodes,
   parseComponentNames,
@@ -17,16 +15,6 @@ import {
 import { expect } from 'vitest'
 
 describe('some unit tests', () => {
-  test('should merge dates and times out of order', () => {
-    const d = new Date('2001-01-01T12:00:00Z')
-    const t = new Date('2005-01-01T13:12:45Z')
-    expect(mergeTime(mergeDate(null, d), t)).toEqual(new Date('2001-01-01T13:12:45Z'))
-    expect(mergeTime(null, t)).toEqual(new Date('2005-01-01T13:12:45Z'))
-    expect(mergeDate(mergeTime(null, t), d)).toEqual(new Date('2001-01-01T13:12:45Z'))
-    expect(() => mergeDate(null, 'fish')).toThrowError()
-    expect(() => mergeTime(null, 'fish')).toThrowError()
-  })
-
   test('ewc codes can be numbers', () => {
     expect(parseEWCCodes(null, '01 01 01')).toEqual(['010101'])
     expect(parseEWCCodes(null, '01 01 01;010101')).toEqual(['010101', '010101'])
@@ -236,13 +224,7 @@ describe('excel proccessor', () => {
     const buffer = await fs.readFile('./test-resources/example-spreadsheet-2.xlsx')
     const { errors } = await parseExcelFile(buffer)
     expect(errors).toEqual({
-      '7. Waste movement level': [
-        {
-          coords: [12, 9],
-          errorValue: 8888,
-          message: 'Cannot parse time'
-        }
-      ],
+      '7. Waste movement level': [],
       '8. Waste item level': [
         {
           coords: [18, 9],
