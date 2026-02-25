@@ -1,5 +1,20 @@
 import fs from 'node:fs/promises'
-import { parseExcelFile, wasteTrackingIdsToCoords, updateCellContent, transformBulkApiErrors, mergeDate, mergeTime } from './spreadsheetImport.js'
+import { parseExcelFile, transformBulkApiErrors, updateCellContent, wasteTrackingIdsToCoords } from './spreadsheetImport.js'
+import {
+  mergeDate,
+  mergeTime,
+  parseBoolean,
+  parseComponentCodes,
+  parseComponentNames,
+  parseContainerType,
+  parseDisposalCodes,
+  parseEstimate,
+  parseEWCCodes,
+  parseHazCodes,
+  parseRegStatements,
+  parseToString
+} from './spreadsheetImport/parsers.js'
+import { expect } from 'vitest'
 
 describe('some unit tests', () => {
   test('should merge dates and times out of order', () => {
@@ -8,6 +23,112 @@ describe('some unit tests', () => {
     expect(mergeTime(mergeDate(null, d), t)).toEqual(new Date('2001-01-01T13:12:45Z'))
     expect(mergeTime(null, t)).toEqual(new Date('2005-01-01T13:12:45Z'))
     expect(mergeDate(mergeTime(null, t), d)).toEqual(new Date('2001-01-01T13:12:45Z'))
+    expect(() => mergeDate(null, 'fish')).toThrowError()
+    expect(() => mergeTime(null, 'fish')).toThrowError()
+  })
+
+  test('ewc codes can be numbers', () => {
+    expect(parseEWCCodes(null, '01 01 01')).toEqual(['010101'])
+    expect(parseEWCCodes(null, '01 01 01;010101')).toEqual(['010101', '010101'])
+    expect(parseEWCCodes(null, 101010)).toEqual(['101010'])
+    expect(parseEWCCodes([], 101010)).toEqual(['101010'])
+    expect(parseEWCCodes(['01 01 01'], 101010)).toEqual(['01 01 01', '101010'])
+    expect(parseEWCCodes(null, ';01 01 01;;010101;')).toEqual(['010101', '010101'])
+    expect(parseEWCCodes(['01 01 01'], ';101010')).toEqual(['01 01 01', '101010'])
+    expect(() =>
+      parseEWCCodes(null, {
+        toString: () => {
+          throw new Error('error')
+        }
+      })
+    ).toThrowError()
+  })
+
+  test('parseRegStatements', () => {
+    expect(parseRegStatements(null, '123;456')).toEqual([123, 456])
+    expect(parseRegStatements([123], '456')).toEqual([123, 456])
+    expect(() =>
+      parseRegStatements(null, {
+        toString: () => {
+          throw new Error('error')
+        }
+      })
+    ).toThrowError()
+  })
+
+  test('parseEstimate', () => {
+    expect(parseEstimate(null, String('est'))).toEqual(true)
+    expect(parseEstimate(null, 'act')).toEqual(false)
+    expect(() => parseEstimate(null, null)).toThrowError()
+  })
+
+  test('parseBoolean', () => {
+    expect(parseBoolean(null, String('true'))).toEqual(true)
+    expect(parseBoolean(null, false)).toEqual(false)
+    expect(parseBoolean(null, { formula: 'FALSE()' })).toEqual(false)
+    expect(() => parseBoolean(null, null)).toThrowError()
+  })
+
+  test('parseDisposalCodes', () => {
+    expect(parseDisposalCodes(null, 'D09 = 10,000 = kg = Estimate')).toEqual([
+      {
+        code: 'D9',
+        weight: {
+          amount: 10000,
+          isEstimate: true,
+          metric: 'Kilograms'
+        }
+      }
+    ])
+    expect(parseDisposalCodes(null, 'D90 = 10,000 = fish = Estimate')).toEqual([
+      {
+        code: 'D90',
+        weight: {
+          amount: 10000,
+          isEstimate: true,
+          metric: 'fish'
+        }
+      }
+    ])
+  })
+
+  test('parseComponentCodes', () => {
+    expect(parseComponentCodes(null, 'Hydrochloric Acid = 37; Water = 9963')).toEqual([
+      {
+        code: 'Hydrochloric Acid',
+        concentration: 37
+      },
+      {
+        code: 'Water',
+        concentration: 9963
+      }
+    ])
+    expect(() => parseComponentCodes(null, 'ontehu')).toThrowError()
+  })
+
+  test('parseHazCodes', () => {
+    expect(parseHazCodes(null, 'HP0120')).toEqual(['HP_120'])
+    expect(() => parseHazCodes(null, null)).toThrowError()
+  })
+
+  test('parseContainerType', () => {
+    expect(parseContainerType(null, '[ABC] fish')).toEqual('ABC')
+    expect(parseContainerType('ABC', null)).toEqual('ABC')
+  })
+
+  test('parseToString', () => {
+    expect(parseToString(null, 123)).toEqual('123')
+    expect(parseToString('ABC', null)).toEqual('ABC')
+  })
+
+  test('parseComponentNames', () => {
+    expect(parseComponentNames(null, 'abc=123')).toEqual([
+      {
+        concentration: 123,
+        name: 'abc'
+      }
+    ])
+    expect(() => parseComponentNames(null, 'abc')).toThrowError()
   })
 })
 
