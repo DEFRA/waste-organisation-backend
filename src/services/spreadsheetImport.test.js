@@ -10,9 +10,13 @@ import {
   parseDisposalCodes,
   parseEstimate,
   parseEWCCodes,
+  parseExcelFile,
   parseHazCodes,
   parseRegStatements,
-  parseToString
+  parseToString,
+  transformBulkApiErrors,
+  updateCellContent,
+  wasteTrackingIdsToCoords
 } from './spreadsheetImport/parsers.js'
 import { expect } from 'vitest'
 
@@ -129,6 +133,18 @@ describe('some unit tests', () => {
       }
     ])
     expect(() => parseComponentNames(null, 'abc')).toThrowError()
+  })
+})
+
+describe('transformBulkApiErrors', () => {
+  test('distinct should deduplicate identical errors for the same cell', () => {
+    const movementData = [{ yourUniqueReference: 'REF1', carrier: { organisationName: 'Carrier Ltd' } }]
+    const rowNumbers = { REF1: { movementRow: 9 } }
+    const duplicateError = { key: '0.carrier.organisationName', message: '"0.carrier.organisationName" is required' }
+
+    const result = transformBulkApiErrors(movementData, rowNumbers, [duplicateError, duplicateError])
+    const errors = result['7. Waste movement level']
+    expect(errors).toHaveLength(1)
   })
 })
 
