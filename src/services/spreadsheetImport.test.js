@@ -4,6 +4,8 @@ import {
   mergeDate,
   mergeTime,
   parseBoolean,
+  parseComponentCodes,
+  parseComponentNames,
   parseContainerType,
   parseDisposalCodes,
   parseEstimate,
@@ -45,7 +47,13 @@ describe('some unit tests', () => {
   test('parseRegStatements', () => {
     expect(parseRegStatements(null, '123;456')).toEqual([123, 456])
     expect(parseRegStatements([123], '456')).toEqual([123, 456])
-    expect(() => parseEstimate(null, null)).toThrowError()
+    expect(() =>
+      parseRegStatements(null, {
+        toString: () => {
+          throw new Error('error')
+        }
+      })
+    ).toThrowError()
   })
 
   test('parseEstimate', () => {
@@ -84,6 +92,20 @@ describe('some unit tests', () => {
     ])
   })
 
+  test('parseComponentCodes', () => {
+    expect(parseComponentCodes(null, 'Hydrochloric Acid = 37; Water = 9963')).toEqual([
+      {
+        code: 'Hydrochloric Acid',
+        concentration: 37
+      },
+      {
+        code: 'Water',
+        concentration: 9963
+      }
+    ])
+    expect(() => parseComponentCodes(null, 'ontehu')).toThrowError()
+  })
+
   test('parseHazCodes', () => {
     expect(parseHazCodes(null, 'HP0120')).toEqual(['HP_120'])
     expect(() => parseHazCodes(null, null)).toThrowError()
@@ -97,6 +119,16 @@ describe('some unit tests', () => {
   test('parseToString', () => {
     expect(parseToString(null, 123)).toEqual('123')
     expect(parseToString('ABC', null)).toEqual('ABC')
+  })
+
+  test('parseComponentNames', () => {
+    expect(parseComponentNames(null, 'abc=123')).toEqual([
+      {
+        concentration: 123,
+        name: 'abc'
+      }
+    ])
+    expect(() => parseComponentNames(null, 'abc')).toThrowError()
   })
 })
 

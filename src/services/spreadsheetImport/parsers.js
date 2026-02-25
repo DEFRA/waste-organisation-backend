@@ -1,7 +1,7 @@
 export const parseComponentCodes = (existing, data) => {
   const result = existing ?? []
   try {
-    result.concat(
+    return result.concat(
       data.split(/;/).map((y) => {
         const [_, code, c] = y
           .match(/([^=]*)=(.*)/) // nosonar
@@ -9,7 +9,6 @@ export const parseComponentCodes = (existing, data) => {
         return { code, concentration: c.match(/^([0-9.]+)$/) ? Number(c) : c }
       })
     )
-    return result
   } catch {
     throw new Error('Cannot parse component codes')
   }
