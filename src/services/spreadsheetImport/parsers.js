@@ -2,15 +2,18 @@ export const parseComponentCodes = (existing, data) => {
   const result = existing ?? []
   try {
     return result.concat(
-      data.split(/;/).map((y) => {
+      data.split(/;/).flatMap((y) => {
+        if (y.trim() === '') {
+          return []
+        }
         const [_, code, c] = y
           .match(/([^=]*)=(.*)/) // nosonar
           .map((x) => x.trim())
-        return { code, concentration: c.match(/^([0-9.]+)$/) ? Number(c) : c }
+        return [{ code, concentration: c.match(/^([0-9.]+)$/) ? Number(c) : c }]
       })
     )
   } catch {
-    throw new Error('Cannot parse component codes')
+    throw new Error(`Cannot parse component codes`)
   }
 }
 
@@ -18,14 +21,17 @@ export const parseComponentNames = (existing, data) => {
   const result = existing ?? []
   try {
     const parsed = data.split(/;/).flatMap((y) => {
+      if (y.trim() === '') {
+        return []
+      }
       const [_, name, c] = y
         .match(/([^=]*)=(.*)/) // nosonar
         .map((x) => x.trim())
-      return { name, concentration: c.match(/^([0-9.]+)$/) ? Number(c) : c }
+      return [{ name, concentration: c.match(/^([0-9.]+)$/) ? Number(c) : c }]
     })
     return result.concat(parsed)
   } catch {
-    throw new Error('Cannot parse component names')
+    throw new Error(`Cannot parse component names`)
   }
 }
 

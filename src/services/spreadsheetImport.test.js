@@ -91,6 +91,11 @@ describe('some unit tests', () => {
         concentration: 9963
       }
     ])
+    expect(parseComponentCodes(null, 'Mercury=0.35;Arsenic=300;Chromium=0.42;')).toEqual([
+      { code: 'Mercury', concentration: 0.35 },
+      { code: 'Arsenic', concentration: 300 },
+      { code: 'Chromium', concentration: 0.42 }
+    ])
     expect(() => parseComponentCodes(null, 'ontehu')).toThrowError()
   })
 
@@ -110,12 +115,11 @@ describe('some unit tests', () => {
   })
 
   test('parseComponentNames', () => {
-    expect(parseComponentNames(null, 'abc=123')).toEqual([
-      {
-        concentration: 123,
-        name: 'abc'
-      }
+    expect(parseComponentNames(null, 'abc=123;def=7.1;')).toEqual([
+      { concentration: 123, name: 'abc' },
+      { concentration: 7.1, name: 'def' }
     ])
+    expect(parseComponentNames(null, 'abc=123')).toEqual([{ concentration: 123, name: 'abc' }])
     expect(() => parseComponentNames(null, 'abc')).toThrowError()
   })
 })
