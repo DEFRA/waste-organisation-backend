@@ -39,16 +39,11 @@ const urlFor = (bulkUploadId, conf) => {
   }
 }
 
-export const bulkImport = async (bulkUploadId, movements, conf) => {
+const bulkRequest = async (method, bulkUploadId, movements, conf) => {
   const c = conf ?? config.get('bulkUpload')
   const url = urlFor(bulkUploadId, c)
-  const response = await apiCall((r) => wreck.post(url, r), c.basicAuth, movements, bulkUploadId)
-  return response
+  return await apiCall((r) => wreck[method](url, r), c.basicAuth, movements, bulkUploadId)
 }
 
-export const bulkUpdate = async (bulkUploadId, movements, conf) => {
-  const c = conf ?? config.get('bulkUpload')
-  const url = urlFor(bulkUploadId, c)
-  const response = await apiCall((r) => wreck.put(url, r), c.basicAuth, movements, bulkUploadId)
-  return response
-}
+export const bulkImport = (id, movements, conf) => bulkRequest('post', id, movements, conf)
+export const bulkUpdate = (id, movements, conf) => bulkRequest('put', id, movements, conf)
