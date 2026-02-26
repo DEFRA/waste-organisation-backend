@@ -4,6 +4,8 @@ Core delivery platform Node.js Backend Template.
 
 - [Requirements](#requirements)
   - [Node.js](#nodejs)
+- [Environment variables](#environment-variables)
+  - [GOV_NOTIFY_KEY](#gov_notify_key)
 - [Local development](#local-development)
   - [Setup](#setup)
   - [Development](#development)
