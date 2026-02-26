@@ -88,6 +88,7 @@ services:
       BULK_UPLOAD_PASSWORD: '92fa681e-44b4-4b9c-8f7a-59c117757452'
       WASTE_CLIENT_AUTH_TEST: test
       AWS_S3_CHECKSUM_MODE: DISABLED
+      GOV_NOTIFY_KEY: ${GOV_NOTIFY_KEY}
     networks:
       - cdp-tenant
     volumes:
