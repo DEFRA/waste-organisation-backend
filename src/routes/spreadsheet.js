@@ -53,7 +53,8 @@ const putHandler = async (request, h) => {
     const organisationId = request.params.organisationId
     const uploadId = request.params.uploadId
     const data = await updateWithOptimisticLock(request.db.collection(spreadsheetCollection), { uploadId, organisationId }, (dbSpreadsheet) => {
-      return mergeAndValidate(dbSpreadsheet, { organisationId, uploadId, ...request?.payload?.spreadsheet }, spreadsheetSchema)
+      const s = { organisationId, uploadId, ...request?.payload?.spreadsheet, updatedAtTimstamp: new Date() }
+      return mergeAndValidate(dbSpreadsheet, s, spreadsheetSchema)
     })
     // TODO check data for criteria to schedule processing
     await scheduleProcessor(request.sqsClient, request.backgroundProcessSqsQueueUrl, data)
