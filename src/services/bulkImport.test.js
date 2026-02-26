@@ -169,7 +169,7 @@ describe('Error transforms bulk import data', () => {
           errorType: 'UnexpectedError',
           message: '"[0].wasteItems[1].hazardous.sourceOfComponents" must be one of [PROVIDED_WITH_WASTE, GUIDANCE, OWN_TESTING, NOT_PROVIDED]'
         },
-        { key: '0.carrier.emailAddress', errorType: 'UnexpectedError', message: '"[0].carrier.emailAddress be in valid UK or Ireland format' },
+        { key: '0.carrier.emailAddress', errorType: 'UnexpectedError', message: '"[0].carrier.emailAddress" be in valid UK or Ireland format' },
         { key: '0.carrier.phoneNumber', errorType: 'UnexpectedError', message: '"[0].carrier.phoneNumber" must be a string' }
       ],
       {}
