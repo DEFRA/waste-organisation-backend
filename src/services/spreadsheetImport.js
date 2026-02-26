@@ -321,6 +321,9 @@ const errorToCoords = (() => {
     const ref = movementData[idx]?.yourUniqueReference
     const msg = cleanErrorMessage(error)
     const colNum = keyPathToColNum(errKeyPath.slice(1), movementMapping)
+    if (colNum < 0) {
+      return {}
+    }
     const errorValue = movementMapping[colNum][0].reduce((x, y) => x[y], movementData[idx])
     return cellError(rowNumbers[ref].movementRow, colNum, msg, movementWorksheetName, errorValue)
   }
@@ -330,6 +333,9 @@ const errorToCoords = (() => {
     const msg = cleanErrorMessage(error)
     // prettier-ignore
     const colNum = keyPathToColNum(errKeyPath.slice(3), itemMapping) // nosonar
+    if (colNum < 0) {
+      return {}
+    }
     const errorValue = itemMapping[colNum][0].reduce((x, y) => x[y], movementData[movementIdx].wasteItems[itemIdx])
     return cellError(rowNumbers[ref].itemRows[itemIdx], colNum, msg, itemWorksheetName, errorValue)
   }
