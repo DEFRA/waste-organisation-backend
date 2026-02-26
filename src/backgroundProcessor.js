@@ -65,7 +65,6 @@ export const deleteMessage = async (client, QueueUrl, receiptHandle) => {
   }
 }
 
-/* v8 ignore start */
 const sendInitalFailedEmail = async (workbook, decryptedEmail) => {
   if (workbook) {
     const file = await workbookToByteArray(workbook)
@@ -117,7 +116,6 @@ export const processJob = async (s3Client, message) => {
     logger.info(`Message missing s3 coords: ${JSON.stringify(message)}`)
   }
 }
-/* v8 ignore stop */
 
 export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {
   const params = {

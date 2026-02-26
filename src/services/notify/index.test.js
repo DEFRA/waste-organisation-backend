@@ -59,6 +59,6 @@ describe('Notify', () => {
 
     await sendEmail.sendSuccess({ email })
 
-    expect(loggerErrorMock).toBeCalled('Error sending emails: Mock Error')
+    expect(loggerErrorMock).toBeCalledWith('Error sending emails: Mock Error')
   })
 })

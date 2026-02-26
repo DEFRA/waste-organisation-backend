@@ -17,6 +17,7 @@ const apiCall = async (asyncFunc, { username, password }, payload, uploadId) => 
     logger.debug(`UploadId: ${uploadId} -- Result from Bulk API (status): ${JSON.stringify(response.payload)}`)
     return response.payload
   } catch (e) {
+    console.log('ERROR', e)
     logger.error(`UploadId: ${uploadId} -- ERROR calling bulk import api ${e}`)
     // prettier-ignore
     if (e.output.statusCode === 400) { // nosonar
