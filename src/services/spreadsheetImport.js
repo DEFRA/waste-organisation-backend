@@ -186,7 +186,7 @@ const distinct = (xs) => {
 const movementMapping = [
   [],
   [],
-  [],
+  [['wasteTrackingId']],
   [['yourUniqueReference']],
   [['receiver', 'siteName']],
   [['receipt', 'address', 'fullAddress']],
@@ -295,6 +295,17 @@ export const parseExcelFile = (() => {
     }
   }
 })()
+
+export const validateWasteTrackingIds = (movements, rowNumbers) => {
+  const errors = []
+  for (const movement of movements) {
+    if (!movement.wasteTrackingId) {
+      const ref = movement.yourUniqueReference
+      errors.push(cellError(2, rowNumbers[ref].movementRow, 'Waste Tracking ID is required', movementWorksheetName))
+    }
+  }
+  return errors
+}
 
 export const workbookToByteArray = async (workbook) => {
   return await workbook.xlsx.writeBuffer()

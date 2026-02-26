@@ -45,3 +45,10 @@ export const bulkImport = async (bulkUploadId, movements, conf) => {
   const response = await apiCall((r) => wreck.post(url, r), c.basicAuth, movements, bulkUploadId)
   return response
 }
+
+export const bulkUpdate = async (bulkUploadId, movements, conf) => {
+  const c = conf ?? config.get('bulkUpload')
+  const url = urlFor(bulkUploadId, c)
+  const response = await apiCall((r) => wreck.put(url, r), c.basicAuth, movements, bulkUploadId)
+  return response
+}

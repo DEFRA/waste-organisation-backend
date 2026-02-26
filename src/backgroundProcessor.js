@@ -11,12 +11,13 @@ import {
   workbookToByteArray,
   transformBulkApiErrors,
   updateErrors,
+  validateWasteTrackingIds,
   wasteTrackingIdsToCoords,
   updateCellContent
 } from './services/spreadsheetImport.js'
 import { decrypt } from './services/decrypt.js'
 import { sendEmail } from './services/notify/index.js'
-import { bulkImport } from './services/bulkImport.js'
+import { bulkImport, bulkUpdate } from './services/bulkImport.js'
 
 const logger = createLogger()
 
@@ -78,7 +79,7 @@ const sendInitalFailedEmail = async (workbook, decryptedEmail) => {
 
 export const processJob = async (s3Client, message) => {
   logger.info(`Message: ${JSON.stringify(message)}`)
-  const { s3Bucket, s3Key, encryptedEmail, organisationId, uploadId } = JSON.parse(message.Body)
+  const { s3Bucket, s3Key, encryptedEmail, organisationId, uploadId, uploadType } = JSON.parse(message.Body)
   const decryptedEmail = decrypt(encryptedEmail, config.get('encryptionKey'))
   if (s3Key && s3Bucket) {
     const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
@@ -90,8 +91,21 @@ export const processJob = async (s3Client, message) => {
       return
     }
 
-    // callapi()
-    const apiResponse = await bulkImport(uploadId, movements)
+    const isUpdate = uploadType === 'update'
+
+    if (isUpdate) {
+      const wtidErrors = validateWasteTrackingIds(movements, rowNumbers)
+      if (wtidErrors.length > 0) {
+        logger.warn(`UploadId: ${uploadId} -- Missing Waste Tracking IDs ${JSON.stringify(wtidErrors)}`)
+        updateErrors(workbook, { [wtidErrors[0].sheet]: wtidErrors })
+        const file = await workbookToByteArray(workbook)
+        await sendEmail.sendValidationFailed({ email: decryptedEmail, file })
+        return
+      }
+    }
+
+    const apiResponse = isUpdate ? await bulkUpdate(uploadId, movements) : await bulkImport(uploadId, movements)
+
     if (apiResponse.errors) {
       logger.warn(`UploadId: ${uploadId} -- Errors from import API ${JSON.stringify(apiResponse.errors)}`)
       const errs = transformBulkApiErrors(movements, rowNumbers, apiResponse.errors)
@@ -102,7 +116,6 @@ export const processJob = async (s3Client, message) => {
       return
     }
 
-    // create spreadsheet
     if (apiResponse.movements) {
       logger.debug(`UploadId: ${uploadId} -- Movements returned from Bulk API`)
       const coords = wasteTrackingIdsToCoords(movements, rowNumbers, apiResponse.movements)
