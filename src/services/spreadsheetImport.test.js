@@ -99,6 +99,16 @@ describe('some unit tests for parsers', () => {
         }
       }
     ])
+    expect(parseDisposalCodes(null, 'R01 = fish = Tonnes = Est')).toEqual([
+      {
+        code: 'R1',
+        weight: {
+          amount: 'fish',
+          isEstimate: true,
+          metric: 'Tonnes'
+        }
+      }
+    ])
   })
 
   test('parseComponentCodes', () => {
