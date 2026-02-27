@@ -79,6 +79,21 @@ describe('mock bulk import data', () => {
     const res = await bulkImport('abc1234', movements, conf)
     expect(res.errors).toBe(undefined)
   })
+
+  test('should expect some errors', { timeout: 100000 }, async () => {
+    wreckPostMock.mockImplementation(async () => {
+      // eslint-disable-next-line no-throw-literal
+      throw {
+        output: { statusCode: 400 },
+        data: { payload: [{}, { validation: { errors: [{ message: 1 }] } }, { validation: { errors: [{ message: 2 }, { message: 3 }] } }] }
+      }
+    })
+
+    const { bulkImport } = await import('./bulkImport.js')
+
+    const res = await bulkImport('abc1234', testMovements, conf)
+    expect(res.errors).toEqual([{ message: 1 }, { message: 2 }, { message: 3 }])
+  })
 })
 
 describe('Error transforms bulk import data', () => {
