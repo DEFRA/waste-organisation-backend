@@ -12,6 +12,7 @@ import {
   parseRegStatements,
   parseToString
 } from './spreadsheetImport/parsers.js'
+import { cellValueText } from './spreadsheetImport/excel.js'
 import { expect } from 'vitest'
 
 describe('some unit tests', () => {
@@ -121,6 +122,14 @@ describe('some unit tests', () => {
     ])
     expect(parseComponentNames(null, 'abc=123')).toEqual([{ concentration: 123, name: 'abc' }])
     expect(() => parseComponentNames(null, 'abc')).toThrowError()
+  })
+
+  test.each([
+    ['test', 'test'],
+    [{ richText: [{ text: 'test' }] }, 'test'],
+    [{ richText: [{ font: { name: 'Calibri' }, text: 'R1 = 0.75 = Tonnes = Estimate' }] }, 'R1 = 0.75 = Tonnes = Estimate']
+  ])('getting cell value text', (val, text) => {
+    expect(cellValueText(val)).toEqual(text)
   })
 })
 

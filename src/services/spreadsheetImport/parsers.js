@@ -85,6 +85,8 @@ export const parseDisposalCodes = (() => {
   }
   return (existing, data) => {
     const result = existing ?? []
+    console.log('parseDisposalCodes >> data: ', data)
+
     return result.concat(data.split(/;/).map(parseDC))
   }
 })()
@@ -121,6 +123,10 @@ export const parseContainerType = (existing, data) => {
 
 export const parseToString = (existing, data) => {
   return data ? data.toString() : existing
+}
+
+export const parseToNumber = (existing, data) => {
+  return data ? Number(data) : existing
 }
 
 export const parseRegStatements = (existing, data) => {
