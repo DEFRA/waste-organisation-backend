@@ -4,6 +4,8 @@ Core delivery platform Node.js Backend Template.
 
 - [Requirements](#requirements)
   - [Node.js](#nodejs)
+- [Environment variables](#environment-variables)
+  - [GOV_NOTIFY_KEY](#gov_notify_key)
 - [Local development](#local-development)
   - [Setup](#setup)
   - [Development](#development)
@@ -39,6 +41,18 @@ To use the correct version of Node.js for this application, via nvm:
 cd waste-organisation-backend
 nvm use
 ```
+
+## Environment variables
+
+### `GOV_NOTIFY_KEY`
+
+This service uses [GOV.UK Notify](https://www.notifications.service.gov.uk/) to send email notifications to users after spreadsheet processing (success, failure, and validation failure). The `GOV_NOTIFY_KEY` environment variable holds the API key used to authenticate with the Notify service.
+
+You can obtain a key from the [GOV.UK Notify dashboard](https://www.notifications.service.gov.uk/sign-in) under **API integration** > **API keys**.
+
+The key is passed into the Docker container via `compose.yml` as `${GOV_NOTIFY_KEY}`, so it must be available in your host environment before running `docker compose up`. Options for managing this include a `.env` file, your shell profile, or tools like `direnv`.
+
+Without this key, email notifications after spreadsheet processing will fail.
 
 ## Local development
 
