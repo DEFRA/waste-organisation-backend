@@ -17,7 +17,8 @@ describe('background processor', () => {
         s3Key: 'randomString',
         encryptedEmail: 'randomString',
         organisationId: 'randomString',
-        uploadId: 'randomString'
+        uploadId: 'randomString',
+        hasError: false
       })
     }
 
@@ -304,7 +305,8 @@ describe('background processor', () => {
       Body: JSON.stringify({
         encryptedEmail: 'randomString',
         organisationId: 'randomString',
-        uploadId: 'randomString'
+        uploadId: 'randomString',
+        hasError: false
       })
     }
 
@@ -323,5 +325,35 @@ describe('background processor', () => {
 
     expect(response).toBe(undefined)
     expect(mockSendSuccess).not.toBeCalled()
+  })
+
+  it('should send failed email if file has errors', { timeout: 50000 }, async () => {
+    vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
+    const mockSendFailed = vi.spyOn(sendEmail, 'sendFailed').mockImplementation(vi.fn())
+
+    message = {
+      Body: JSON.stringify({
+        encryptedEmail: 'randomString',
+        organisationId: 'randomString',
+        uploadId: 'randomString',
+        hasError: true
+      })
+    }
+
+    const s3Client = {
+      send: async (_) => {
+        const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
+        return {
+          Body: [buffer]
+        }
+      }
+    }
+
+    const { processJob } = await import('./backgroundProcessor.js')
+
+    const response = await processJob(s3Client, message)
+
+    expect(response).toBe(undefined)
+    expect(mockSendFailed).toBeCalled()
   })
 })
