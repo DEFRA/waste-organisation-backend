@@ -13,7 +13,7 @@ import {
   parseToNumber,
   parseToString
 } from './spreadsheetImport/parsers.js'
-import { cellError, emptyCell, worksheetToArray } from './spreadsheetImport/excel.js'
+import { appendMessageToCell, cellError, emptyCell, worksheetToArray } from './spreadsheetImport/excel.js'
 
 const logger = createLogger()
 
@@ -31,12 +31,7 @@ export const updateErrors = (() => {
     const cell = row.getCell(colNumber)
     const errorCell = row.getCell(1)
     if (errorCell) {
-      const v = errorCell?.value?.richText ? errorCell?.value : emptyCell()
-      v.richText.push({
-        font,
-        text: v.richText.length > 0 ? '\n' : '' + message + coordsToCellName(coords)
-      })
-      errorCell.value = v
+      errorCell.value = appendMessageToCell(errorCell, message + coordsToCellName(coords), font)
     }
     if (cell?.value) {
       cell.value = { richText: [{ font, text: cell.value }] }

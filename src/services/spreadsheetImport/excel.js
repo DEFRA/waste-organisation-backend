@@ -35,6 +35,16 @@ export const stripFormatting = (cell) => {
 
 export const emptyCell = () => ({ richText: [] })
 
+export const appendMessageToCell = (cell, message, font) => {
+  const v = cell?.value?.richText ? cell?.value : emptyCell()
+  const m = { text: (v.richText.length > 0 ? '\n' : '') + message }
+  if (font) {
+    m.font = font
+  }
+  v.richText.push(m)
+  return v
+}
+
 export const collectCellErrors = (errors, updateFn, r, [colNumber, rowNumber], cell) => {
   try {
     updateFn(r, [colNumber, rowNumber], cellValueText(cell.value))
