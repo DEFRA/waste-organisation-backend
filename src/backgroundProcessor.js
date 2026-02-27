@@ -11,12 +11,14 @@ import {
   workbookToByteArray,
   transformBulkApiErrors,
   updateErrors,
+  validateWasteTrackingIds,
+  validateNoWasteTrackingIds,
   wasteTrackingIdsToCoords,
   updateCellContent
 } from './services/spreadsheetImport.js'
 import { decrypt } from './services/decrypt.js'
 import { sendEmail } from './services/notify/index.js'
-import { bulkImport } from './services/bulkImport.js'
+import { bulkImport, bulkUpdate } from './services/bulkImport.js'
 
 const logger = createLogger()
 
@@ -75,9 +77,54 @@ const sendInitalFailedEmail = async (workbook, decryptedEmail) => {
   }
 }
 
+const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, uploadId, uploadType }, decryptedEmail) => {
+  const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
+  logger.info(`UploadId: ${uploadId} -- Fetching bytes: ${buffer.length}`)
+  const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, organisationId)
+  if (hasErrors) {
+    logger.warn(`UploadId: ${uploadId} -- Errors before sending to import API ${JSON.stringify(errors)}`)
+    await sendInitalFailedEmail(workbook, decryptedEmail)
+    return
+  }
+
+  const isUpdate = uploadType === 'update'
+  const wtidErrors = isUpdate ? validateWasteTrackingIds(movements, rowNumbers) : validateNoWasteTrackingIds(movements, rowNumbers)
+
+  if (wtidErrors.length > 0) {
+    logger.warn(`UploadId: ${uploadId} -- Waste Tracking ID validation errors ${JSON.stringify(wtidErrors)}`)
+    updateErrors(workbook, { [wtidErrors[0].sheet]: wtidErrors })
+    const file = await workbookToByteArray(workbook)
+    await sendEmail.sendValidationFailed({ email: decryptedEmail, file })
+    return
+  }
+
+  const apiResponse = isUpdate ? await bulkUpdate(uploadId, movements) : await bulkImport(uploadId, movements)
+
+  if (apiResponse.errors) {
+    logger.warn(`UploadId: ${uploadId} -- Errors from import API ${JSON.stringify(apiResponse.errors)}`)
+    const errs = transformBulkApiErrors(movements, rowNumbers, apiResponse.errors)
+    logger.debug(`UploadId: ${uploadId} -- Cells to update with errors: ${JSON.stringify(errs)}`)
+    updateErrors(workbook, errs)
+    const file = await workbookToByteArray(workbook)
+    await sendEmail.sendValidationFailed({ email: decryptedEmail, file })
+    return
+  }
+
+  if (apiResponse.movements) {
+    logger.debug(`UploadId: ${uploadId} -- Movements returned from Bulk API`)
+    const coords = wasteTrackingIdsToCoords(movements, rowNumbers, apiResponse.movements)
+    logger.debug(`UploadId: ${uploadId} -- Cells to update with waste tracking ids: ${JSON.stringify(coords)}`)
+    updateCellContent(workbook, coords)
+    const file = await workbookToByteArray(workbook)
+    await sendEmail.sendSuccess({ email: decryptedEmail, file })
+    return
+  }
+  logger.error(`UploadId: ${uploadId} -- Unhandled case. No errors or waste tracking ids generated for ${uploadId}`)
+}
+
 export const processJob = async (s3Client, message) => {
   logger.info(`Message: ${JSON.stringify(message)}`)
-  const { s3Bucket, s3Key, encryptedEmail, organisationId, uploadId, hasError } = JSON.parse(message.Body)
+  const { s3Bucket, s3Key, encryptedEmail, organisationId, uploadId, uploadType, hasError } = JSON.parse(message.Body)
   const decryptedEmail = decrypt(encryptedEmail, config.get('encryptionKey'))
 
   if (hasError) {
@@ -85,42 +132,11 @@ export const processJob = async (s3Client, message) => {
     return
   }
 
-  if (s3Key && s3Bucket) {
-    const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
-    logger.info(`UploadId: ${uploadId} -- Fetching bytes: ${buffer.length}`)
-    const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, organisationId)
-    if (hasErrors) {
-      logger.warn(`UploadId: ${uploadId} -- Errors before sending to import API ${JSON.stringify(errors)}`)
-      await sendInitalFailedEmail(workbook, decryptedEmail)
-      return
-    }
-
-    // callapi()
-    const apiResponse = await bulkImport(uploadId, movements)
-    if (apiResponse.errors) {
-      logger.warn(`UploadId: ${uploadId} -- Errors from import API ${JSON.stringify(apiResponse.errors)}`)
-      const errs = transformBulkApiErrors(movements, rowNumbers, apiResponse.errors)
-      logger.debug(`UploadId: ${uploadId} -- Cells to update with errors: ${JSON.stringify(errs)}`)
-      updateErrors(workbook, errs)
-      const file = await workbookToByteArray(workbook)
-      await sendEmail.sendValidationFailed({ email: decryptedEmail, file })
-      return
-    }
-
-    // create spreadsheet
-    if (apiResponse.movements) {
-      logger.debug(`UploadId: ${uploadId} -- Movements returned from Bulk API`)
-      const coords = wasteTrackingIdsToCoords(movements, rowNumbers, apiResponse.movements)
-      logger.debug(`UploadId: ${uploadId} -- Cells to update with waste tracking ids: ${JSON.stringify(coords)}`)
-      updateCellContent(workbook, coords)
-      const file = await workbookToByteArray(workbook)
-      await sendEmail.sendSuccess({ email: decryptedEmail, file })
-      return
-    }
-    logger.error(`UploadId: ${uploadId} -- Unhandled case. No errors or waste tracking ids generated for ${uploadId}`)
-  } else {
+  if (!s3Key || !s3Bucket) {
     logger.info(`Message missing s3 coords: ${JSON.stringify(message)}`)
+    return
   }
+  await processSpreadsheet(s3Client, { s3Bucket, s3Key, organisationId, uploadId, uploadType }, decryptedEmail)
 }
 
 export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {

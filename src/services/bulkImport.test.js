@@ -80,6 +80,22 @@ describe('mock bulk import data', () => {
     expect(res.errors).toBe(undefined)
   })
 
+  test('bulkUpdate should use PUT method', { timeout: 100000 }, async () => {
+    wreckPutMock.mockReturnValue({
+      payload: { movements: [{ wasteTrackingId: 'ABC123' }] }
+    })
+
+    const { bulkUpdate } = await import('./bulkImport.js')
+
+    const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
+    const { movements } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44')
+    movements[0].wasteTrackingId = 'ABC123'
+
+    const res = await bulkUpdate('abc1234', movements, conf)
+    expect(res.movements).toEqual([{ wasteTrackingId: 'ABC123' }])
+    expect(wreckPutMock).toHaveBeenCalled()
+  })
+
   test('should expect some errors', { timeout: 100000 }, async () => {
     wreckPostMock.mockImplementation(async () => {
       // eslint-disable-next-line no-throw-literal

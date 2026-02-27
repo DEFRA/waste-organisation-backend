@@ -12,13 +12,21 @@ services:
 
   mongodb:
     image: mongo:6.0.13
+    entrypoint: ['bash', '/compose/mongo_setup.sh']
     networks:
       - cdp-tenant
     ports:
       - '27017:27017'
     volumes:
-      - mongodb-data:/data:z
+      - mongodb-data:/data/db:z
+      - ./compose/mongo_setup.sh:/compose/mongo_setup.sh:z
     restart: always
+    healthcheck:
+      test: mongosh --quiet --eval "try { var status = rs.status(); if (status.members[0].stateStr === 'PRIMARY') { quit(0); } else { quit(1); } } catch(e) { quit(1); }"
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   waste-movement-backend:
     image: defradigital/waste-movement-backend:latest
@@ -26,14 +34,14 @@ services:
       - '3002:3002'
     depends_on:
       mongodb:
-        condition: service_started
+        condition: service_healthy
       waste-tracking-id-backend:
         condition: service_started
     environment:
       PORT: 3002
       NODE_ENV: development
       ENVIRONMENT: local
-      MONGO_URI: mongodb://mongodb:27017/
+      MONGO_URI: mongodb://mongodb:27017/?replicaSet=rs0&directConnection=true
       ORG_API_CODES: 'MGUyMWM0NzctODg1My00NTg5LTk5MGMtYWE3ODJiNzQzMWVlPTBlMjFjNDc3LTg4NTMtNDU4OS05OTBjLWFhNzgyYjc0MzFlZQ=='
       MONGO_READ_PREFERENCE: primary
       ACCESS_CRED_WASTE_MOVEMENT_BACKEND: d2FzdGUtbW92ZW1lbnQtYmFja2VuZD05MmZhNjgxZS00NGI0LTRiOWMtOGY3YS01OWMxMTc3NTc0NTI=
@@ -51,7 +59,7 @@ services:
       - '3003:3001'
     depends_on:
       mongodb:
-        condition: service_started
+        condition: service_healthy
     environment:
       PORT: 3001
       NODE_ENV: development
@@ -72,7 +80,7 @@ services:
       localstack:
         condition: service_healthy
       mongodb:
-        condition: service_started
+        condition: service_healthy
     env_file:
       - 'compose/aws.env'
     environment:
@@ -80,7 +88,7 @@ services:
       NODE_ENV: development
       S3_ENDPOINT: http://localstack:4566
       SQS_ENDPOINT: http://localstack:4566
-      MONGO_URI: mongodb://mongodb:27017/
+      MONGO_URI: mongodb://mongodb:27017/?replicaSet=rs0&directConnection=true
       AWS_S3_FORCE_PATH_STYLE: true
       SPREADSHEET_SQS_QUEUE: waste-receiver-background-process
       BULK_UPLOAD_ENDPOINT: 'http://waste-movement-backend:3002'
