@@ -75,7 +75,7 @@ export const parseDisposalCodes = (() => {
     const [codeStr, amountStr, metricStr, est] = el.split(/=/).map((x) => x.trim())
     if (est) {
       const isEstimate = parseEstimate(null, est)
-      const amount = amountStr?.match(/^[0-9,]+$/) ? Number(amountStr.replaceAll(/,/g, '')) : amountStr
+      const amount = amountStr?.match(/^[0-9,.]+$/) ? Number(amountStr.replaceAll(/,/g, '')) : amountStr
       const code = codeStr.replace(/^([A-Z])([0_ ]*)([1-9][0-9]*)$/, '$1$3')
       const metric = metricConversions[metricStr?.toLowerCase()] ?? metricStr
       return { code, weight: { metric, amount, isEstimate } }
