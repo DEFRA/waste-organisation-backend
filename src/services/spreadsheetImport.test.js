@@ -69,13 +69,43 @@ describe('some unit tests for parsers', () => {
         }
       }
     ])
-    expect(parseDisposalCodes(null, 'D90 = 10,000 = fish = Estimate')).toEqual([
+    expect(parseDisposalCodes(null, 'D90 = 10,000 = fish = Actual')).toEqual([
       {
         code: 'D90',
         weight: {
           amount: 10000,
-          isEstimate: true,
+          isEstimate: false,
           metric: 'fish'
+        }
+      }
+    ])
+    expect(parseDisposalCodes(null, 'R01 = 0.95 = Tonnes = Est')).toEqual([
+      {
+        code: 'R1',
+        weight: {
+          amount: 0.95,
+          isEstimate: true,
+          metric: 'Tonnes'
+        }
+      }
+    ])
+    expect(parseDisposalCodes(null, 'R01 = 10,000.95 = Tonnes = Est')).toEqual([
+      {
+        code: 'R1',
+        weight: {
+          amount: 10000.95,
+          isEstimate: true,
+          metric: 'Tonnes'
+        }
+      }
+    ])
+    expect(parseDisposalCodes(null, 'R01 = fish = Tonnes = Est')).toEqual([
+      {
+        code: 'R1',
+        weight: {
+          amount: 'fish',
+          isEstimate: true,
+          metric: 'Tonnes'
         }
       }
     ])
