@@ -123,6 +123,10 @@ export const parseToString = (existing, data) => {
   return data ? data.toString() : existing
 }
 
+export const parseToNumber = (existing, data) => {
+  return data ? Number(data) : existing
+}
+
 export const parseRegStatements = (existing, data) => {
   const result = existing ?? []
   try {

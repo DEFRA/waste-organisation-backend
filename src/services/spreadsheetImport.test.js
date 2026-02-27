@@ -19,9 +19,10 @@ import {
   parseRegStatements,
   parseToString
 } from './spreadsheetImport/parsers.js'
+import { appendMessageToCell, cellValueText } from './spreadsheetImport/excel.js'
 import { expect } from 'vitest'
 
-describe('some unit tests', () => {
+describe('some unit tests for parsers', () => {
   test('ewc codes can be numbers', () => {
     expect(parseEWCCodes(null, '01 01 01')).toEqual(['010101'])
     expect(parseEWCCodes(null, '01 01 01;010101')).toEqual(['010101', '010101'])
@@ -191,6 +192,24 @@ describe('validateNoWasteTrackingIds', () => {
 
     const errors = validateNoWasteTrackingIds(movements, rowNumbers)
     expect(errors).toEqual([])
+  })
+})
+
+describe('some excel unit tests', () => {
+  test.each([
+    ['test', 'test'],
+    [{ richText: [{ text: 'test' }] }, 'test'],
+    [{ richText: [{ font: { name: 'Calibri' }, text: 'R1 = 0.75 = Tonnes = Estimate' }] }, 'R1 = 0.75 = Tonnes = Estimate']
+  ])('getting cell value text', (val, text) => {
+    expect(cellValueText(val)).toEqual(text)
+  })
+
+  test.each([
+    [{}, 'test', { richText: [{ text: 'test' }] }],
+    [{ value: { richText: [{ text: 'test' }] } }, 'test', { richText: [{ text: 'test' }, { text: '\ntest' }] }],
+    [{}, 'test', { richText: [{ text: 'test', font: { name: 'Comic Sans' } }] }, { name: 'Comic Sans' }]
+  ])('should update cell text', (cell, message, result, font) => {
+    expect(appendMessageToCell(cell, message, font)).toEqual(result)
   })
 })
 

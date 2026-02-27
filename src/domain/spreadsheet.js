@@ -15,5 +15,7 @@ export const spreadsheetSchema = joi.object({
   uploadStatus: joi.string(),
   encryptedEmail: joi.array().items(joi.string()),
   updatedAtTimstamp: joi.date(),
+  hasError: joi.boolean(),
+  errorMessage: joi.string(),
   uploadType: joi.string().valid('create', 'update')
 })

@@ -124,8 +124,14 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
 
 export const processJob = async (s3Client, message) => {
   logger.info(`Message: ${JSON.stringify(message)}`)
-  const { s3Bucket, s3Key, encryptedEmail, organisationId, uploadId, uploadType } = JSON.parse(message.Body)
+  const { s3Bucket, s3Key, encryptedEmail, organisationId, uploadId, uploadType, hasError } = JSON.parse(message.Body)
   const decryptedEmail = decrypt(encryptedEmail, config.get('encryptionKey'))
+
+  if (hasError) {
+    await sendEmail.sendFailed({ email: decryptedEmail })
+    return
+  }
+
   if (!s3Key || !s3Bucket) {
     logger.info(`Message missing s3 coords: ${JSON.stringify(message)}`)
     return

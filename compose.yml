@@ -89,10 +89,10 @@ services:
       WASTE_CLIENT_AUTH_TEST: test
       AWS_S3_CHECKSUM_MODE: DISABLED
       GOV_NOTIFY_KEY: ${GOV_NOTIFY_KEY}
+      LOG_LEVEL: trace
     networks:
       - cdp-tenant
     volumes:
       - ./src:/home/node/src:z
       - ./package.json:/home/node/package.json:z
       - ./package-lock.json:/home/node/package-lock.json:z
-
