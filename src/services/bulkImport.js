@@ -42,7 +42,7 @@ const urlFor = (bulkUploadId, conf) => {
 const bulkRequest = async (method, bulkUploadId, movements, conf) => {
   const c = conf ?? config.get('bulkUpload')
   const url = urlFor(bulkUploadId, c)
-  return await apiCall((r) => wreck[method](url, r), c.basicAuth, movements, bulkUploadId)
+  return apiCall((r) => wreck[method](url, r), c.basicAuth, movements, bulkUploadId)
 }
 
 export const bulkImport = (id, movements, conf) => bulkRequest('post', id, movements, conf)
