@@ -1,5 +1,12 @@
 import fs from 'node:fs/promises'
-import { parseExcelFile, transformBulkApiErrors, updateCellContent, validateWasteTrackingIds, wasteTrackingIdsToCoords } from './spreadsheetImport.js'
+import {
+  parseExcelFile,
+  transformBulkApiErrors,
+  updateCellContent,
+  validateNoWasteTrackingIds,
+  validateWasteTrackingIds,
+  wasteTrackingIdsToCoords
+} from './spreadsheetImport.js'
 import {
   parseBoolean,
   parseComponentCodes,
@@ -135,7 +142,7 @@ describe('validateWasteTrackingIds', () => {
     const errors = validateWasteTrackingIds(movements, rowNumbers)
     expect(errors).toEqual([
       {
-        coords: [2, 9],
+        coords: [9, 2],
         message: 'Waste Tracking ID is required',
         sheet: '7. Waste movement level'
       }
@@ -153,6 +160,36 @@ describe('validateWasteTrackingIds', () => {
     }
 
     const errors = validateWasteTrackingIds(movements, rowNumbers)
+    expect(errors).toEqual([])
+  })
+})
+
+describe('validateNoWasteTrackingIds', () => {
+  test('returns errors when wasteTrackingId is present', () => {
+    const movements = [{ yourUniqueReference: 'REF1', wasteTrackingId: 'WTID1' }, { yourUniqueReference: 'REF2' }]
+    const rowNumbers = {
+      REF1: { movementRow: 9 },
+      REF2: { movementRow: 10 }
+    }
+
+    const errors = validateNoWasteTrackingIds(movements, rowNumbers)
+    expect(errors).toEqual([
+      {
+        coords: [9, 2],
+        message: 'Waste Tracking ID must not be present on a create upload',
+        sheet: '7. Waste movement level'
+      }
+    ])
+  })
+
+  test('returns empty array when no wasteTrackingIds are present', () => {
+    const movements = [{ yourUniqueReference: 'REF1' }, { yourUniqueReference: 'REF2' }]
+    const rowNumbers = {
+      REF1: { movementRow: 9 },
+      REF2: { movementRow: 10 }
+    }
+
+    const errors = validateNoWasteTrackingIds(movements, rowNumbers)
     expect(errors).toEqual([])
   })
 })

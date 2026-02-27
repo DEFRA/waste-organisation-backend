@@ -353,6 +353,55 @@ describe('background processor', () => {
     expect(mockSendSuccess).toHaveBeenCalled()
   })
 
+  it('should send validation failed when create upload has wasteTrackingIds', { timeout: 50000 }, async () => {
+    vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
+    const mockWorkbook = {
+      xlsx: { writeBuffer: async () => Buffer.from('test') },
+      getWorksheet: () => ({ getRow: () => ({ getCell: () => ({ value: null }) }) })
+    }
+    vi.spyOn(spreadsheetImportModule, 'parseExcelFile').mockResolvedValue({
+      hasErrors: false,
+      workbook: mockWorkbook,
+      movements: [
+        {
+          wasteTrackingId: 'UNEXPECTED1',
+          yourUniqueReference: 'REF1',
+          submittingOrganisation: { defraCustomerOrganisationId: 'org-id' },
+          wasteItems: []
+        }
+      ],
+      rowNumbers: { REF1: { movementRow: 9, itemRows: [] } },
+      errors: { movements: [], items: [] }
+    })
+    vi.spyOn(spreadsheetImportModule, 'updateErrors').mockReturnValue(mockWorkbook)
+    const mockSendFailed = vi.spyOn(sendEmail, 'sendValidationFailed').mockImplementation(vi.fn())
+    const mockBulkImport = vi.spyOn(bulkImportModule, 'bulkImport')
+
+    const createMessage = {
+      Body: JSON.stringify({
+        s3Bucket: 'bucket',
+        s3Key: 'key',
+        encryptedEmail: 'enc',
+        organisationId: 'org-id',
+        uploadId: 'upload-create-wtid',
+        uploadType: 'create'
+      })
+    }
+
+    const s3Client = {
+      send: async (_) => {
+        const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
+        return { Body: [buffer] }
+      }
+    }
+
+    const { processJob } = await import('./backgroundProcessor.js')
+    await processJob(s3Client, createMessage)
+
+    expect(mockBulkImport).not.toHaveBeenCalled()
+    expect(mockSendFailed).toHaveBeenCalled()
+  })
+
   it('should call bulkUpdate for update uploads with valid WTIDs', { timeout: 50000 }, async () => {
     vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
     const mockWorkbook = { xlsx: { writeBuffer: async () => Buffer.from('test') } }

@@ -301,7 +301,18 @@ export const validateWasteTrackingIds = (movements, rowNumbers) => {
   for (const movement of movements) {
     if (!movement.wasteTrackingId) {
       const ref = movement.yourUniqueReference
-      errors.push(cellError(2, rowNumbers[ref].movementRow, 'Waste Tracking ID is required', movementWorksheetName))
+      errors.push(cellError(rowNumbers[ref].movementRow, 2, 'Waste Tracking ID is required', movementWorksheetName))
+    }
+  }
+  return errors
+}
+
+export const validateNoWasteTrackingIds = (movements, rowNumbers) => {
+  const errors = []
+  for (const movement of movements) {
+    if (movement.wasteTrackingId) {
+      const ref = movement.yourUniqueReference
+      errors.push(cellError(rowNumbers[ref].movementRow, 2, 'Waste Tracking ID must not be present on a create upload', movementWorksheetName))
     }
   }
   return errors

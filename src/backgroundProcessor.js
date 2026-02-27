@@ -12,6 +12,7 @@ import {
   transformBulkApiErrors,
   updateErrors,
   validateWasteTrackingIds,
+  validateNoWasteTrackingIds,
   wasteTrackingIdsToCoords,
   updateCellContent
 } from './services/spreadsheetImport.js'
@@ -87,16 +88,14 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
   }
 
   const isUpdate = uploadType === 'update'
+  const wtidErrors = isUpdate ? validateWasteTrackingIds(movements, rowNumbers) : validateNoWasteTrackingIds(movements, rowNumbers)
 
-  if (isUpdate) {
-    const wtidErrors = validateWasteTrackingIds(movements, rowNumbers)
-    if (wtidErrors.length > 0) {
-      logger.warn(`UploadId: ${uploadId} -- Missing Waste Tracking IDs ${JSON.stringify(wtidErrors)}`)
-      updateErrors(workbook, { [wtidErrors[0].sheet]: wtidErrors })
-      const file = await workbookToByteArray(workbook)
-      await sendEmail.sendValidationFailed({ email: decryptedEmail, file })
-      return
-    }
+  if (wtidErrors.length > 0) {
+    logger.warn(`UploadId: ${uploadId} -- Waste Tracking ID validation errors ${JSON.stringify(wtidErrors)}`)
+    updateErrors(workbook, { [wtidErrors[0].sheet]: wtidErrors })
+    const file = await workbookToByteArray(workbook)
+    await sendEmail.sendValidationFailed({ email: decryptedEmail, file })
+    return
   }
 
   const apiResponse = isUpdate ? await bulkUpdate(uploadId, movements) : await bulkImport(uploadId, movements)
