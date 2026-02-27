@@ -10,6 +10,7 @@ import {
   parseEWCCodes,
   parseHazCodes,
   parseRegStatements,
+  parseTitleCase,
   parseToNumber,
   parseToString
 } from './spreadsheetImport/parsers.js'
@@ -139,7 +140,7 @@ const movementMapping = [
   [['carrier', 'address', 'postcode'], parseToString],
   [['carrier', 'emailAddress'], parseToString],
   [['carrier', 'phoneNumber'], parseToString],
-  [['carrier', 'meansOfTransport'], parseToString],
+  [['carrier', 'meansOfTransport'], parseTitleCase],
   [['carrier', 'vehicleRegistration'], parseToString],
   [['brokerOrDealer', 'organisationName'], parseToString],
   [['brokerOrDealer', 'address', 'fullAddress'], parseToString],
