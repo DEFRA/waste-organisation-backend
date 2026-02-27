@@ -79,6 +79,21 @@ describe('mock bulk import data', () => {
     const res = await bulkImport('abc1234', movements, conf)
     expect(res.errors).toBe(undefined)
   })
+
+  test('should expect some errors', { timeout: 100000 }, async () => {
+    wreckPostMock.mockImplementation(async () => {
+      // eslint-disable-next-line no-throw-literal
+      throw {
+        output: { statusCode: 400 },
+        data: { payload: [{}, { validation: { errors: [{ message: 1 }] } }, { validation: { errors: [{ message: 2 }, { message: 3 }] } }] }
+      }
+    })
+
+    const { bulkImport } = await import('./bulkImport.js')
+
+    const res = await bulkImport('abc1234', testMovements, conf)
+    expect(res.errors).toEqual([{ message: 1 }, { message: 2 }, { message: 3 }])
+  })
 })
 
 describe('Error transforms bulk import data', () => {
@@ -163,3 +178,149 @@ describe('Error transforms bulk import data', () => {
     await workbook.xlsx.writeFile(fileName.replace(/xlsx/, 'with-api-errors.xlsx'))
   })
 })
+
+const testMovements = [
+  {
+    carrier: {
+      meansOfTransport: 'Inland Waterway',
+      organisationName: 'Qualitech Environmental Services Ltd',
+      registrationNumber: 'CBDU171976'
+    },
+    dateTimeReceived: new Date('2026-01-14T11:05:00.000Z'),
+    hazardousWasteConsignmentCode: 'KAWASA/19963',
+    receipt: {
+      address: {
+        fullAddress: 'Ernesettle Lane, Plumouth',
+        postcode: 'PL5 2SA'
+      }
+    },
+    receiver: {
+      authorisationNumber: 'XX9999XX',
+      siteName: 'Kawasaki Precision Machinery UK Ltd'
+    },
+    submittingOrganisation: {
+      defraCustomerOrganisationId: '8194cecf-da10-4698-aaaf-f06d2e54ac44'
+    },
+    wasteItems: [
+      {
+        containsHazardous: true,
+        containsPops: false,
+        disposalOrRecoveryCodes: [
+          {
+            code: 'D9',
+            weight: {
+              amount: 10000,
+              isEstimate: true,
+              metric: 'Kilograms'
+            }
+          }
+        ],
+        ewcCodes: ['060101'],
+        hazardous: {
+          components: [
+            {
+              concentration: 37,
+              name: 'Hydrochloric Acid'
+            },
+            {
+              concentration: 9963,
+              name: 'Water'
+            }
+          ],
+          hazCodes: ['HP_5', 'HP_8'],
+          sourceOfComponents: 'PROVIDED_WITH_WASTE'
+        },
+        numberOfContainers: 1,
+        physicalForm: 'Liquid',
+        typeOfContainers: 'TAN',
+        wasteDescription: 'Hydrochloric Pickling Acid',
+        weight: {
+          amount: 10000,
+          isEstimate: true,
+          metric: 'Kilograms'
+        }
+      },
+      {
+        containsHazardous: true,
+        containsPops: false,
+        disposalOrRecoveryCodes: [
+          {
+            code: 'R13',
+            weight: {
+              amount: 2850,
+              isEstimate: true,
+              metric: 'Kilograms'
+            }
+          }
+        ],
+        ewcCodes: ['150110'],
+        hazardous: {
+          components: [
+            {
+              concentration: '<1%',
+              name: '2-dibutylaminoethanol (5-<7%)'
+            },
+            {
+              concentration: '<1%',
+              name: 'Talc (3-<5%)'
+            },
+            {
+              concentration: '<1%',
+              name: 'Non-hazardous ink components (Balance)'
+            },
+            {
+              concentration: 'Balance',
+              name: 'Metal tins and rags'
+            }
+          ],
+          hazCodes: ['HP_8'],
+          sourceOfComponents: 'PROVIDED_WITH_WASTE'
+        },
+        numberOfContainers: 19,
+        physicalForm: 'Solid',
+        typeOfContainers: 'WBI',
+        wasteDescription: 'Empty tins and rags c/w ink',
+        weight: {
+          amount: 2850,
+          isEstimate: true,
+          metric: 'Kilograms'
+        }
+      },
+      {
+        containsHazardous: true,
+        containsPops: false,
+        disposalOrRecoveryCodes: [
+          {
+            code: 'R13',
+            weight: {
+              amount: 75,
+              isEstimate: true,
+              metric: 'Kilograms'
+            }
+          }
+        ],
+        ewcCodes: ['140603'],
+        hazardous: {
+          components: [
+            {
+              concentration: '100%',
+              name: 'Acetone'
+            }
+          ],
+          hazCodes: ['HP_3', 'HP_4'],
+          sourceOfComponents: 'PROVIDED_WITH_WASTE'
+        },
+        numberOfContainers: 3,
+        physicalForm: 'Liquid',
+        typeOfContainers: 'DRU',
+        wasteDescription: 'Acetone',
+        weight: {
+          amount: 75,
+          isEstimate: true,
+          metric: 'Kilograms'
+        }
+      }
+    ],
+    yourUniqueReference: 'KAWASA/19963'
+  }
+]

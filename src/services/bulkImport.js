@@ -21,7 +21,7 @@ const apiCall = async (asyncFunc, { username, password }, payload, uploadId) => 
     // prettier-ignore
     if (e.output.statusCode === 400) { // nosonar
       logger.debug(`UploadId: ${uploadId} -- Validation errors processing spreadsheet ${e.data}`)
-      const errors = e.data.payload.flatMap((v) => v.validation.errors)
+      const errors = e.data.payload.flatMap((v) => v?.validation?.errors || [])
       return { errors }
     } else {
       throw e
