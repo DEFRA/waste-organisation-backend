@@ -127,7 +127,7 @@ export const parseTitleCase = (existing, data) => {
     .toString()
     .trim()
     .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replaceAll(/\b\w/g, (c) => c.toUpperCase())
 }
 
 export const parseToString = (existing, data) => {
