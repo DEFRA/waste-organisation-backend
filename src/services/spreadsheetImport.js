@@ -13,7 +13,7 @@ import {
   parseToNumber,
   parseToString
 } from './spreadsheetImport/parsers.js'
-import { appendMessageToCell, cellError, emptyCell, worksheetToArray } from './spreadsheetImport/excel.js'
+import { appendMessageToCell, cellError, worksheetToArray } from './spreadsheetImport/excel.js'
 
 const logger = createLogger()
 

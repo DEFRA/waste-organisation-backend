@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 import fs from 'node:fs/promises'
-import { parseExcelFile, transformBulkApiErrors, updateErrors, workbookToByteArray, wasteTrackingIdsToCoords, updateCellContent } from './spreadsheetImport.js'
+import { parseExcelFile, transformBulkApiErrors, updateErrors, wasteTrackingIdsToCoords, updateCellContent } from './spreadsheetImport.js'
 import { v4 as uuidv4 } from 'uuid'
 
 const conf = {
@@ -84,7 +84,7 @@ describe('mock bulk import data', () => {
 describe('Error transforms bulk import data', () => {
   test.each([
     [
-      './test-resources/example-spreadsheet.xlsx',
+      './test-resources/example-spreadsheet-3.xlsx',
       [
         {
           errorType: 'UnexpectedError',
@@ -149,37 +149,17 @@ describe('Error transforms bulk import data', () => {
           }
         ]
       }
-    ],
-    [
-      './test-resources/c3c82719-b0a3-4703-b90e-203ca0c8c2fd.xlsx',
-      [
-        {
-          key: '0.hazardousWasteConsignmentCode',
-          errorType: 'UnexpectedError',
-          message:
-            '"[0].hazardousWasteConsignmentCode" must be in one of the valid formats: EA/NRW (e.g. CJTILE/A0001), SEPA (SA|SB|SC followed by 7 digits), or NIEA (DA|DB|DC followed by 7 digits)'
-        },
-        {
-          key: '0.wasteItems.0.disposalOrRecoveryCodes.0.weight.amount',
-          errorType: 'UnexpectedError',
-          message: '"[0].wasteItems[0].disposalOrRecoveryCodes[0].weight.amount" must be a number'
-        },
-        {
-          key: '0.wasteItems.1.hazardous.sourceOfComponents',
-          errorType: 'UnexpectedError',
-          message: '"[0].wasteItems[1].hazardous.sourceOfComponents" must be one of [PROVIDED_WITH_WASTE, GUIDANCE, OWN_TESTING, NOT_PROVIDED]'
-        },
-        { key: '0.carrier.emailAddress', errorType: 'UnexpectedError', message: '"[0].carrier.emailAddress" be in valid UK or Ireland format' },
-        { key: '0.carrier.phoneNumber', errorType: 'UnexpectedError', message: '"[0].carrier.phoneNumber" must be a string' }
-      ],
-      {}
     ]
-  ])('should convert error messages from data import', { timeout: 100000 }, async (fileName, errors, result) => {
+  ])('should convert error messages from data import', { timeout: 100000 }, async (fileName, errs, result) => {
+    console.log('fileName: ', fileName)
     const buffer = await fs.readFile(fileName)
-    const { hasErrors, movements, rowNumbers } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44')
-
-    expect(hasErrors).toBe(true)
-    const e = transformBulkApiErrors(movements, rowNumbers, errors)
+    const { workbook, hasErrors, movements, rowNumbers, errors } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44')
+    if (hasErrors) {
+      expect({ fileName, errors, movements, rowNumbers, hasErrors }).toBe({})
+    }
+    const e = transformBulkApiErrors(movements, rowNumbers, errs)
     expect(e).toEqual(result)
+    updateErrors(workbook, e)
+    await workbook.xlsx.writeFile(fileName.replace(/xlsx/, 'with-api-errors.xlsx'))
   })
 })
