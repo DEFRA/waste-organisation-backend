@@ -85,8 +85,6 @@ export const parseDisposalCodes = (() => {
   }
   return (existing, data) => {
     const result = existing ?? []
-    console.log('parseDisposalCodes >> data: ', data)
-
     return result.concat(data.split(/;/).map(parseDC))
   }
 })()
