@@ -10,74 +10,12 @@ import {
   parseEWCCodes,
   parseHazCodes,
   parseRegStatements,
+  parseToNumber,
   parseToString
 } from './spreadsheetImport/parsers.js'
+import { appendMessageToCell, cellError, worksheetToArray } from './spreadsheetImport/excel.js'
 
 const logger = createLogger()
-
-const cellError = (colNumber, rowNumber, message, sheet, errorValue) => {
-  const x = { coords: [colNumber, rowNumber], message }
-  if (errorValue) {
-    x.errorValue = errorValue
-  }
-  if (sheet) {
-    x.sheet = sheet
-  }
-  return x
-}
-
-const cellValueText = (() => {
-  const plainText = (x) => x?.text ?? x
-  return (v) => {
-    if (Array.isArray(v)) {
-      return v.reduce((acc, x) => acc + plainText(x.richText ?? x), '')
-    } else {
-      return plainText(v)
-    }
-  }
-})()
-
-const stripFormatting = (cell) => {
-  cell.style = {
-    border: {
-      left: { style: 'thin' },
-      right: { style: 'thin' },
-      top: { style: 'thin' },
-      bottom: { style: 'thin' }
-    }
-  }
-  return cell
-}
-
-const emptyCell = () => ({ richText: [] })
-
-const collectCellErrors = (errors, updateFn, r, [colNumber, rowNumber], cell) => {
-  try {
-    updateFn(r, [colNumber, rowNumber], cellValueText(cell.value))
-  } catch (e) {
-    errors.push(cellError(colNumber, rowNumber, e.message, null, cell.value))
-  }
-}
-
-const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
-  const elements = []
-  const errors = []
-  worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber > minRow && row.getCell(keyCol).value) {
-      row.getCell(1).value = emptyCell()
-      const r = {}
-      row.eachCell((cell, colNumber) => {
-        stripFormatting(cell)
-        if (colNumber < maxCol) {
-          collectCellErrors(errors, updateFn, r, [colNumber, rowNumber], cell)
-        }
-      })
-      r['--rowNumber'] = rowNumber
-      elements.push(r)
-    }
-  })
-  return { elements, errors }
-}
 
 export const updateErrors = (() => {
   const font = { bold: true, size: 12, color: { argb: 'FFD4351C' }, name: 'Calibri' }
@@ -93,12 +31,7 @@ export const updateErrors = (() => {
     const cell = row.getCell(colNumber)
     const errorCell = row.getCell(1)
     if (errorCell) {
-      const v = errorCell?.value?.richText ? errorCell?.value : emptyCell()
-      v.richText.push({
-        font,
-        text: v.richText.length > 0 ? '\n' : '' + message + coordsToCellName(coords)
-      })
-      errorCell.value = v
+      errorCell.value = appendMessageToCell(errorCell, message + coordsToCellName(coords), font)
     }
     if (cell?.value) {
       cell.value = { richText: [{ font, text: cell.value }] }
@@ -187,54 +120,54 @@ const movementMapping = [
   [],
   [],
   [],
-  [['yourUniqueReference']],
-  [['receiver', 'siteName']],
-  [['receipt', 'address', 'fullAddress']],
-  [['receipt', 'address', 'postcode']],
+  [['yourUniqueReference'], parseToString],
+  [['receiver', 'siteName'], parseToString],
+  [['receipt', 'address', 'fullAddress'], parseToString],
+  [['receipt', 'address', 'postcode'], parseToString],
   [['receiver', 'authorisationNumber'], parseToString],
   [['receiver', 'regulatoryPositionStatements'], parseRegStatements],
-  [['receiver', 'emailAddress']],
-  [['receiver', 'phoneNumber']],
+  [['receiver', 'emailAddress'], parseToString],
+  [['receiver', 'phoneNumber'], parseToString],
   [['dateTimeReceived']],
-  [['hazardousWasteConsignmentCode']],
-  [['reasonForNoConsignmentCode']],
-  [['specialHandlingRequirements']],
-  [['carrier', 'registrationNumber']],
-  [['carrier', 'reasonForNoRegistrationNumber']],
-  [['carrier', 'organisationName']],
-  [['carrier', 'address', 'fullAddress']],
-  [['carrier', 'address', 'postcode']],
-  [['carrier', 'emailAddress']],
-  [['carrier', 'phoneNumber']],
-  [['carrier', 'meansOfTransport']],
-  [['carrier', 'vehicleRegistration']],
-  [['brokerOrDealer', 'organisationName']],
-  [['brokerOrDealer', 'address', 'fullAddress']],
-  [['brokerOrDealer', 'address', 'postcode']],
-  [['brokerOrDealer', 'emailAddress']],
-  [['brokerOrDealer', 'phoneNumber']],
-  [['brokerOrDealer', 'registrationNumber']]
+  [['hazardousWasteConsignmentCode'], parseToString],
+  [['reasonForNoConsignmentCode'], parseToString],
+  [['specialHandlingRequirements'], parseToString],
+  [['carrier', 'registrationNumber'], parseToString],
+  [['carrier', 'reasonForNoRegistrationNumber'], parseToString],
+  [['carrier', 'organisationName'], parseToString],
+  [['carrier', 'address', 'fullAddress'], parseToString],
+  [['carrier', 'address', 'postcode'], parseToString],
+  [['carrier', 'emailAddress'], parseToString],
+  [['carrier', 'phoneNumber'], parseToString],
+  [['carrier', 'meansOfTransport'], parseToString],
+  [['carrier', 'vehicleRegistration'], parseToString],
+  [['brokerOrDealer', 'organisationName'], parseToString],
+  [['brokerOrDealer', 'address', 'fullAddress'], parseToString],
+  [['brokerOrDealer', 'address', 'postcode'], parseToString],
+  [['brokerOrDealer', 'emailAddress'], parseToString],
+  [['brokerOrDealer', 'phoneNumber'], parseToString],
+  [['brokerOrDealer', 'registrationNumber'], parseToString]
 ]
 
 const itemMapping = [
   [],
   [],
-  [['yourUniqueReference']],
+  [['yourUniqueReference'], parseToString],
   [['ewcCodes'], parseEWCCodes],
-  [['wasteDescription']],
-  [['physicalForm']],
-  [['numberOfContainers']],
+  [['wasteDescription'], parseToString],
+  [['physicalForm'], parseToString],
+  [['numberOfContainers'], parseToNumber],
   [['typeOfContainers'], parseContainerType],
-  [['weight', 'metric']],
-  [['weight', 'amount']],
+  [['weight', 'metric'], parseToString],
+  [['weight', 'amount'], parseToNumber],
   [['weight', 'isEstimate'], parseEstimate],
   [['containsPops'], parseBoolean],
   [['pops', 'components'], parseComponentCodes],
-  [['pops', 'sourceOfComponents']],
+  [['pops', 'sourceOfComponents'], parseToString],
   [['containsHazardous'], parseBoolean],
   [['hazardous', 'hazCodes'], parseHazCodes],
   [['hazardous', 'components'], parseComponentNames],
-  [['hazardous', 'sourceOfComponents']],
+  [['hazardous', 'sourceOfComponents'], parseToString],
   [['disposalOrRecoveryCodes'], parseDisposalCodes]
 ]
 
@@ -277,6 +210,7 @@ export const parseExcelFile = (() => {
       updateFn: itemColName
     })
     const joined = joinWasteItems(movements.elements, items.elements, defraCustomerOrganisationId)
+    logger.trace(`joined excel data: ${JSON.stringify(joined, null, 4)}`)
     if (movements.errors.length > 0 || items.errors.length > 0 || joined.errors.items.length > 0 || joined.errors.movements.length > 0) {
       const errors = {
         [movementWorksheetName]: movements.errors.concat(joined.errors.movements),
@@ -321,6 +255,9 @@ const errorToCoords = (() => {
     const ref = movementData[idx]?.yourUniqueReference
     const msg = cleanErrorMessage(error)
     const colNum = keyPathToColNum(errKeyPath.slice(1), movementMapping)
+    if (colNum < 0) {
+      return {}
+    }
     const errorValue = movementMapping[colNum][0].reduce((x, y) => x[y], movementData[idx])
     return cellError(rowNumbers[ref].movementRow, colNum, msg, movementWorksheetName, errorValue)
   }
@@ -330,6 +267,9 @@ const errorToCoords = (() => {
     const msg = cleanErrorMessage(error)
     // prettier-ignore
     const colNum = keyPathToColNum(errKeyPath.slice(3), itemMapping) // nosonar
+    if (colNum < 0) {
+      return {}
+    }
     const errorValue = itemMapping[colNum][0].reduce((x, y) => x[y], movementData[movementIdx].wasteItems[itemIdx])
     return cellError(rowNumbers[ref].itemRows[itemIdx], colNum, msg, itemWorksheetName, errorValue)
   }

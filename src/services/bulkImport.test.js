@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 import fs from 'node:fs/promises'
-import { parseExcelFile, transformBulkApiErrors, updateErrors, workbookToByteArray, wasteTrackingIdsToCoords, updateCellContent } from './spreadsheetImport.js'
+import { parseExcelFile, transformBulkApiErrors, updateErrors, wasteTrackingIdsToCoords, updateCellContent } from './spreadsheetImport.js'
 import { v4 as uuidv4 } from 'uuid'
 
 const conf = {
@@ -82,78 +82,84 @@ describe('mock bulk import data', () => {
 })
 
 describe('Error transforms bulk import data', () => {
-  test('should convert error messages from data import', { timeout: 100000 }, async () => {
-    const buffer = await fs.readFile('./test-resources/example-spreadsheet.xlsx')
-    const { hasErrors, workbook, movements, rowNumbers } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44')
-
-    expect(hasErrors).toBe(true)
-    // const res = await bulkImport('abc1234', movements, conf)
-    const errors = [
-      {
-        errorType: 'UnexpectedError',
-        key: '0.wasteItems.0.ewcCodes.0',
-        message: '"[0].wasteItems[0].ewcCodes[0]" must be a valid EWC code from the official list'
-      },
-      {
-        errorType: 'UnexpectedError',
-        key: '0.wasteItems.0.hazardous.components.0.concentration',
-        message: '"[0].wasteItems[0].hazardous.components[0].concentration" must be a number'
-      },
-      {
-        errorType: 'UnexpectedError',
-        key: '0.wasteItems.0.hazardous.components.1.concentration',
-        message: '"[0].wasteItems[0].hazardous.components[1].concentration" must be a number'
-      },
-      {
-        errorType: 'UnexpectedError',
-        key: '0.carrier.meansOfTransport',
-        message: '"[0].carrier.meansOfTransport" is required'
-      },
-      {
-        errorType: 'UnexpectedError',
-        key: '0.receiver.authorisationNumber',
-        message: '"[0].receiver.authorisationNumber" is required'
-      }
-    ]
-    const e = transformBulkApiErrors(movements, rowNumbers, errors)
-    expect(e).toEqual({
-      '7. Waste movement level': [
+  test.each([
+    [
+      './test-resources/example-spreadsheet-3.xlsx',
+      [
         {
-          coords: [9, 22],
-          message: 'means of transport is required',
-          sheet: '7. Waste movement level'
+          errorType: 'UnexpectedError',
+          key: '0.wasteItems.0.ewcCodes.0',
+          message: '"[0].wasteItems[0].ewcCodes[0]" must be a valid EWC code from the official list'
         },
         {
-          coords: [9, 7],
-          message: 'authorisation number is required',
-          sheet: '7. Waste movement level'
+          errorType: 'UnexpectedError',
+          key: '0.wasteItems.0.hazardous.components.0.concentration',
+          message: '"[0].wasteItems[0].hazardous.components[0].concentration" must be a number'
+        },
+        {
+          errorType: 'UnexpectedError',
+          key: '0.wasteItems.0.hazardous.components.1.concentration',
+          message: '"[0].wasteItems[0].hazardous.components[1].concentration" must be a number'
+        },
+        {
+          errorType: 'UnexpectedError',
+          key: '0.carrier.meansOfTransport',
+          message: '"[0].carrier.meansOfTransport" is required'
+        },
+        {
+          errorType: 'UnexpectedError',
+          key: '0.receiver.authorisationNumber',
+          message: '"[0].receiver.authorisationNumber" is required'
         }
       ],
-      '8. Waste item level': [
-        {
-          coords: [9, 3],
-          errorValue: ['060110'],
-          message: 'ewc codes must be a valid EWC code from the official list',
-          sheet: '8. Waste item level'
-        },
-        {
-          coords: [9, 16],
-          errorValue: [
-            {
-              concentration: '<=37%',
-              name: 'Hydrochloric Acid'
-            },
-            {
-              concentration: 'Balance',
-              name: 'Water'
-            }
-          ],
-          message: 'concentration must be a number',
-          sheet: '8. Waste item level'
-        }
-      ]
-    })
+      {
+        '7. Waste movement level': [
+          {
+            coords: [9, 22],
+            message: 'means of transport is required',
+            sheet: '7. Waste movement level'
+          },
+          {
+            coords: [9, 7],
+            message: 'authorisation number is required',
+            sheet: '7. Waste movement level'
+          }
+        ],
+        '8. Waste item level': [
+          {
+            coords: [9, 3],
+            errorValue: ['060110'],
+            message: 'ewc codes must be a valid EWC code from the official list',
+            sheet: '8. Waste item level'
+          },
+          {
+            coords: [9, 16],
+            errorValue: [
+              {
+                concentration: '<=37%',
+                name: 'Hydrochloric Acid'
+              },
+              {
+                concentration: 'Balance',
+                name: 'Water'
+              }
+            ],
+            message: 'concentration must be a number',
+            sheet: '8. Waste item level'
+          }
+        ]
+      }
+    ]
+  ])('should convert error messages from data import', { timeout: 100000 }, async (fileName, errs, result) => {
+    console.log('fileName: ', fileName)
+    const buffer = await fs.readFile(fileName)
+    const { workbook, hasErrors, movements, rowNumbers, errors } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44')
+    if (hasErrors) {
+      expect({ fileName, errors, movements, rowNumbers, hasErrors }).toBe({})
+    }
+    const e = transformBulkApiErrors(movements, rowNumbers, errs)
+    expect(e).toEqual(result)
     updateErrors(workbook, e)
-    expect(await workbookToByteArray(workbook)).toBeInstanceOf(Buffer)
+    await workbook.xlsx.writeFile(fileName.replace(/xlsx/, 'with-api-errors.xlsx'))
   })
 })
