@@ -19,7 +19,7 @@ import {
   parseRegStatements,
   parseToString
 } from './spreadsheetImport/parsers.js'
-import { appendMessageToCell, cellValueText } from './spreadsheetImport/excel.js'
+import { appendMessageToCell, cellValueText, worksheetToArray } from './spreadsheetImport/excel.js'
 import { expect } from 'vitest'
 
 describe('some unit tests for parsers', () => {
@@ -240,6 +240,108 @@ describe('some excel unit tests', () => {
     [{}, 'test', { richText: [{ text: 'test', font: { name: 'Comic Sans' } }] }, { name: 'Comic Sans' }]
   ])('should update cell text', (cell, message, result, font) => {
     expect(appendMessageToCell(cell, message, font)).toEqual(result)
+  })
+})
+
+const mockWorksheet = (rows) => ({
+  eachRow: (callback) => {
+    for (const [rowNumber, cells] of Object.entries(rows)) {
+      const cellMap = {}
+      for (const [colNumber, value] of Object.entries(cells)) {
+        cellMap[colNumber] = { value, style: {} }
+      }
+      callback(
+        {
+          getCell: (col) => (cellMap[col] ??= { value: null, style: {} }),
+          eachCell: (cb) => {
+            for (const [colNumber, cell] of Object.entries(cellMap)) {
+              cb(cell, Number(colNumber))
+            }
+          }
+        },
+        Number(rowNumber)
+      )
+    }
+  }
+})
+
+const noopUpdateFn = (r, [colNumber], value) => {
+  r[`col${colNumber}`] = value
+  return r
+}
+
+describe('worksheetToArray', () => {
+  test('should parse rows after minRow with key column values', () => {
+    const worksheet = mockWorksheet({
+      8: { 2: 'header' },
+      9: { 2: 'REF1', 3: 'data1' },
+      10: { 2: 'REF2', 3: 'data2' }
+    })
+
+    const { elements } = worksheetToArray({ worksheet, keyCol: 2, updateFn: noopUpdateFn, minRow: 8, maxCol: 5 })
+
+    expect(elements).toHaveLength(2)
+    expect(elements[0]['--rowNumber']).toBe(9)
+    expect(elements[1]['--rowNumber']).toBe(10)
+  })
+
+  test('should skip rows where key column is empty', () => {
+    const worksheet = mockWorksheet({
+      9: { 2: 'REF1', 3: 'data1' },
+      10: { 2: null, 3: 'data2' },
+      11: { 2: 'REF3', 3: 'data3' }
+    })
+
+    const { elements } = worksheetToArray({ worksheet, keyCol: 2, updateFn: noopUpdateFn, minRow: 8, maxCol: 5 })
+
+    expect(elements).toHaveLength(2)
+    expect(elements[0]['--rowNumber']).toBe(9)
+    expect(elements[1]['--rowNumber']).toBe(11)
+  })
+
+  test('should stop iterating after 100 consecutive empty rows', () => {
+    const rows = {}
+    rows[9] = { 2: 'REF1', 3: 'data1' }
+    for (let i = 10; i < 110; i++) {
+      rows[i] = { 2: null }
+    }
+    rows[110] = { 2: 'should-be-ignored', 3: 'phantom' }
+
+    const worksheet = mockWorksheet(rows)
+    const { elements } = worksheetToArray({ worksheet, keyCol: 2, updateFn: noopUpdateFn, minRow: 8, maxCol: 5 })
+
+    expect(elements).toHaveLength(1)
+    expect(elements[0]['--rowNumber']).toBe(9)
+  })
+
+  test('should reset empty row counter when a valid row is found', () => {
+    const rows = {}
+    rows[9] = { 2: 'REF1' }
+    for (let i = 10; i < 60; i++) {
+      rows[i] = { 2: null }
+    }
+    rows[60] = { 2: 'REF2' }
+    for (let i = 61; i < 111; i++) {
+      rows[i] = { 2: null }
+    }
+
+    const worksheet = mockWorksheet(rows)
+    const { elements } = worksheetToArray({ worksheet, keyCol: 2, updateFn: noopUpdateFn, minRow: 8, maxCol: 5 })
+
+    expect(elements).toHaveLength(2)
+    expect(elements[0]['--rowNumber']).toBe(9)
+    expect(elements[1]['--rowNumber']).toBe(60)
+  })
+
+  test('should not process cells beyond maxCol', () => {
+    const worksheet = mockWorksheet({
+      9: { 2: 'REF1', 3: 'in-range', 10: 'out-of-range' }
+    })
+
+    const { elements } = worksheetToArray({ worksheet, keyCol: 2, updateFn: noopUpdateFn, minRow: 8, maxCol: 5 })
+
+    expect(elements[0].col3).toBe('in-range')
+    expect(elements[0].col10).toBeUndefined()
   })
 })
 

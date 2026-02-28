@@ -53,22 +53,35 @@ export const collectCellErrors = (errors, updateFn, r, [colNumber, rowNumber], c
   }
 }
 
+const MAX_CONSECUTIVE_EMPTY_ROWS = 100
+
 export const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
   const elements = []
   const errors = []
+  let consecutiveEmptyRows = 0
+  let stopIteration = false
   worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber > minRow && row.getCell(keyCol).value) {
-      row.getCell(1).value = emptyCell()
-      const r = {}
-      row.eachCell((cell, colNumber) => {
-        stripFormatting(cell)
-        if (colNumber < maxCol) {
-          collectCellErrors(errors, updateFn, r, [colNumber, rowNumber], cell)
-        }
-      })
-      r['--rowNumber'] = rowNumber
-      elements.push(r)
+    if (stopIteration || rowNumber <= minRow) {
+      return
     }
+    if (!row.getCell(keyCol).value) {
+      consecutiveEmptyRows++
+      if (consecutiveEmptyRows >= MAX_CONSECUTIVE_EMPTY_ROWS) {
+        stopIteration = true
+      }
+      return
+    }
+    consecutiveEmptyRows = 0
+    row.getCell(1).value = emptyCell()
+    const r = {}
+    row.eachCell((cell, colNumber) => {
+      if (colNumber < maxCol) {
+        stripFormatting(cell)
+        collectCellErrors(errors, updateFn, r, [colNumber, rowNumber], cell)
+      }
+    })
+    r['--rowNumber'] = rowNumber
+    elements.push(r)
   })
   return { elements, errors }
 }
