@@ -160,6 +160,8 @@ describe('some unit tests for parsers', () => {
     expect(parseTitleCase(null, 'SOLID')).toEqual('Solid')
     expect(parseTitleCase(null, 123)).toEqual('123')
     expect(parseTitleCase('existing', null)).toEqual('existing')
+    expect(parseTitleCase('existing', '   ')).toEqual('existing')
+    expect(parseTitleCase('existing', '')).toEqual('existing')
   })
 
   test('parseToString', () => {
