@@ -119,6 +119,17 @@ export const parseContainerType = (existing, data) => {
   return existing
 }
 
+export const parseTitleCase = (existing, data) => {
+  if (!data) {
+    return existing
+  }
+  const trimmed = data.toString().trim()
+  if (!trimmed) {
+    return existing
+  }
+  return trimmed.toLowerCase().replaceAll(/\b\w/g, (c) => c.toUpperCase())
+}
+
 export const parseToString = (existing, data) => {
   return data ? data.toString() : existing
 }

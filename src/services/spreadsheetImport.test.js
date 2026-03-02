@@ -17,6 +17,7 @@ import {
   parseEWCCodes,
   parseHazCodes,
   parseRegStatements,
+  parseTitleCase,
   parseToString
 } from './spreadsheetImport/parsers.js'
 import { appendMessageToCell, cellValueText } from './spreadsheetImport/excel.js'
@@ -145,6 +146,22 @@ describe('some unit tests for parsers', () => {
   test('parseContainerType', () => {
     expect(parseContainerType(null, '[ABC] fish')).toEqual('ABC')
     expect(parseContainerType('ABC', null)).toEqual('ABC')
+  })
+
+  test('parseTitleCase', () => {
+    expect(parseTitleCase(null, 'road')).toEqual('Road')
+    expect(parseTitleCase(null, 'ROAD')).toEqual('Road')
+    expect(parseTitleCase(null, '  road  ')).toEqual('Road')
+    expect(parseTitleCase(null, 'inland waterway')).toEqual('Inland Waterway')
+    expect(parseTitleCase(null, 'INLAND WATERWAY')).toEqual('Inland Waterway')
+    expect(parseTitleCase(null, 'kilograms')).toEqual('Kilograms')
+    expect(parseTitleCase(null, 'TONNES')).toEqual('Tonnes')
+    expect(parseTitleCase(null, 'liquid')).toEqual('Liquid')
+    expect(parseTitleCase(null, 'SOLID')).toEqual('Solid')
+    expect(parseTitleCase(null, 123)).toEqual('123')
+    expect(parseTitleCase('existing', null)).toEqual('existing')
+    expect(parseTitleCase('existing', '   ')).toEqual('existing')
+    expect(parseTitleCase('existing', '')).toEqual('existing')
   })
 
   test('parseToString', () => {
