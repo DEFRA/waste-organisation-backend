@@ -167,6 +167,7 @@ describe('some unit tests for parsers', () => {
   test('parseToString', () => {
     expect(parseToString(null, 123)).toEqual('123')
     expect(parseToString('ABC', null)).toEqual('ABC')
+    expect(parseToString(null, ' ABC ')).toEqual('ABC')
   })
 
   test('parseComponentNames', () => {

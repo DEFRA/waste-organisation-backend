@@ -131,7 +131,7 @@ export const parseTitleCase = (existing, data) => {
 }
 
 export const parseToString = (existing, data) => {
-  return data ? data.toString() : existing
+  return data ? data.toString().trim() : existing
 }
 
 export const parseToNumber = (existing, data) => {
