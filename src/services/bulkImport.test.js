@@ -112,6 +112,42 @@ describe('mock bulk import data', () => {
     expect(res.errors).toEqual([{ message: 1 }, { message: 2 }, { message: 3 }])
   })
 
+  test('should return failed when 400 error has undefined data', { timeout: 100000 }, async () => {
+    wreckPostMock.mockImplementation(async () => {
+      // eslint-disable-next-line no-throw-literal
+      throw { output: { statusCode: 400 } }
+    })
+
+    const { bulkImport } = await import('./bulkImport.js')
+
+    const res = await bulkImport('abc1234', testMovements, conf)
+    expect(res).toEqual({ failed: true })
+  })
+
+  test('should return failed when 400 error has non-array payload', { timeout: 100000 }, async () => {
+    wreckPostMock.mockImplementation(async () => {
+      // eslint-disable-next-line no-throw-literal
+      throw { output: { statusCode: 400 }, data: { payload: 'unexpected string' } }
+    })
+
+    const { bulkImport } = await import('./bulkImport.js')
+
+    const res = await bulkImport('abc1234', testMovements, conf)
+    expect(res).toEqual({ failed: true })
+  })
+
+  test('should return failed when 400 error has array payload but no validation errors', { timeout: 100000 }, async () => {
+    wreckPostMock.mockImplementation(async () => {
+      // eslint-disable-next-line no-throw-literal
+      throw { output: { statusCode: 400 }, data: { payload: [{}, {}] } }
+    })
+
+    const { bulkImport } = await import('./bulkImport.js')
+
+    const res = await bulkImport('abc1234', testMovements, conf)
+    expect(res).toEqual({ failed: true })
+  })
+
   test.each([...TRANSIENT_STATUS_CODES])('should throw on transient error (%i)', { timeout: 100000 }, async (statusCode) => {
     wreckPostMock.mockImplementation(async () => {
       // eslint-disable-next-line no-throw-literal
