@@ -191,7 +191,7 @@ describe('validateWasteTrackingIds', () => {
     const errors = validateWasteTrackingIds(movements, rowNumbers)
     expect(errors).toEqual([
       {
-        coords: [9, 2],
+        coords: [2, 9],
         message: 'Waste Tracking ID is required',
         sheet: '7. Waste movement level'
       }
@@ -224,7 +224,7 @@ describe('validateNoWasteTrackingIds', () => {
     const errors = validateNoWasteTrackingIds(movements, rowNumbers)
     expect(errors).toEqual([
       {
-        coords: [9, 2],
+        coords: [2, 9],
         message: 'Waste Tracking ID must not be present on a create upload',
         sheet: '7. Waste movement level'
       }
@@ -399,6 +399,7 @@ describe('excel proccessor', () => {
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
     const { workbook, movements, rowNumbers } = await parseExcelFile(buffer)
     const bulkImportResult = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
+
     const coords = wasteTrackingIdsToCoords(movements, rowNumbers, bulkImportResult.movements)
     expect(coords).toEqual({
       '7. Waste movement level': [
