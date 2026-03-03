@@ -18,9 +18,20 @@ export const sendEmail = {
 
 const send = async (template, email, name, file) => {
   const notifyClient = new NotifyClient(apiKey)
+
+  let nameObject = null
+
+  try {
+    if (name) {
+      nameObject = JSON.parse(name)
+    }
+  } catch (error) {
+    logger.error(`name is not parsable to JSON: ${error}`)
+  }
+
   try {
     const personalisation = {
-      'first name': name.firstName
+      'first name': nameObject ? nameObject.firstName : null
     }
     if (file) {
       logger.info(`Attaching file`)

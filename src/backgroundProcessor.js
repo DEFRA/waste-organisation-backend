@@ -127,6 +127,7 @@ export const processJob = async (s3Client, message) => {
   const { s3Bucket, s3Key, encryptedEmail, encryptedName, organisationId, uploadId, uploadType, hasError } = JSON.parse(message.Body)
   const decryptedEmail = decrypt(encryptedEmail, config.get('encryptionKey'))
   const decryptedName = decrypt(encryptedName, config.get('encryptionKey'))
+
   if (hasError) {
     await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName })
     return
