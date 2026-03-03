@@ -19,12 +19,19 @@ const apiCall = async (asyncFunc, { username, password }, payload, uploadId) => 
     return response.payload
   } catch (e) {
     const statusCode = e.output?.statusCode
-    logger.error(`UploadId: ${uploadId} -- ERROR calling bulk import api (status: ${statusCode}) ${e}`)
+    const errorDetail = e instanceof Error ? e.stack : JSON.stringify(e)
+    logger.error(`UploadId: ${uploadId} -- ERROR calling bulk import api (status: ${statusCode}) ${errorDetail}`)
     if (statusCode === HTTP_BAD_REQUEST) {
       logger.debug(`UploadId: ${uploadId} -- Validation errors processing spreadsheet ${e.data}`)
-      const validationPayload = Array.isArray(e.data?.payload) ? e.data.payload : []
+      const payloadIsArray = Array.isArray(e.data?.payload)
+      const validationPayload = payloadIsArray ? e.data.payload : []
       const errors = validationPayload.flatMap((v) => v?.validation?.errors || [])
       if (errors.length === 0) {
+        const payloadType = e.data?.payload === undefined ? 'undefined' : typeof e.data.payload
+        const payloadLength = payloadIsArray ? e.data.payload.length : 'n/a'
+        logger.warn(
+          `UploadId: ${uploadId} -- Bulk API returned 400 with no extractable validation errors (payload type: ${payloadType}, length: ${payloadLength})`
+        )
         return { failed: true }
       }
       return { errors }
