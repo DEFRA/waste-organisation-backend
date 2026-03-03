@@ -2,6 +2,7 @@ import wreck from '@hapi/wreck'
 import { config } from '../config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { pathTo } from '../config/paths.js'
+import { HTTP_BAD_REQUEST, TRANSIENT_STATUS_CODES } from './httpStatusCodes.js'
 
 const logger = createLogger()
 
@@ -17,15 +18,17 @@ const apiCall = async (asyncFunc, { username, password }, payload, uploadId) => 
     logger.debug(`UploadId: ${uploadId} -- Result from Bulk API (status): ${JSON.stringify(response.payload)}`)
     return response.payload
   } catch (e) {
-    logger.error(`UploadId: ${uploadId} -- ERROR calling bulk import api ${e}`)
-    // prettier-ignore
-    if (e.output.statusCode === 400) { // nosonar
+    const statusCode = e.output?.statusCode
+    logger.error(`UploadId: ${uploadId} -- ERROR calling bulk import api (status: ${statusCode}) ${e}`)
+    if (statusCode === HTTP_BAD_REQUEST) {
       logger.debug(`UploadId: ${uploadId} -- Validation errors processing spreadsheet ${e.data}`)
       const errors = e.data.payload.flatMap((v) => v?.validation?.errors || [])
       return { errors }
-    } else {
+    }
+    if (TRANSIENT_STATUS_CODES.has(statusCode)) {
       throw e
     }
+    return { failed: true }
   }
 }
 
