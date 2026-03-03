@@ -5,6 +5,8 @@ import { pathTo } from '../config/paths.js'
 
 const logger = createLogger()
 
+const TRANSIENT_STATUS_CODES = [408, 429, 502, 503]
+
 const apiCall = async (asyncFunc, { username, password }, payload, uploadId) => {
   try {
     const headers = { Authorization: 'Basic ' + Buffer.from(username + ':' + password).toString('base64'), 'content-type': 'application/json' }
@@ -17,15 +19,17 @@ const apiCall = async (asyncFunc, { username, password }, payload, uploadId) => 
     logger.debug(`UploadId: ${uploadId} -- Result from Bulk API (status): ${JSON.stringify(response.payload)}`)
     return response.payload
   } catch (e) {
-    logger.error(`UploadId: ${uploadId} -- ERROR calling bulk import api ${e}`)
-    // prettier-ignore
-    if (e.output.statusCode === 400) { // nosonar
+    const statusCode = e.output?.statusCode
+    logger.error(`UploadId: ${uploadId} -- ERROR calling bulk import api (status: ${statusCode}) ${e}`)
+    if (statusCode === 400) {
       logger.debug(`UploadId: ${uploadId} -- Validation errors processing spreadsheet ${e.data}`)
       const errors = e.data.payload.flatMap((v) => v?.validation?.errors || [])
       return { errors }
-    } else {
+    }
+    if (TRANSIENT_STATUS_CODES.includes(statusCode)) {
       throw e
     }
+    return { failed: true }
   }
 }
 

@@ -100,6 +100,11 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
 
   const apiResponse = isUpdate ? await bulkUpdate(uploadId, movements) : await bulkImport(uploadId, movements)
 
+  if (apiResponse.failed) {
+    await sendEmail.sendFailed({ email: decryptedEmail })
+    return
+  }
+
   if (apiResponse.errors) {
     logger.warn(`UploadId: ${uploadId} -- Errors from import API ${JSON.stringify(apiResponse.errors)}`)
     const errs = transformBulkApiErrors(movements, rowNumbers, apiResponse.errors)
