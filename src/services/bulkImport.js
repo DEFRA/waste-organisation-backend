@@ -6,6 +6,22 @@ import { HTTP_BAD_REQUEST, TRANSIENT_STATUS_CODES } from './httpStatusCodes.js'
 
 const logger = createLogger()
 
+const formatErrorDetail = (e) => (e instanceof Error ? e.stack : JSON.stringify(e))
+
+const extractValidationErrors = (e, uploadId) => {
+  logger.debug(`UploadId: ${uploadId} -- Validation errors processing spreadsheet ${e.data}`)
+  const payloadIsArray = Array.isArray(e.data?.payload)
+  const validationPayload = payloadIsArray ? e.data.payload : []
+  const errors = validationPayload.flatMap((v) => v?.validation?.errors || [])
+  if (errors.length > 0) {
+    return { errors }
+  }
+  const payloadType = e.data?.payload === undefined ? 'undefined' : typeof e.data.payload
+  const payloadLength = payloadIsArray ? e.data.payload.length : 'n/a'
+  logger.warn(`UploadId: ${uploadId} -- Bulk API returned 400 with no extractable validation errors (payload type: ${payloadType}, length: ${payloadLength})`)
+  return { failed: true }
+}
+
 const apiCall = async (asyncFunc, { username, password }, payload, uploadId) => {
   try {
     const headers = { Authorization: 'Basic ' + Buffer.from(username + ':' + password).toString('base64'), 'content-type': 'application/json' }
@@ -19,22 +35,9 @@ const apiCall = async (asyncFunc, { username, password }, payload, uploadId) => 
     return response.payload
   } catch (e) {
     const statusCode = e.output?.statusCode
-    const errorDetail = e instanceof Error ? e.stack : JSON.stringify(e)
-    logger.error(`UploadId: ${uploadId} -- ERROR calling bulk import api (status: ${statusCode}) ${errorDetail}`)
+    logger.error(`UploadId: ${uploadId} -- ERROR calling bulk import api (status: ${statusCode}) ${formatErrorDetail(e)}`)
     if (statusCode === HTTP_BAD_REQUEST) {
-      logger.debug(`UploadId: ${uploadId} -- Validation errors processing spreadsheet ${e.data}`)
-      const payloadIsArray = Array.isArray(e.data?.payload)
-      const validationPayload = payloadIsArray ? e.data.payload : []
-      const errors = validationPayload.flatMap((v) => v?.validation?.errors || [])
-      if (errors.length === 0) {
-        const payloadType = e.data?.payload === undefined ? 'undefined' : typeof e.data.payload
-        const payloadLength = payloadIsArray ? e.data.payload.length : 'n/a'
-        logger.warn(
-          `UploadId: ${uploadId} -- Bulk API returned 400 with no extractable validation errors (payload type: ${payloadType}, length: ${payloadLength})`
-        )
-        return { failed: true }
-      }
-      return { errors }
+      return extractValidationErrors(e, uploadId)
     }
     if (TRANSIENT_STATUS_CODES.has(statusCode)) {
       throw e
