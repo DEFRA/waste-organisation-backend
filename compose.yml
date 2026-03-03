@@ -86,6 +86,7 @@ services:
     environment:
       PORT: 3001
       NODE_ENV: development
+      ENVIRONMENT: dev
       S3_ENDPOINT: http://localstack:4566
       SQS_ENDPOINT: http://localstack:4566
       MONGO_URI: mongodb://mongodb:27017/?replicaSet=rs0&directConnection=true

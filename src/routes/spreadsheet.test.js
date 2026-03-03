@@ -1,5 +1,8 @@
 import { initialiseServer, WASTE_CLIENT_AUTH_TEST_TOKEN, stopServer } from '../common/helpers/initialse-test-server.js'
 import { paths, pathTo } from '../config/paths.js'
+import { config } from '../config.js'
+
+const originalGet = config.get.bind(config)
 
 describe('spreadsheet API', () => {
   let server
@@ -83,6 +86,24 @@ describe('spreadsheet API', () => {
     })
 
     expect(statusCode).toBe(400)
+  })
+
+  test('should return 404 for uploads endpoint when test routes are disabled', async () => {
+    vi.spyOn(config, 'get').mockImplementation((key) => {
+      if (key === 'isTestRoutesEnabled') return false
+      return originalGet(key)
+    })
+    const disabledServer = await initialiseServer()
+
+    const { statusCode } = await disabledServer.inject({
+      method: 'GET',
+      url: paths.getUploadsByFilename.replace('{organisationId}', 'org-file') + '?filename=test-file.xlsx',
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN }
+    })
+
+    expect(statusCode).toBe(404)
+    vi.restoreAllMocks()
+    await stopServer(disabledServer)
   })
 
   test('should PUT then GET spreadsheet', async () => {

@@ -6,8 +6,8 @@ import { convictValidateMongoUri } from './config/validate-mongo-uri.js'
 convict.addFormat(convictValidateMongoUri)
 convict.addFormats(convictFormatWithValidator)
 
-const isProduction = process.env.NODE_ENV === 'production'
-const isDevelopment = process.env.NODE_ENV === 'development'
+const productionEnvironments = ['perf-test', 'ext-test', 'prod']
+const isProduction = productionEnvironments.includes(process.env.ENVIRONMENT)
 const isTest = process.env.NODE_ENV === 'test'
 
 export const config = convict({
@@ -241,10 +241,16 @@ export const config = convict({
     default: '1r1S98SiPcNEN0vtKm3uiXchW0KYzScxArmmKrYkfKg='
   },
   isSwaggerEnabled: {
-    doc: 'Enable swagger documentation',
+    doc: 'Enable swagger documentation. Disabled in perf-test, ext-test and prod.',
     format: Boolean,
-    default: isDevelopment || isTest,
+    default: !isProduction,
     env: 'ENABLE_SWAGGER'
+  },
+  isTestRoutesEnabled: {
+    doc: 'Enable test-only routes. Disabled in perf-test, ext-test and prod.',
+    format: Boolean,
+    default: !isProduction,
+    env: 'ENABLE_TEST_ROUTES'
   }
 })
 

@@ -82,12 +82,21 @@ const getUploadsByFilenameHandler = async (request, h) => {
 
 const getUploadsByFilenameOptions = {
   auth: apiKeyAuthStrategy,
-  tags: ['api'],
+  tags: ['api', 'test'],
   validate: {
     query: joi.object({ filename: joi.string().required() })
   },
   response: { schema: getUploadsByFilenameResponseSchema, sample: 0 }
 }
+
+export const testSpreadsheetRoutes = [
+  {
+    method: 'GET',
+    path: paths.getUploadsByFilename,
+    options: getUploadsByFilenameOptions,
+    handler: getUploadsByFilenameHandler
+  }
+]
 
 export const spreadsheet = [
   {
@@ -107,11 +116,5 @@ export const spreadsheet = [
     path: paths.putSpreadsheet,
     options: putOptions,
     handler: putHandler
-  },
-  {
-    method: 'GET',
-    path: paths.getUploadsByFilename,
-    options: getUploadsByFilenameOptions,
-    handler: getUploadsByFilenameHandler
   }
 ]
