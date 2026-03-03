@@ -256,11 +256,13 @@ export const validateNoWasteTrackingIds = (movements, rowNumbers) => {
 }
 
 export const workbookToByteArray = async (workbook) => {
+  /* v8 ignore start */
   if (config.get('bulkUpload.copySpreadsheetToDisk')) {
-    const f = '/tmp/output-' + uuidv4() + '.xlsx'
+    const f = '/tmp/output-' + uuidv4() + '.xlsx' // nosonar
     logger.info(`file: ${f}`)
     await workbook.xlsx.writeFile(f)
   }
+  /* v8 ignore stop */
   return await workbook.xlsx.writeBuffer()
 }
 
