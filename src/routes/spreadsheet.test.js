@@ -39,6 +39,52 @@ describe('spreadsheet API', () => {
     expect(statusCode).toBe(200)
   })
 
+  test('should return uploads by filename', async () => {
+    await server.inject({
+      method: 'PUT',
+      url: pathTo(paths.putSpreadsheet, { uploadId: 'upload-a', organisationId: 'org-file' }),
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN },
+      payload: { spreadsheet: { filename: 'test-file.xlsx' } }
+    })
+
+    await server.inject({
+      method: 'PUT',
+      url: pathTo(paths.putSpreadsheet, { uploadId: 'upload-b', organisationId: 'org-file' }),
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN },
+      payload: { spreadsheet: { filename: 'test-file.xlsx' } }
+    })
+
+    const { result, statusCode } = await server.inject({
+      method: 'GET',
+      url: paths.getUploadsByFilename.replace('{organisationId}', 'org-file') + '?filename=test-file.xlsx',
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN }
+    })
+
+    expect(statusCode).toBe(200)
+    expect(result.message).toBe('success')
+    expect(result.uploads).toEqual(expect.arrayContaining([{ uploadId: 'upload-a' }, { uploadId: 'upload-b' }]))
+  })
+
+  test('should return 404 when no spreadsheets match filename', async () => {
+    const { statusCode } = await server.inject({
+      method: 'GET',
+      url: paths.getUploadsByFilename.replace('{organisationId}', 'org-file') + '?filename=nonexistent.xlsx',
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN }
+    })
+
+    expect(statusCode).toBe(404)
+  })
+
+  test('should return 400 when filename query param is missing', async () => {
+    const { statusCode } = await server.inject({
+      method: 'GET',
+      url: paths.getUploadsByFilename.replace('{organisationId}', 'org-file'),
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN }
+    })
+
+    expect(statusCode).toBe(400)
+  })
+
   test('should PUT then GET spreadsheet', async () => {
     const putResult = await server.inject({
       method: 'PUT',
