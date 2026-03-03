@@ -16,7 +16,7 @@ services:
       - '${TMPDIR:-/tmp}/localstack:/var/lib/localstack:z'
       - ./compose/start-localstack.sh:/etc/localstack/init/ready.d/start-localstack.sh:z
     healthcheck:
-      test: ['CMD', 'stat', '/tmp/localstack/READY']
+      test: ['CMD', 'stat', '/tmp/READY']
       interval: 5s
       start_period: 5s
       retries: 3
