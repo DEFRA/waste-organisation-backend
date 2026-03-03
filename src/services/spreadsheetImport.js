@@ -14,7 +14,7 @@ import {
   parseToNumber,
   parseToString
 } from './spreadsheetImport/parsers.js'
-import { appendMessageToCell, cellError, worksheetToArray } from './spreadsheetImport/excel.js'
+import { appendMessageToCell, cellError, worksheetToArray, cellValueText } from './spreadsheetImport/excel.js'
 import { v4 as uuidv4 } from 'uuid'
 import { config } from '../config.js'
 
@@ -37,8 +37,10 @@ export const updateErrors = (() => {
       errorCell.value = appendMessageToCell(errorCell, message + coordsToCellName(coords), font)
     }
     if (cell?.value) {
-      cell.value = { richText: [{ font, text: cell.value }] }
-      cell.style.fill = fillStyle
+      cell.value = { richText: [{ font, text: cellValueText(cell.value) }] }
+      cell.style.fill = { ...fillStyle }
+    } else {
+      cell.value = { richText: [{ font, text: 'Please provide a value' }] }
     }
   }
   return (workbook, cellsAndMessages) => {
@@ -302,7 +304,11 @@ const errorToCoords = (() => {
     if (colNum < 0) {
       return {}
     }
-    const errorValue = itemMapping[colNum][0].reduce((x, y) => x[y], movementData[movementIdx].wasteItems[itemIdx])
+    const errorValue = itemMapping[colNum][0]
+      .reduce((x, y) => {
+        return x ? x[y] : null
+      }, movementData[movementIdx].wasteItems[itemIdx])
+      .filter((x) => x)
     return cellError(colNum, rowNumbers[ref].itemRows[itemIdx], msg, itemWorksheetName, errorValue)
   }
 
