@@ -110,6 +110,40 @@ describe('mock bulk import data', () => {
     const res = await bulkImport('abc1234', testMovements, conf)
     expect(res.errors).toEqual([{ message: 1 }, { message: 2 }, { message: 3 }])
   })
+
+  test('should throw on transient error (503)', { timeout: 100000 }, async () => {
+    wreckPostMock.mockImplementation(async () => {
+      // eslint-disable-next-line no-throw-literal
+      throw { output: { statusCode: 503 } }
+    })
+
+    const { bulkImport } = await import('./bulkImport.js')
+
+    await expect(bulkImport('abc1234', testMovements, conf)).rejects.toEqual({ output: { statusCode: 503 } })
+  })
+
+  test('should return failed for non-transient error (500)', { timeout: 100000 }, async () => {
+    wreckPostMock.mockImplementation(async () => {
+      // eslint-disable-next-line no-throw-literal
+      throw { output: { statusCode: 500 } }
+    })
+
+    const { bulkImport } = await import('./bulkImport.js')
+
+    const res = await bulkImport('abc1234', testMovements, conf)
+    expect(res).toEqual({ failed: true })
+  })
+
+  test('should return failed for network error without status code', { timeout: 100000 }, async () => {
+    wreckPostMock.mockImplementation(async () => {
+      throw new Error('ECONNREFUSED')
+    })
+
+    const { bulkImport } = await import('./bulkImport.js')
+
+    const res = await bulkImport('abc1234', testMovements, conf)
+    expect(res).toEqual({ failed: true })
+  })
 })
 
 describe('Error transforms bulk import data', () => {

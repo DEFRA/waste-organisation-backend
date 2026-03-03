@@ -5,6 +5,14 @@ import { pathTo } from '../config/paths.js'
 
 const logger = createLogger()
 
+const HTTP_BAD_REQUEST = 400
+const HTTP_REQUEST_TIMEOUT = 408
+const HTTP_TOO_MANY_REQUESTS = 429
+const HTTP_BAD_GATEWAY = 502
+const HTTP_SERVICE_UNAVAILABLE = 503
+
+const TRANSIENT_STATUS_CODES = new Set([HTTP_REQUEST_TIMEOUT, HTTP_TOO_MANY_REQUESTS, HTTP_BAD_GATEWAY, HTTP_SERVICE_UNAVAILABLE])
+
 const apiCall = async (asyncFunc, { username, password }, payload, uploadId) => {
   try {
     const headers = { Authorization: 'Basic ' + Buffer.from(username + ':' + password).toString('base64'), 'content-type': 'application/json' }
@@ -17,15 +25,17 @@ const apiCall = async (asyncFunc, { username, password }, payload, uploadId) => 
     logger.debug(`UploadId: ${uploadId} -- Result from Bulk API (status): ${JSON.stringify(response.payload)}`)
     return response.payload
   } catch (e) {
-    logger.error(`UploadId: ${uploadId} -- ERROR calling bulk import api ${e}`)
-    // prettier-ignore
-    if (e.output.statusCode === 400) { // nosonar
+    const statusCode = e.output?.statusCode
+    logger.error(`UploadId: ${uploadId} -- ERROR calling bulk import api (status: ${statusCode}) ${e}`)
+    if (statusCode === HTTP_BAD_REQUEST) {
       logger.debug(`UploadId: ${uploadId} -- Validation errors processing spreadsheet ${e.data}`)
       const errors = e.data.payload.flatMap((v) => v?.validation?.errors || [])
       return { errors }
-    } else {
+    }
+    if (TRANSIENT_STATUS_CODES.has(statusCode)) {
       throw e
     }
+    return { failed: true }
   }
 }
 
