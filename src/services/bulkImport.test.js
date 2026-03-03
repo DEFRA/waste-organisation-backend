@@ -1,6 +1,7 @@
 import { vi } from 'vitest'
 import fs from 'node:fs/promises'
 import { parseExcelFile, transformBulkApiErrors, updateErrors, wasteTrackingIdsToCoords, updateCellContent } from './spreadsheetImport.js'
+import { TRANSIENT_STATUS_CODES } from './httpStatusCodes.js'
 import { v4 as uuidv4 } from 'uuid'
 
 const conf = {
@@ -111,15 +112,15 @@ describe('mock bulk import data', () => {
     expect(res.errors).toEqual([{ message: 1 }, { message: 2 }, { message: 3 }])
   })
 
-  test('should throw on transient error (503)', { timeout: 100000 }, async () => {
+  test.each([...TRANSIENT_STATUS_CODES])('should throw on transient error (%i)', { timeout: 100000 }, async (statusCode) => {
     wreckPostMock.mockImplementation(async () => {
       // eslint-disable-next-line no-throw-literal
-      throw { output: { statusCode: 503 } }
+      throw { output: { statusCode } }
     })
 
     const { bulkImport } = await import('./bulkImport.js')
 
-    await expect(bulkImport('abc1234', testMovements, conf)).rejects.toEqual({ output: { statusCode: 503 } })
+    await expect(bulkImport('abc1234', testMovements, conf)).rejects.toEqual({ output: { statusCode } })
   })
 
   test('should return failed for non-transient error (500)', { timeout: 100000 }, async () => {

@@ -2,16 +2,9 @@ import wreck from '@hapi/wreck'
 import { config } from '../config.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { pathTo } from '../config/paths.js'
+import { HTTP_BAD_REQUEST, TRANSIENT_STATUS_CODES } from './httpStatusCodes.js'
 
 const logger = createLogger()
-
-const HTTP_BAD_REQUEST = 400
-const HTTP_REQUEST_TIMEOUT = 408
-const HTTP_TOO_MANY_REQUESTS = 429
-const HTTP_BAD_GATEWAY = 502
-const HTTP_SERVICE_UNAVAILABLE = 503
-
-const TRANSIENT_STATUS_CODES = new Set([HTTP_REQUEST_TIMEOUT, HTTP_TOO_MANY_REQUESTS, HTTP_BAD_GATEWAY, HTTP_SERVICE_UNAVAILABLE])
 
 const apiCall = async (asyncFunc, { username, password }, payload, uploadId) => {
   try {
