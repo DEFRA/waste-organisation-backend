@@ -19,6 +19,7 @@ import {
 import { decrypt } from './services/decrypt.js'
 import { sendEmail } from './services/notify/index.js'
 import { bulkImport, bulkUpdate } from './services/bulkImport.js'
+import { TRANSIENT_STATUS_CODES } from './services/httpStatusCodes.js'
 
 const logger = createLogger()
 
@@ -101,7 +102,7 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
   const apiResponse = isUpdate ? await bulkUpdate(uploadId, movements) : await bulkImport(uploadId, movements)
 
   if (apiResponse.failed) {
-    await sendEmail.sendFailed({ email: decryptedEmail })
+    await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName })
     return
   }
 
@@ -142,7 +143,16 @@ export const processJob = async (s3Client, message) => {
     logger.info(`Message missing s3 coords: ${JSON.stringify(message)}`)
     return
   }
-  await processSpreadsheet(s3Client, { s3Bucket, s3Key, organisationId, uploadId, uploadType }, decryptedEmail, decryptedName)
+  try {
+    await processSpreadsheet(s3Client, { s3Bucket, s3Key, organisationId, uploadId, uploadType }, decryptedEmail, decryptedName)
+  } catch (e) {
+    const statusCode = e.output?.statusCode
+    if (TRANSIENT_STATUS_CODES.has(statusCode)) {
+      throw e
+    }
+    logger.error(`UploadId: ${uploadId} -- Unexpected error processing spreadsheet: ${e.stack}`)
+    await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName })
+  }
 }
 
 export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {

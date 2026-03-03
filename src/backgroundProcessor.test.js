@@ -579,7 +579,68 @@ describe('background processor', () => {
     const response = await processJob(s3Client, createMessage)
 
     expect(response).toBe(undefined)
-    expect(mockSendFailed).toHaveBeenCalledWith({ email: 'test@email.com' })
+    expect(mockSendFailed).toHaveBeenCalledWith({ email: 'test@email.com', name: 'test@email.com' })
+  })
+
+  it('should rethrow transient errors from processSpreadsheet', { timeout: 50000 }, async () => {
+    vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
+    const transientError = { output: { statusCode: 503 }, stack: 'Service Unavailable' }
+    vi.spyOn(bulkImportModule, 'bulkImport').mockRejectedValue(transientError)
+    const mockSendFailed = vi.spyOn(sendEmail, 'sendFailed').mockImplementation(vi.fn())
+
+    const transientMessage = {
+      Body: JSON.stringify({
+        s3Bucket: 'bucket',
+        s3Key: 'key',
+        encryptedEmail: 'enc',
+        organisationId: 'org-id',
+        uploadId: 'upload-transient',
+        uploadType: 'create'
+      })
+    }
+
+    const s3Client = {
+      send: async (_) => {
+        const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
+        return { Body: [buffer] }
+      }
+    }
+
+    const { processJob } = await import('./backgroundProcessor.js')
+
+    await expect(processJob(s3Client, transientMessage)).rejects.toEqual(transientError)
+    expect(mockSendFailed).not.toHaveBeenCalled()
+  })
+
+  it('should send failed email for non-transient unexpected errors from processSpreadsheet', { timeout: 50000 }, async () => {
+    vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
+    vi.spyOn(bulkImportModule, 'bulkImport').mockRejectedValue(new Error('Unexpected crash'))
+    const mockSendFailed = vi.spyOn(sendEmail, 'sendFailed').mockImplementation(vi.fn())
+
+    const unexpectedErrorMessage = {
+      Body: JSON.stringify({
+        s3Bucket: 'bucket',
+        s3Key: 'key',
+        encryptedEmail: 'enc',
+        organisationId: 'org-id',
+        uploadId: 'upload-unexpected',
+        uploadType: 'create'
+      })
+    }
+
+    const s3Client = {
+      send: async (_) => {
+        const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
+        return { Body: [buffer] }
+      }
+    }
+
+    const { processJob } = await import('./backgroundProcessor.js')
+
+    const response = await processJob(s3Client, unexpectedErrorMessage)
+
+    expect(response).toBe(undefined)
+    expect(mockSendFailed).toHaveBeenCalledWith({ email: 'test@email.com', name: 'test@email.com' })
   })
 
   it('should send validation failed when update upload has missing WTIDs', { timeout: 50000 }, async () => {

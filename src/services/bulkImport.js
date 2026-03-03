@@ -22,7 +22,11 @@ const apiCall = async (asyncFunc, { username, password }, payload, uploadId) => 
     logger.error(`UploadId: ${uploadId} -- ERROR calling bulk import api (status: ${statusCode}) ${e}`)
     if (statusCode === HTTP_BAD_REQUEST) {
       logger.debug(`UploadId: ${uploadId} -- Validation errors processing spreadsheet ${e.data}`)
-      const errors = e.data.payload.flatMap((v) => v?.validation?.errors || [])
+      const validationPayload = Array.isArray(e.data?.payload) ? e.data.payload : []
+      const errors = validationPayload.flatMap((v) => v?.validation?.errors || [])
+      if (errors.length === 0) {
+        return { failed: true }
+      }
       return { errors }
     }
     if (TRANSIENT_STATUS_CODES.has(statusCode)) {
