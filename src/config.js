@@ -46,7 +46,9 @@ export const config = convict({
       }
     },
     copySpreadsheetToDisk: {
-      doc: 'Make a copy of the spreadsheet on disk when generating errors',
+      doc:
+        'Make a copy of the spreadsheet on disk when generating errors (only use in local development ' +
+        'to get hold of a copy of the generated spreadsheet without a GOV Notify login)',
       format: Boolean,
       env: 'BULK_UPLOAD_COPY_SPREADSHEET_TO_DISK',
       default: false
