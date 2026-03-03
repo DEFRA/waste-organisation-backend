@@ -1,5 +1,8 @@
 import { initialiseServer, WASTE_CLIENT_AUTH_TEST_TOKEN, stopServer } from '../common/helpers/initialse-test-server.js'
 import { paths, pathTo } from '../config/paths.js'
+import { config } from '../config.js'
+
+const originalGet = config.get.bind(config)
 
 describe('spreadsheet API', () => {
   let server
@@ -37,6 +40,70 @@ describe('spreadsheet API', () => {
       }
     })
     expect(statusCode).toBe(200)
+  })
+
+  test('should return uploads by filename', async () => {
+    await server.inject({
+      method: 'PUT',
+      url: pathTo(paths.putSpreadsheet, { uploadId: 'upload-a', organisationId: 'org-file' }),
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN },
+      payload: { spreadsheet: { filename: 'test-file.xlsx' } }
+    })
+
+    await server.inject({
+      method: 'PUT',
+      url: pathTo(paths.putSpreadsheet, { uploadId: 'upload-b', organisationId: 'org-file' }),
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN },
+      payload: { spreadsheet: { filename: 'test-file.xlsx' } }
+    })
+
+    const { result, statusCode } = await server.inject({
+      method: 'GET',
+      url: paths.getUploadsByFilename.replace('{organisationId}', 'org-file') + '?filename=test-file.xlsx',
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN }
+    })
+
+    expect(statusCode).toBe(200)
+    expect(result.message).toBe('success')
+    expect(result.uploads).toEqual(expect.arrayContaining([{ uploadId: 'upload-a' }, { uploadId: 'upload-b' }]))
+  })
+
+  test('should return 404 when no spreadsheets match filename', async () => {
+    const { statusCode } = await server.inject({
+      method: 'GET',
+      url: paths.getUploadsByFilename.replace('{organisationId}', 'org-file') + '?filename=nonexistent.xlsx',
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN }
+    })
+
+    expect(statusCode).toBe(404)
+  })
+
+  test('should return 400 when filename query param is missing', async () => {
+    const { statusCode } = await server.inject({
+      method: 'GET',
+      url: paths.getUploadsByFilename.replace('{organisationId}', 'org-file'),
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN }
+    })
+
+    expect(statusCode).toBe(400)
+  })
+
+  test('should return 404 for uploads endpoint when test routes are disabled', async () => {
+    vi.spyOn(config, 'get').mockImplementation((key) => {
+      if (key === 'isTestRoutesEnabled') return false
+      return originalGet(key)
+    })
+    const disabledServer = await initialiseServer()
+
+    const { statusCode } = await disabledServer.inject({
+      method: 'GET',
+      url: paths.getUploadsByFilename.replace('{organisationId}', 'org-file') + '?filename=test-file.xlsx',
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN }
+    })
+
+    expect(statusCode).toBe(404)
+    vi.restoreAllMocks()
+    await stopServer(disabledServer)
   })
 
   test('should PUT then GET spreadsheet', async () => {

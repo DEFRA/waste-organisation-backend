@@ -52,6 +52,7 @@ function getSwaggerPlugins() {
         },
         documentationPath: '/swagger',
         grouping: 'tags',
+        tags: [{ name: 'test', description: 'test only endpoints' }],
         securityDefinitions: {
           ApiKey: {
             type: 'apiKey',

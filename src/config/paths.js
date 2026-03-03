@@ -8,7 +8,8 @@ export const paths = {
   saveApiCode:          '/organisation/{organisationId}/apiCodes/{apiCode}',
   createApiCode:        '/organisation/{organisationId}/apiCodes',
   listApiCodes:         '/organisation/{organisationId}/apiCodes',
-  lookupOrgFromApiCode: '/organisation/{apiCode}'
+  lookupOrgFromApiCode: '/organisation/{apiCode}',
+  getUploadsByFilename: '/test/spreadsheet/{organisationId}/uploads'
 }
 
 export const pathTo = (route, params) => {

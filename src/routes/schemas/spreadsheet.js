@@ -12,6 +12,14 @@ export const getSpreadsheetsResponseSchema = joi.object({
   spreadsheets: joi.array().items(spreadsheetResponseSchema).required()
 })
 
+export const getUploadsByFilenameResponseSchema = joi.object({
+  message: messageSchema,
+  uploads: joi
+    .array()
+    .items(joi.object({ uploadId: joi.string().required() }))
+    .required()
+})
+
 export const putSpreadsheetResponseSchema = joi
   .object({
     message: messageSchema,

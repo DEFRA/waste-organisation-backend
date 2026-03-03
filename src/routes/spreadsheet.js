@@ -2,11 +2,13 @@ import { paths } from '../config/paths.js'
 import { spreadsheetSchema } from '../domain/spreadsheet.js'
 import { mergeAndValidate } from '../domain/index.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
-import { spreadsheetCollection, findAllSpreadsheets } from '../repositories/spreadsheet.js'
+import { spreadsheetCollection, findAllSpreadsheets, findUploadIdsByFilename } from '../repositories/spreadsheet.js'
 import { SendMessageCommand } from '@aws-sdk/client-sqs'
 import { createLogger } from '../common/helpers/logging/logger.js'
+import Boom from '@hapi/boom'
+import joi from 'joi'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
-import { getSpreadsheetsResponseSchema, putSpreadsheetResponseSchema } from './schemas/spreadsheet.js'
+import { getSpreadsheetsResponseSchema, getUploadsByFilenameResponseSchema, putSpreadsheetResponseSchema } from './schemas/spreadsheet.js'
 
 const logger = createLogger()
 
@@ -67,6 +69,34 @@ const putHandler = async (request, h) => {
     })
   }
 }
+
+const getUploadsByFilenameHandler = async (request, h) => {
+  const { organisationId } = request.params
+  const { filename } = request.query
+  const uploads = await findUploadIdsByFilename(request.db, organisationId, filename)
+  if (uploads.length === 0) {
+    throw Boom.notFound('No spreadsheets found for the given filename')
+  }
+  return h.response({ message: 'success', uploads })
+}
+
+const getUploadsByFilenameOptions = {
+  auth: apiKeyAuthStrategy,
+  tags: ['api', 'test'],
+  validate: {
+    query: joi.object({ filename: joi.string().required() })
+  },
+  response: { schema: getUploadsByFilenameResponseSchema, sample: 0 }
+}
+
+export const testSpreadsheetRoutes = [
+  {
+    method: 'GET',
+    path: paths.getUploadsByFilename,
+    options: getUploadsByFilenameOptions,
+    handler: getUploadsByFilenameHandler
+  }
+]
 
 export const spreadsheet = [
   {
