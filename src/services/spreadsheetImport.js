@@ -304,11 +304,9 @@ const errorToCoords = (() => {
     if (colNum < 0) {
       return {}
     }
-    const errorValue = itemMapping[colNum][0]
-      .reduce((x, y) => {
-        return x ? x[y] : null
-      }, movementData[movementIdx].wasteItems[itemIdx])
-      .filter((x) => x)
+    const errorValue = itemMapping[colNum][0].reduce((x, y) => {
+      return x ? x[y] : null
+    }, movementData[movementIdx].wasteItems[itemIdx])
     return cellError(colNum, rowNumbers[ref].itemRows[itemIdx], msg, itemWorksheetName, errorValue)
   }
 
