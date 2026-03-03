@@ -15,6 +15,8 @@ import {
   parseToString
 } from './spreadsheetImport/parsers.js'
 import { appendMessageToCell, cellError, worksheetToArray } from './spreadsheetImport/excel.js'
+import { v4 as uuidv4 } from 'uuid'
+import { config } from '../config.js'
 
 const logger = createLogger()
 
@@ -27,7 +29,7 @@ export const updateErrors = (() => {
   const coordsToCellName = (coords) => ` (${colNames[coords[1] - 1]}${coords[0]})`
 
   const updateCell = (worksheet, coords, message) => {
-    const [rowNumber, colNumber] = coords
+    const [colNumber, rowNumber] = coords
     const row = worksheet.getRow(rowNumber)
     const cell = row.getCell(colNumber)
     const errorCell = row.getCell(1)
@@ -236,7 +238,7 @@ export const validateWasteTrackingIds = (movements, rowNumbers) => {
   for (const movement of movements) {
     if (!movement.wasteTrackingId) {
       const ref = movement.yourUniqueReference
-      errors.push(cellError(rowNumbers[ref].movementRow, 2, 'Waste Tracking ID is required', movementWorksheetName))
+      errors.push(cellError(2, rowNumbers[ref].movementRow, 'Waste Tracking ID is required', movementWorksheetName))
     }
   }
   return errors
@@ -247,13 +249,18 @@ export const validateNoWasteTrackingIds = (movements, rowNumbers) => {
   for (const movement of movements) {
     if (movement.wasteTrackingId) {
       const ref = movement.yourUniqueReference
-      errors.push(cellError(rowNumbers[ref].movementRow, 2, 'Waste Tracking ID must not be present on a create upload', movementWorksheetName))
+      errors.push(cellError(2, rowNumbers[ref].movementRow, 'Waste Tracking ID must not be present on a create upload', movementWorksheetName))
     }
   }
   return errors
 }
 
 export const workbookToByteArray = async (workbook) => {
+  if (config.get('bulkUpload.copySpreadsheetToDisk')) {
+    const f = '/tmp/output-' + uuidv4() + '.xlsx'
+    logger.info(`file: ${f}`)
+    await workbook.xlsx.writeFile(f)
+  }
   return await workbook.xlsx.writeBuffer()
 }
 
@@ -282,7 +289,7 @@ const errorToCoords = (() => {
       return {}
     }
     const errorValue = movementMapping[colNum][0].reduce((x, y) => x[y], movementData[idx])
-    return cellError(rowNumbers[ref].movementRow, colNum, msg, movementWorksheetName, errorValue)
+    return cellError(colNum, rowNumbers[ref].movementRow, msg, movementWorksheetName, errorValue)
   }
 
   const wasteItemErr = (movementData, movementIdx, itemIdx, rowNumbers, errKeyPath, error) => {
@@ -294,7 +301,7 @@ const errorToCoords = (() => {
       return {}
     }
     const errorValue = itemMapping[colNum][0].reduce((x, y) => x[y], movementData[movementIdx].wasteItems[itemIdx])
-    return cellError(rowNumbers[ref].itemRows[itemIdx], colNum, msg, itemWorksheetName, errorValue)
+    return cellError(colNum, rowNumbers[ref].itemRows[itemIdx], msg, itemWorksheetName, errorValue)
   }
 
   const firstRowOfDataInSpreadsheet = 9

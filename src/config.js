@@ -44,6 +44,12 @@ export const config = convict({
         env: 'BULK_UPLOAD_PASSWORD',
         default: ''
       }
+    },
+    copySpreadsheetToDisk: {
+      doc: 'Make a copy of the spreadsheet on disk when generating errors',
+      format: Boolean,
+      env: 'BULK_UPLOAD_COPY_SPREADSHEET_TO_DISK',
+      default: false
     }
   },
   notify: {

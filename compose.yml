@@ -98,6 +98,7 @@ services:
       AWS_S3_CHECKSUM_MODE: DISABLED
       GOV_NOTIFY_KEY: ${GOV_NOTIFY_KEY}
       LOG_LEVEL: trace
+      BULK_UPLOAD_COPY_SPREADSHEET_TO_DISK: true
     networks:
       - cdp-tenant
     volumes:

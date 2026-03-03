@@ -146,25 +146,25 @@ describe('Error transforms bulk import data', () => {
       {
         '7. Waste movement level': [
           {
-            coords: [9, 22],
+            coords: [22, 9],
             message: 'means of transport is required',
             sheet: '7. Waste movement level'
           },
           {
-            coords: [9, 7],
+            coords: [7, 9],
             message: 'authorisation number is required',
             sheet: '7. Waste movement level'
           }
         ],
         '8. Waste item level': [
           {
-            coords: [9, 3],
+            coords: [3, 9],
             errorValue: ['060110'],
             message: 'ewc codes must be a valid EWC code from the official list',
             sheet: '8. Waste item level'
           },
           {
-            coords: [9, 16],
+            coords: [16, 9],
             errorValue: [
               {
                 concentration: '<=37%',
