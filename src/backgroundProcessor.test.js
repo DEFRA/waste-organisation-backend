@@ -325,12 +325,66 @@ describe('background processor', () => {
   })
 
   it('should send failed email if file has errors', { timeout: 50000 }, async () => {
-    vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
+    vi.spyOn(encryption, 'decrypt').mockImplementation((encryptedString) => {
+      if (encryptedString === 'randomStringEmail') {
+        return 'test@email.com'
+      }
+
+      if (encryptedString === 'randomStringName') {
+        return JSON.stringify({
+          firstName: 'Joe'
+        })
+      }
+
+      return null
+    })
     const mockSendFailed = vi.spyOn(sendEmail, 'sendFailed').mockImplementation(vi.fn())
 
     message = {
       Body: JSON.stringify({
         encryptedEmail: 'randomString',
+        organisationId: 'randomString',
+        uploadId: 'randomString',
+        hasError: true
+      })
+    }
+
+    const s3Client = {
+      send: async (_) => {
+        const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
+        return {
+          Body: [buffer]
+        }
+      }
+    }
+
+    const { processJob } = await import('./backgroundProcessor.js')
+
+    const response = await processJob(s3Client, message)
+
+    expect(response).toBe(undefined)
+    expect(mockSendFailed).toBeCalled()
+  })
+
+  it('should handle name not being an object', { timeout: 50000 }, async () => {
+    vi.spyOn(encryption, 'decrypt').mockImplementation((encryptedString) => {
+      if (encryptedString === 'randomStringEmail') {
+        return 'test@email.com'
+      }
+
+      if (encryptedString === 'randomStringName') {
+        return 'Random String'
+      }
+
+      return null
+    })
+
+    const mockSendFailed = vi.spyOn(sendEmail, 'sendFailed').mockImplementation(vi.fn())
+
+    message = {
+      Body: JSON.stringify({
+        encryptedEmail: 'randomStringEmail',
+        encryptedName: 'randomStringName',
         organisationId: 'randomString',
         uploadId: 'randomString',
         hasError: true

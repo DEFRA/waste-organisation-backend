@@ -67,23 +67,23 @@ export const deleteMessage = async (client, QueueUrl, receiptHandle) => {
   }
 }
 
-const sendInitalFailedEmail = async (workbook, decryptedEmail) => {
+const sendInitalFailedEmail = async (workbook, decryptedEmail, decryptedName) => {
   if (workbook) {
     const file = await workbookToByteArray(workbook)
     logger.info(`sending validation failed message ${file ? 'with file' : 'without file'}`)
-    await sendEmail.sendValidationFailed({ email: decryptedEmail, file })
+    await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file })
   } else {
-    await sendEmail.sendFailed({ email: decryptedEmail })
+    await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName })
   }
 }
 
-const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, uploadId, uploadType }, decryptedEmail) => {
+const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, uploadId, uploadType }, decryptedEmail, decryptedName) => {
   const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
   logger.info(`UploadId: ${uploadId} -- Fetching bytes: ${buffer.length}`)
   const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, organisationId)
   if (hasErrors) {
     logger.warn(`UploadId: ${uploadId} -- Errors before sending to import API ${JSON.stringify(errors)}`)
-    await sendInitalFailedEmail(workbook, decryptedEmail)
+    await sendInitalFailedEmail(workbook, decryptedEmail, decryptedName)
     return
   }
 
@@ -94,7 +94,7 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
     logger.warn(`UploadId: ${uploadId} -- Waste Tracking ID validation errors ${JSON.stringify(wtidErrors)}`)
     updateErrors(workbook, { [wtidErrors[0].sheet]: wtidErrors })
     const file = await workbookToByteArray(workbook)
-    await sendEmail.sendValidationFailed({ email: decryptedEmail, file })
+    await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file })
     return
   }
 
@@ -106,7 +106,7 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
     logger.debug(`UploadId: ${uploadId} -- Cells to update with errors: ${JSON.stringify(errs)}`)
     updateErrors(workbook, errs)
     const file = await workbookToByteArray(workbook)
-    await sendEmail.sendValidationFailed({ email: decryptedEmail, file })
+    await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file })
     return
   }
 
@@ -116,7 +116,7 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
     logger.debug(`UploadId: ${uploadId} -- Cells to update with waste tracking ids: ${JSON.stringify(coords)}`)
     updateCellContent(workbook, coords)
     const file = await workbookToByteArray(workbook)
-    await sendEmail.sendSuccess({ email: decryptedEmail, file })
+    await sendEmail.sendSuccess({ email: decryptedEmail, name: decryptedName, file })
     return
   }
   logger.error(`UploadId: ${uploadId} -- Unhandled case. No errors or waste tracking ids generated for ${uploadId}`)
@@ -124,11 +124,12 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
 
 export const processJob = async (s3Client, message) => {
   logger.info(`Message: ${JSON.stringify(message)}`)
-  const { s3Bucket, s3Key, encryptedEmail, organisationId, uploadId, uploadType, hasError } = JSON.parse(message.Body)
+  const { s3Bucket, s3Key, encryptedEmail, encryptedName, organisationId, uploadId, uploadType, hasError } = JSON.parse(message.Body)
   const decryptedEmail = decrypt(encryptedEmail, config.get('encryptionKey'))
+  const decryptedName = decrypt(encryptedName, config.get('encryptionKey'))
 
   if (hasError) {
-    await sendEmail.sendFailed({ email: decryptedEmail })
+    await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName })
     return
   }
 
@@ -136,7 +137,7 @@ export const processJob = async (s3Client, message) => {
     logger.info(`Message missing s3 coords: ${JSON.stringify(message)}`)
     return
   }
-  await processSpreadsheet(s3Client, { s3Bucket, s3Key, organisationId, uploadId, uploadType }, decryptedEmail)
+  await processSpreadsheet(s3Client, { s3Bucket, s3Key, organisationId, uploadId, uploadType }, decryptedEmail, decryptedName)
 }
 
 export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {

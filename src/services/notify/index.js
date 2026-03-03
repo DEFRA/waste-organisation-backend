@@ -11,16 +11,27 @@ const failedWithFileTemplate = config.get('notify.failedWithFileTemplate')
 const logger = createLogger()
 
 export const sendEmail = {
-  sendSuccess: async ({ email, file }) => send(successTemplate, email, file),
-  sendFailed: async ({ email }) => send(failedTemplate, email),
-  sendValidationFailed: async ({ email, file }) => send(failedWithFileTemplate, email, file)
+  sendSuccess: async ({ email, name, file }) => send(successTemplate, email, name, file),
+  sendFailed: async ({ email, name }) => send(failedTemplate, email, name),
+  sendValidationFailed: async ({ email, name, file }) => send(failedWithFileTemplate, email, name, file)
 }
 
-const send = async (template, email, file) => {
+const send = async (template, email, name, file) => {
   const notifyClient = new NotifyClient(apiKey)
+
+  let nameObject = null
+
+  try {
+    if (name) {
+      nameObject = JSON.parse(name)
+    }
+  } catch (error) {
+    logger.error(`name is not parsable to JSON: ${error}`)
+  }
+
   try {
     const personalisation = {
-      'first name': 'Joe Bloggs'
+      'first name': nameObject ? nameObject.firstName : null
     }
     if (file) {
       logger.info(`Attaching file`)
