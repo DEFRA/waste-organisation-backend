@@ -32,6 +32,6 @@ aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name mock-clam
 aws --endpoint-url=http://localhost:4566 s3api put-bucket-notification-configuration --bucket cdp-uploader-quarantine --notification-configuration '{"QueueConfigurations": [{"QueueArn": "arn:aws:sqs:eu-west-2:000000000000:mock-clamav","Events": ["s3:ObjectCreated:*"]}]}'
 aws --endpoint-url=http://localhost:4566 sqs create-queue --region $AWS_REGION --queue-name cdp-uploader-download-requests
 
-echo READY > /tmp/READY
+echo READY > /var/lib/localstack/READY
 # end of copypasta
 

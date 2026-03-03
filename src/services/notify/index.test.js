@@ -6,7 +6,6 @@ describe('Notify', () => {
   const loggerErrorMock = vi.fn()
   const loggerInfoMock = vi.fn()
   const email = 'foo@example.com'
-
   const successfulSubmission = '2ffe3792-f097-421d-b3e2-9de5af81609f'
 
   beforeAll(() => {
@@ -28,11 +27,10 @@ describe('Notify', () => {
   it('should return email response', async () => {
     sendEmailMock.mockReturnValue({ data: 'response' })
     const { sendEmail } = await import('./index.js')
-    const actualResponse = await sendEmail.sendSuccess({ email })
+    const actualResponse = await sendEmail.sendSuccess({ email, name: { firstName: 'Joe Bloggs' } })
     const personalisation = {
       'first name': 'Joe Bloggs'
     }
-
     expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
     expect(actualResponse).toBe(sendEmailMock())
     expect(loggerInfoMock).toBeCalledWith('Email Response data: response')
@@ -42,7 +40,7 @@ describe('Notify', () => {
     sendEmailMock.mockReturnValue('response')
     const { sendEmail } = await import('./index.js')
     const file = Buffer.from([{ foo: 'bar' }])
-    await sendEmail.sendSuccess({ email, file })
+    await sendEmail.sendSuccess({ email, name: { firstName: 'Joe Bloggs' }, file })
     const personalisation = {
       'first name': 'Joe Bloggs',
       link_to_file: 'link'
@@ -54,11 +52,8 @@ describe('Notify', () => {
 
   it('should handle exception correctly', async () => {
     sendEmailMock.mockRejectedValue('Mock Error')
-
     const { sendEmail } = await import('./index.js')
-
-    await sendEmail.sendSuccess({ email })
-
+    await sendEmail.sendSuccess({ email, name: { firstName: 'Joe Bloggs' } })
     expect(loggerErrorMock).toBeCalledWith('Error sending emails: Mock Error')
   })
 })
