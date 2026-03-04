@@ -118,9 +118,11 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
 
   if (apiResponse.movements) {
     logger.debug(`UploadId: ${uploadId} -- Movements returned from Bulk API`)
-    const coords = wasteTrackingIdsToCoords(movements, rowNumbers, apiResponse.movements)
-    logger.debug(`UploadId: ${uploadId} -- Cells to update with waste tracking ids: ${JSON.stringify(coords)}`)
-    updateCellContent(workbook, coords)
+    if (!isUpdate) {
+      const coords = wasteTrackingIdsToCoords(movements, rowNumbers, apiResponse.movements)
+      logger.debug(`UploadId: ${uploadId} -- Cells to update with waste tracking ids: ${JSON.stringify(coords)}`)
+      updateCellContent(workbook, coords)
+    }
     const file = await workbookToByteArray(workbook)
     await sendEmail.sendSuccess({ email: decryptedEmail, name: decryptedName, file })
     return

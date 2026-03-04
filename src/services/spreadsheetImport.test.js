@@ -247,9 +247,25 @@ describe('some excel unit tests', () => {
   test.each([
     ['test', 'test'],
     [{ richText: [{ text: 'test' }] }, 'test'],
-    [{ richText: [{ font: { name: 'Calibri' }, text: 'R1 = 0.75 = Tonnes = Estimate' }] }, 'R1 = 0.75 = Tonnes = Estimate']
-  ])('getting cell value text', (val, text) => {
-    expect(cellValueText(val)).toEqual(text)
+    [{ richText: [{ font: { name: 'Calibri' }, text: 'R1 = 0.75 = Tonnes = Estimate' }] }, 'R1 = 0.75 = Tonnes = Estimate'],
+    [123, 123],
+    [0, 0],
+    [true, true],
+    [false, false],
+    [null, ''],
+    [undefined, ''],
+    ['', ''],
+    [{ richText: [{ text: 'a' }, { text: 'b' }] }, 'ab'],
+    [{ richText: [{ text: '' }] }, ''],
+    [{ richText: [{ a: 'a' }, { a: 'b' }] }, '[object Object][object Object]']
+  ])('getting cell value text: %s -> %s', (val, text) => {
+    const result = cellValueText(val)
+    expect(result).toEqual(text)
+  })
+
+  test.each([[null], [undefined]])('cellValueText(%s) never returns null or undefined', (val) => {
+    expect(cellValueText(val)).toBeDefined()
+    expect(cellValueText(val)).not.toBeNull()
   })
 
   test.each([
@@ -413,6 +429,25 @@ describe('excel proccessor', () => {
     updateCellContent(workbook, coords)
     await workbook.xlsx.writeFile('./test-resources/output-spreadsheet-with-waste-tracking-ids.xlsx')
   })
+
+  test('updateCellContent handles null and undefined values', { timeout: 50000 }, async () => {
+    const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
+    const { workbook } = await parseExcelFile(buffer)
+    const worksheetName = '7. Waste movement level'
+
+    updateCellContent(workbook, {
+      [worksheetName]: [
+        { coords: [2, 9], value: null },
+        { coords: [2, 10], value: undefined }
+      ]
+    })
+
+    const worksheet = workbook.getWorksheet(worksheetName)
+    const cell1 = worksheet.getRow(9).getCell(2)
+    const cell2 = worksheet.getRow(10).getCell(2)
+    expect(cell1.value.richText[0].text).toBe('')
+    expect(cell2.value.richText[0].text).toBe('')
+  })
 })
 
 /*
@@ -473,7 +508,7 @@ describe('excel proccessor', () => {
 
 
 
-  
+
 const example = {
   apiCode: 'ba6eb330-4f7f-11eb-a2fb-67c34e9ac07cg',
   dateTimeReceived:
