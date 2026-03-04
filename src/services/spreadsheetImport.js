@@ -14,7 +14,8 @@ import {
   parseToNumber,
   parseToString
 } from './spreadsheetImport/parsers.js'
-import { appendMessageToCell, cellError, worksheetToArray, cellValueText } from './spreadsheetImport/excel.js'
+import { appendMessageToCell, cellError, collectCellErrors, worksheetToArray } from './spreadsheetImport/excel.js'
+import { compose, coerceRegistrationNumberWhenReasonSupplied } from './spreadsheetImport/transforms.js'
 import { v4 as uuidv4 } from 'uuid'
 import { config } from '../config.js'
 
@@ -78,7 +79,7 @@ const updateData = (cols) => {
   }
 }
 
-const joinWasteItems = (movements, items, defraCustomerOrganisationId) => {
+const joinWasteItems = (movements, items, defraCustomerOrganisationId, transform) => {
   const is = Object.groupBy(items, (x) => x['yourUniqueReference'])
   const errors = { movements: [], items: [] }
   const movementRefCol = 3
@@ -97,6 +98,7 @@ const joinWasteItems = (movements, items, defraCustomerOrganisationId) => {
       })
       delete movements[i]['--rowNumber']
       delete is[r]
+      collectCellErrors(errors.movements, () => (movements[i] = transform(movements[i])), null, [2, movements[i]['--rowNumber']], {})
     } else {
       errors.movements.push(cellError(movementRefCol, movements[i]['--rowNumber'], 'No waste items for unique reference'))
     }
@@ -194,8 +196,9 @@ const readExcelBuffer = async (buffer) => {
 export const parseExcelFile = (() => {
   const movementColName = updateData(movementMapping)
   const itemColName = updateData(itemMapping)
+  const transform = coerceRegistrationNumberWhenReasonSupplied
 
-  return async (buffer, defraCustomerOrganisationId) => {
+  return async (buffer, defraCustomerOrganisationId, validateFn) => {
     const workbook = await readExcelBuffer(buffer)
     if (workbook == null) {
       return { hasErrors: true }
@@ -214,7 +217,7 @@ export const parseExcelFile = (() => {
       maxCol: 25,
       updateFn: itemColName
     })
-    const joined = joinWasteItems(movements.elements, items.elements, defraCustomerOrganisationId)
+    const joined = joinWasteItems(movements.elements, items.elements, defraCustomerOrganisationId, compose(validateFn, transform))
     logger.trace(`joined excel data: ${JSON.stringify(joined, null, 4)}`)
     if (movements.errors.length > 0 || items.errors.length > 0 || joined.errors.items.length > 0 || joined.errors.movements.length > 0) {
       const errors = {
