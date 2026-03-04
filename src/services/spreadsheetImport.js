@@ -37,7 +37,7 @@ export const updateErrors = (() => {
       errorCell.value = appendMessageToCell(errorCell, message + coordsToCellName(coords), font)
     }
     if (cell?.value) {
-      cell.value = { richText: [{ font, text: cellValueText(cell.value) }] }
+      cell.value = { richText: [{ font, text: String(cellValueText(cell.value) ?? '') }] }
       cell.style.fill = { ...fillStyle }
     } else {
       cell.value = { richText: [{ font, text: 'Please provide a value' }] }
@@ -334,7 +334,7 @@ export const updateCellContent = (() => {
     const [colNumber, rowNumber] = coords
     const row = worksheet.getRow(rowNumber)
     const cell = row.getCell(colNumber)
-    cell.value = { richText: [{ font, text: value }] }
+    cell.value = { richText: [{ font, text: String(value ?? '') }] }
   }
   return (workbook, cellsAndValues) => {
     for (const worksheetName of Object.keys(cellsAndValues)) {
