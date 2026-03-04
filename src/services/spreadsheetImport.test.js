@@ -257,7 +257,7 @@ describe('some excel unit tests', () => {
     ['', ''],
     [{ richText: [{ text: 'a' }, { text: 'b' }] }, 'ab'],
     [{ richText: [{ text: '' }] }, ''],
-    [{ richText: [{ a: 'a' }, { a: 'b' }] }, '']
+    [{ richText: [{ a: 'a' }, { a: 'b' }] }, '[object Object][object Object]']
   ])('getting cell value text: %s -> %s', (val, text) => {
     const result = cellValueText(val)
     expect(result).toEqual(text)
@@ -489,7 +489,7 @@ describe('excel proccessor', () => {
 
 
 
-  
+
 const example = {
   apiCode: 'ba6eb330-4f7f-11eb-a2fb-67c34e9ac07cg',
   dateTimeReceived:

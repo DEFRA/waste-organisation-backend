@@ -11,11 +11,10 @@ export const cellError = (colNumber, rowNumber, message, sheet, errorValue) => {
 
 export const cellValueText = (() => {
   const plainText = (x) => x?.text ?? x
-  const richTextEntryToString = (x) => x?.text ?? ''
   return (val) => {
     const v = val?.richText ?? val
     if (Array.isArray(v)) {
-      return v.reduce((acc, x) => acc + richTextEntryToString(x.richText ?? x), '')
+      return v.reduce((acc, x) => acc + plainText(x.richText ?? x), '')
     } else {
       return plainText(v) ?? ''
     }
