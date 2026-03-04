@@ -429,6 +429,25 @@ describe('excel proccessor', () => {
     updateCellContent(workbook, coords)
     await workbook.xlsx.writeFile('./test-resources/output-spreadsheet-with-waste-tracking-ids.xlsx')
   })
+
+  test('updateCellContent handles null and undefined values', { timeout: 50000 }, async () => {
+    const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
+    const { workbook } = await parseExcelFile(buffer)
+    const worksheetName = '7. Waste movement level'
+
+    updateCellContent(workbook, {
+      [worksheetName]: [
+        { coords: [2, 9], value: null },
+        { coords: [2, 10], value: undefined }
+      ]
+    })
+
+    const worksheet = workbook.getWorksheet(worksheetName)
+    const cell1 = worksheet.getRow(9).getCell(2)
+    const cell2 = worksheet.getRow(10).getCell(2)
+    expect(cell1.value.richText[0].text).toBe('')
+    expect(cell2.value.richText[0].text).toBe('')
+  })
 })
 
 /*
