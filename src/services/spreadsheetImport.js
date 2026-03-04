@@ -334,7 +334,7 @@ export const updateCellContent = (() => {
     const [colNumber, rowNumber] = coords
     const row = worksheet.getRow(rowNumber)
     const cell = row.getCell(colNumber)
-    cell.value = { richText: [{ font, text: value }] }
+    cell.value = { richText: [{ font, text: String(value ?? '') }] }
   }
   return (workbook, cellsAndValues) => {
     for (const worksheetName of Object.keys(cellsAndValues)) {
