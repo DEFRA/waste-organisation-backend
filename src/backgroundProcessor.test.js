@@ -489,7 +489,7 @@ describe('background processor', () => {
     expect(mockSendFailed).toHaveBeenCalled()
   })
 
-  it('should call bulkUpdate for update uploads with valid WTIDs', { timeout: 50000 }, async () => {
+  it('should call bulkUpdate for update uploads with valid WTIDs and preserve original WTIDs', { timeout: 50000 }, async () => {
     vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
     const mockWorkbook = { xlsx: { writeBuffer: async () => Buffer.from('test') } }
     vi.spyOn(spreadsheetImportModule, 'parseExcelFile').mockResolvedValue({
@@ -509,7 +509,7 @@ describe('background processor', () => {
     const mockBulkUpdate = vi.spyOn(bulkImportModule, 'bulkUpdate').mockResolvedValue({
       movements: [{ wasteTrackingId: 'EXISTING1' }]
     })
-    vi.spyOn(spreadsheetImportModule, 'updateCellContent').mockReturnValue(mockWorkbook)
+    const mockUpdateCellContent = vi.spyOn(spreadsheetImportModule, 'updateCellContent').mockReturnValue(mockWorkbook)
     const mockSendSuccess = vi.spyOn(sendEmail, 'sendSuccess').mockImplementation(vi.fn())
 
     const updateMessage = {
@@ -536,6 +536,7 @@ describe('background processor', () => {
     expect(mockBulkUpdate).toHaveBeenCalled()
     const sentMovements = mockBulkUpdate.mock.calls[0][1]
     expect(sentMovements[0].wasteTrackingId).toBe('EXISTING1')
+    expect(mockUpdateCellContent).not.toHaveBeenCalled()
     expect(mockSendSuccess).toHaveBeenCalled()
   })
 
