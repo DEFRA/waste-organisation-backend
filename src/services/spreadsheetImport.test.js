@@ -256,7 +256,8 @@ describe('some excel unit tests', () => {
     [undefined, ''],
     ['', ''],
     [{ richText: [{ text: 'a' }, { text: 'b' }] }, 'ab'],
-    [{ richText: [{ text: '' }] }, '']
+    [{ richText: [{ text: '' }] }, ''],
+    [{ richText: [{ a: 'a' }, { a: 'b' }] }, '']
   ])('getting cell value text: %s -> %s', (val, text) => {
     const result = cellValueText(val)
     expect(result).toEqual(text)
