@@ -247,9 +247,24 @@ describe('some excel unit tests', () => {
   test.each([
     ['test', 'test'],
     [{ richText: [{ text: 'test' }] }, 'test'],
-    [{ richText: [{ font: { name: 'Calibri' }, text: 'R1 = 0.75 = Tonnes = Estimate' }] }, 'R1 = 0.75 = Tonnes = Estimate']
-  ])('getting cell value text', (val, text) => {
-    expect(cellValueText(val)).toEqual(text)
+    [{ richText: [{ font: { name: 'Calibri' }, text: 'R1 = 0.75 = Tonnes = Estimate' }] }, 'R1 = 0.75 = Tonnes = Estimate'],
+    [123, 123],
+    [0, 0],
+    [true, true],
+    [false, false],
+    [null, ''],
+    [undefined, ''],
+    ['', ''],
+    [{ richText: [{ text: 'a' }, { text: 'b' }] }, 'ab'],
+    [{ richText: [{ text: '' }] }, '']
+  ])('getting cell value text: %s -> %s', (val, text) => {
+    const result = cellValueText(val)
+    expect(result).toEqual(text)
+  })
+
+  test.each([[null], [undefined]])('cellValueText(%s) never returns null or undefined', (val) => {
+    expect(cellValueText(val)).toBeDefined()
+    expect(cellValueText(val)).not.toBeNull()
   })
 
   test.each([

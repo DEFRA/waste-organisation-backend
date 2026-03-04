@@ -37,7 +37,7 @@ export const updateErrors = (() => {
       errorCell.value = appendMessageToCell(errorCell, message + coordsToCellName(coords), font)
     }
     if (cell?.value) {
-      cell.value = { richText: [{ font, text: String(cellValueText(cell.value) ?? '') }] }
+      cell.value = { richText: [{ font, text: cellValueText(cell.value) }] }
       cell.style.fill = { ...fillStyle }
     } else {
       cell.value = { richText: [{ font, text: 'Please provide a value' }] }

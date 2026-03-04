@@ -16,7 +16,7 @@ export const cellValueText = (() => {
     if (Array.isArray(v)) {
       return v.reduce((acc, x) => acc + plainText(x.richText ?? x), '')
     } else {
-      return plainText(v)
+      return plainText(v) ?? ''
     }
   }
 })()
