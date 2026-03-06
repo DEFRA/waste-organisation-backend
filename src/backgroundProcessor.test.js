@@ -2,9 +2,9 @@ import { beforeAll, describe, expect, vi } from 'vitest'
 import { ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs'
 
 import Excel from 'exceljs'
-import * as encryption from './services/decrypt.js'
-import * as bulkImportModule from './services/bulkImport.js'
-import * as spreadsheetImportModule from './services/spreadsheetImport.js'
+// import * as encryption from './services/decrypt.js'
+// import * as bulkImportModule from './services/bulkImport.js'
+// import * as spreadsheetImportModule from './services/spreadsheetImport.js'
 import fs from 'node:fs/promises'
 import { sendEmail } from './services/notify/index.js'
 
@@ -35,8 +35,8 @@ describe('background processor 2', () => {
               getWorksheet: vi.fn().mockImplementation((wsName) => {
                 console.log('wsName: ', wsName)
                 const w = {
-                  '7. Waste movement level': mockWorksheet([['', '', '']]),
-                  '8. Waste item level': mockWorksheet(['', '', ''])
+                  '7. Waste movement level': mockWorksheet([['', '', 'REF1', '']]),
+                  '8. Waste item level': mockWorksheet(['', 'REF1', '', ''])
                 }
                 return w[wsName]
               })
@@ -48,20 +48,11 @@ describe('background processor 2', () => {
   })
 
   it('should send failed email when bulk API returns non-transient error', { timeout: 50000 }, async () => {
+    const encryption = await import('./services/decrypt.js')
+    const bulkImportModule = await import('./services/bulkImport.js')
+    const spreadsheetImportModule = await import('./services/spreadsheetImport.js')
+    console.log('object: >>')
     vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
-    vi.spyOn(spreadsheetImportModule, 'parseExcelFile').mockResolvedValue({
-      hasErrors: false,
-      workbook: { xlsx: { writeBuffer: async () => Buffer.from('test') } },
-      movements: [
-        {
-          yourUniqueReference: 'REF1',
-          submittingOrganisation: { defraCustomerOrganisationId: 'org-id' },
-          wasteItems: []
-        }
-      ],
-      rowNumbers: { REF1: { movementRow: 9, itemRows: [] } },
-      errors: { movements: [], items: [] }
-    })
     vi.spyOn(bulkImportModule, 'bulkImport').mockResolvedValue({ failed: true })
     const mockSendFailed = vi.spyOn(sendEmail, 'sendFailed').mockImplementation(vi.fn())
 
@@ -88,6 +79,7 @@ describe('background processor 2', () => {
 
     expect(response).toBe(undefined)
     expect(mockSendFailed).toHaveBeenCalledWith({ email: 'test@email.com', name: 'test@email.com' })
+    expect(true).toBe(false)
   })
 })
 
