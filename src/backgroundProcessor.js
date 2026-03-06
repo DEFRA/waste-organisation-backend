@@ -160,7 +160,7 @@ export const processJob = async (s3Client, message) => {
 export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {
   const params = {
     QueueUrl,
-    MaxNumberOfMessages: 10, // Process up to 10 messages at once
+    MaxNumberOfMessages: 1, // Process 1 messages at once
     WaitTimeSeconds: 20, // Long polling to reduce empty responses
     VisibilityTimeout: 30 // Hide message for 30s while processing
   }
