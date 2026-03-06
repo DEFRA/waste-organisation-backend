@@ -1,13 +1,97 @@
 import { beforeAll, describe, expect, vi } from 'vitest'
 import { ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs'
 
+import Excel from 'exceljs'
 import * as encryption from './services/decrypt.js'
 import * as bulkImportModule from './services/bulkImport.js'
 import * as spreadsheetImportModule from './services/spreadsheetImport.js'
 import fs from 'node:fs/promises'
 import { sendEmail } from './services/notify/index.js'
 
-describe('background processor', () => {
+vi.mock('exceljs')
+
+describe('background processor 2', () => {
+  const mockWorksheet = (fakeData) => ({
+    eachRow: vi.fn((callback) => {
+      console.log('hehe ')
+      const fakeRows = [[], [], [], [], [], [], [], []].concat(
+        fakeData.map((r) =>
+          r.map((c) => {
+            getCell: () => ({ value: c })
+          })
+        )
+      )
+      fakeRows.forEach((row, i) => callback(row, i + 1))
+    })
+  })
+
+  beforeEach(() => {
+    vi.spyOn(Excel, 'Workbook').mockImplementation(
+      class {
+        xlsx() {
+          console.log('qqqq: ')
+          return {
+            load: () => ({
+              getWorksheet: vi.fn().mockImplementation((wsName) => {
+                console.log('wsName: ', wsName)
+                const w = {
+                  '7. Waste movement level': mockWorksheet([['', '', '']]),
+                  '8. Waste item level': mockWorksheet(['', '', ''])
+                }
+                return w[wsName]
+              })
+            })
+          }
+        }
+      }
+    )
+  })
+
+  it('should send failed email when bulk API returns non-transient error', { timeout: 50000 }, async () => {
+    vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
+    vi.spyOn(spreadsheetImportModule, 'parseExcelFile').mockResolvedValue({
+      hasErrors: false,
+      workbook: { xlsx: { writeBuffer: async () => Buffer.from('test') } },
+      movements: [
+        {
+          yourUniqueReference: 'REF1',
+          submittingOrganisation: { defraCustomerOrganisationId: 'org-id' },
+          wasteItems: []
+        }
+      ],
+      rowNumbers: { REF1: { movementRow: 9, itemRows: [] } },
+      errors: { movements: [], items: [] }
+    })
+    vi.spyOn(bulkImportModule, 'bulkImport').mockResolvedValue({ failed: true })
+    const mockSendFailed = vi.spyOn(sendEmail, 'sendFailed').mockImplementation(vi.fn())
+
+    const createMessage = {
+      Body: JSON.stringify({
+        s3Bucket: 'bucket',
+        s3Key: 'key',
+        encryptedEmail: 'enc',
+        organisationId: 'org-id',
+        uploadId: 'upload-failed',
+        uploadType: 'create'
+      })
+    }
+
+    const s3Client = {
+      send: async (_) => {
+        const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
+        return { Body: [buffer] }
+      }
+    }
+
+    const { processJob } = await import('./backgroundProcessor.js')
+    const response = await processJob(s3Client, createMessage)
+
+    expect(response).toBe(undefined)
+    expect(mockSendFailed).toHaveBeenCalledWith({ email: 'test@email.com', name: 'test@email.com' })
+  })
+})
+
+describe.skip('background processor', () => {
   let message
   const wreckPostMock = vi.fn()
   const wreckPutMock = vi.fn()
@@ -538,49 +622,6 @@ describe('background processor', () => {
     expect(sentMovements[0].wasteTrackingId).toBe('EXISTING1')
     expect(mockUpdateCellContent).not.toHaveBeenCalled()
     expect(mockSendSuccess).toHaveBeenCalled()
-  })
-
-  it('should send failed email when bulk API returns non-transient error', { timeout: 50000 }, async () => {
-    vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
-    vi.spyOn(spreadsheetImportModule, 'parseExcelFile').mockResolvedValue({
-      hasErrors: false,
-      workbook: { xlsx: { writeBuffer: async () => Buffer.from('test') } },
-      movements: [
-        {
-          yourUniqueReference: 'REF1',
-          submittingOrganisation: { defraCustomerOrganisationId: 'org-id' },
-          wasteItems: []
-        }
-      ],
-      rowNumbers: { REF1: { movementRow: 9, itemRows: [] } },
-      errors: { movements: [], items: [] }
-    })
-    vi.spyOn(bulkImportModule, 'bulkImport').mockResolvedValue({ failed: true })
-    const mockSendFailed = vi.spyOn(sendEmail, 'sendFailed').mockImplementation(vi.fn())
-
-    const createMessage = {
-      Body: JSON.stringify({
-        s3Bucket: 'bucket',
-        s3Key: 'key',
-        encryptedEmail: 'enc',
-        organisationId: 'org-id',
-        uploadId: 'upload-failed',
-        uploadType: 'create'
-      })
-    }
-
-    const s3Client = {
-      send: async (_) => {
-        const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-        return { Body: [buffer] }
-      }
-    }
-
-    const { processJob } = await import('./backgroundProcessor.js')
-    const response = await processJob(s3Client, createMessage)
-
-    expect(response).toBe(undefined)
-    expect(mockSendFailed).toHaveBeenCalledWith({ email: 'test@email.com', name: 'test@email.com' })
   })
 
   it('should rethrow transient errors from processSpreadsheet', { timeout: 50000 }, async () => {

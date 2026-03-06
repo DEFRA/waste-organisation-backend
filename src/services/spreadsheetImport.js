@@ -14,7 +14,7 @@ import {
   parseToNumber,
   parseToString
 } from './spreadsheetImport/parsers.js'
-import { appendMessageToCell, cellError, collectCellErrors, worksheetToArray } from './spreadsheetImport/excel.js'
+import { appendMessageToCell, cellError, collectCellErrors, worksheetToArray, cellValueText } from './spreadsheetImport/excel.js'
 import { compose, coerceRegistrationNumberWhenReasonSupplied } from './spreadsheetImport/transforms.js'
 import { v4 as uuidv4 } from 'uuid'
 import { config } from '../config.js'

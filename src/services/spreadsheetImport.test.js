@@ -319,7 +319,8 @@ describe('excel proccessor', () => {
         },
         carrier: {
           organisationName: 'Qualitech Environmental Services Ltd',
-          registrationNumber: 'CBDU171976'
+          registrationNumber: '',
+          reasonForNoRegistrationNumber: 'ON_SITE'
         },
         dateTimeReceived: new Date('2026-01-14T11:05:00.000Z'),
         hazardousWasteConsignmentCode: 'KAWASA/19963',
