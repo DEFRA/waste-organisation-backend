@@ -10,17 +10,19 @@ describe('Notify', () => {
 
   beforeAll(() => {
     vi.doMock('notifications-node-client', () => ({
-      NotifyClient: vi.fn().mockImplementation(() => ({
-        prepareUpload: prepareUploadMock.mockReturnValue('link'),
-        sendEmail: sendEmailMock
-      }))
+      NotifyClient: vi.fn().mockImplementation(function () {
+        return {
+          prepareUpload: prepareUploadMock.mockReturnValue('link'),
+          sendEmail: sendEmailMock
+        }
+      })
     }))
 
     vi.doMock('pino', () => ({
-      pino: vi.fn().mockImplementation(() => ({
+      pino: vi.fn().mockReturnValue({
         info: loggerInfoMock,
         error: loggerErrorMock
-      }))
+      })
     }))
   })
 
