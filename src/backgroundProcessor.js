@@ -91,18 +91,6 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
     return
   }
 
-  /*
-  const wtidErrors = isUpdate ? validateWasteTrackingIds(movements, rowNumbers) : validateNoWasteTrackingIds(movements, rowNumbers)
-
-  if (wtidErrors.length > 0) {
-    logger.warn(`UploadId: ${uploadId} -- Waste Tracking ID validation errors ${JSON.stringify(wtidErrors)}`)
-    updateErrors(workbook, { [wtidErrors[0].sheet]: wtidErrors })
-    const file = await workbookToByteArray(workbook)
-    await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file })
-    return
-  }
-  */
-
   const apiResponse = isUpdate ? await bulkUpdate(uploadId, movements) : await bulkImport(uploadId, movements)
 
   if (apiResponse.failed) {

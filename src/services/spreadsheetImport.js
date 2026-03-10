@@ -1,4 +1,3 @@
-import Excel from 'exceljs'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import {
   parseBoolean,
@@ -14,46 +13,18 @@ import {
   parseToNumber,
   parseToString
 } from './spreadsheetImport/parsers.js'
-import { appendMessageToCell, cellError, collectCellErrors, worksheetToArray, cellValueText } from './spreadsheetImport/excel.js'
+import {
+  readExcelBuffer,
+  cellError,
+  collectCellErrors,
+  worksheetToArray,
+  updateErrors as xlUpdateErrors,
+  updateCellContent as xlUpdateCellContent,
+  workbookToByteArray as xlWorkbookToByteArray
+} from './spreadsheetImport/excel.js'
 import { compose, coerceRegistrationNumberWhenReasonSupplied } from './spreadsheetImport/transforms.js'
-import { v4 as uuidv4 } from 'uuid'
-import { config } from '../config.js'
 
 const logger = createLogger()
-
-export const updateErrors = (() => {
-  const font = { bold: true, size: 12, color: { argb: 'FFD4351C' }, name: 'Calibri' }
-  const fillStyle = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFCCCC' }, bgColor: { argb: 'FFFFD9D9' } }
-  // prettier-ignore
-  const colNames = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
-                    'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK']
-  const coordsToCellName = (coords) => ` (${colNames[coords[1] - 1]}${coords[0]})`
-
-  const updateCell = (worksheet, coords, message) => {
-    const [colNumber, rowNumber] = coords
-    const row = worksheet.getRow(rowNumber)
-    const cell = row.getCell(colNumber)
-    const errorCell = row.getCell(1)
-    if (errorCell) {
-      errorCell.value = appendMessageToCell(errorCell, message + coordsToCellName(coords), font)
-    }
-    if (cell?.value) {
-      cell.value = { richText: [{ font, text: cellValueText(cell.value) }] }
-      cell.style.fill = { ...fillStyle }
-    } else {
-      cell.value = { richText: [{ font, text: 'Please provide a value' }] }
-    }
-  }
-  return (workbook, cellsAndMessages) => {
-    for (const worksheetName of Object.keys(cellsAndMessages)) {
-      const worksheet = workbook.getWorksheet(worksheetName)
-      for (const { coords, message } of cellsAndMessages[worksheetName]) {
-        updateCell(worksheet, coords, message)
-      }
-    }
-    return workbook
-  }
-})()
 
 const updateData = (cols) => {
   const updateIn = (data, path, v, func) => {
@@ -96,9 +67,17 @@ const joinWasteItems = (movements, items, defraCustomerOrganisationId, transform
         delete x['yourUniqueReference']
         return x
       })
+      collectCellErrors(
+        errors.movements,
+        () => {
+          return (movements[i] = transform(movements[i]))
+        },
+        null,
+        [2, movements[i]['--rowNumber']],
+        {}
+      )
       delete movements[i]['--rowNumber']
       delete is[r]
-      collectCellErrors(errors.movements, () => (movements[i] = transform(movements[i])), null, [2, movements[i]['--rowNumber']], {})
     } else {
       errors.movements.push(cellError(movementRefCol, movements[i]['--rowNumber'], 'No waste items for unique reference'))
     }
@@ -181,18 +160,6 @@ const itemMapping = [
 const movementWorksheetName = '7. Waste movement level'
 const itemWorksheetName = '8. Waste item level'
 
-const readExcelBuffer = async (buffer) => {
-  logger.info('Starting parsing spreadsheet')
-  try {
-    const workbook = new Excel.Workbook()
-    return await workbook.xlsx.load(buffer, {
-      ignoreNodes: ['conditionalFormatting'] // breaks generated excel file
-    })
-  } catch {
-    return null
-  }
-}
-
 export const parseExcelFile = (() => {
   const movementColName = updateData(movementMapping)
   const itemColName = updateData(itemMapping)
@@ -224,7 +191,7 @@ export const parseExcelFile = (() => {
         [movementWorksheetName]: movements.errors.concat(joined.errors.movements),
         [itemWorksheetName]: items.errors.concat(joined.errors.items)
       }
-      updateErrors(workbook, errors)
+      xlUpdateErrors(workbook, errors)
       return {
         hasErrors: true,
         errors,
@@ -258,17 +225,6 @@ export const validateNoWasteTrackingIds = (movements, rowNumbers) => {
     }
   }
   return errors
-}
-
-export const workbookToByteArray = async (workbook) => {
-  /* v8 ignore start */
-  if (config.get('bulkUpload.copySpreadsheetToDisk')) {
-    const f = '/tmp/output-' + uuidv4() + '.xlsx' // nosonar
-    logger.info(`file: ${f}`)
-    await workbook.xlsx.writeFile(f)
-  }
-  /* v8 ignore stop */
-  return await workbook.xlsx.writeBuffer()
 }
 
 const errorToCoords = (() => {
@@ -331,25 +287,6 @@ const errorToCoords = (() => {
 export const transformBulkApiErrors = (movementData, rowNumbers, errors) =>
   Object.groupBy(distinct(errors.map((e) => errorToCoords(movementData, rowNumbers, e))), ({ sheet }) => sheet)
 
-export const updateCellContent = (() => {
-  const font = { bold: true, size: 12, color: { argb: '00000000' }, name: 'Calibri' }
-  const updateCell = (worksheet, coords, value) => {
-    const [colNumber, rowNumber] = coords
-    const row = worksheet.getRow(rowNumber)
-    const cell = row.getCell(colNumber)
-    cell.value = { richText: [{ font, text: String(value ?? '') }] }
-  }
-  return (workbook, cellsAndValues) => {
-    for (const worksheetName of Object.keys(cellsAndValues)) {
-      const worksheet = workbook.getWorksheet(worksheetName)
-      for (const { coords, value } of cellsAndValues[worksheetName]) {
-        updateCell(worksheet, coords, value)
-      }
-    }
-    return workbook
-  }
-})()
-
 export const wasteTrackingIdsToCoords = (movementData, rowNumbers, wasteTrackingIds) => {
   return {
     [movementWorksheetName]: wasteTrackingIds.map(({ wasteTrackingId }, idx) => {
@@ -361,4 +298,15 @@ export const wasteTrackingIdsToCoords = (movementData, rowNumbers, wasteTracking
       }
     })
   }
+}
+
+// alias these function so I don't have to refactor everthing at once
+export const updateErrors = (worksheet, coords, message) => {
+  return xlUpdateErrors(worksheet, coords, message)
+}
+export const updateCellContent = (workbook, cellsAndValues) => {
+  return xlUpdateCellContent(workbook, cellsAndValues)
+}
+export const workbookToByteArray = (workbook) => {
+  return xlWorkbookToByteArray(workbook)
 }
