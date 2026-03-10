@@ -1,13 +1,5 @@
 import fs from 'node:fs/promises'
-import {
-  parseExcelFile,
-  transformBulkApiErrors,
-  updateCellContent,
-  updateErrors,
-  validateNoWasteTrackingIds,
-  validateWasteTrackingIds,
-  wasteTrackingIdsToCoords
-} from './spreadsheetImport.js'
+import { parseExcelFile, transformBulkApiErrors, updateCellContent, updateErrors, wasteTrackingIdsToCoords } from './spreadsheetImport.js'
 import {
   parseBoolean,
   parseComponentCodes,
@@ -22,6 +14,7 @@ import {
   parseToString
 } from './spreadsheetImport/parsers.js'
 import { appendMessageToCell, cellValueText } from './spreadsheetImport/excel.js'
+import { validateWasteTrackingIdExists, validateWasteTrackingIdMissing, coerceRegistrationNumberWhenReasonSupplied } from './spreadsheetImport/transforms.js'
 import { expect } from 'vitest'
 
 describe('some unit tests for parsers', () => {
@@ -181,66 +174,34 @@ describe('some unit tests for parsers', () => {
   })
 })
 
+describe('coerceRegistrationNumberWhenReasonSupplied', () => {
+  test('ads blank string', () => {
+    const m = { carrier: { reasonForNoRegistrationNumber: 'something' } }
+    expect(coerceRegistrationNumberWhenReasonSupplied(m)).toEqual({ carrier: { reasonForNoRegistrationNumber: 'something', registrationNumber: '' } })
+  })
+})
+
 describe('validateWasteTrackingIds', () => {
   test('returns errors when wasteTrackingId is missing', () => {
-    const movements = [{ yourUniqueReference: 'REF1' }, { yourUniqueReference: 'REF2', wasteTrackingId: 'WTID123' }]
-    const rowNumbers = {
-      REF1: { movementRow: 9 },
-      REF2: { movementRow: 10 }
-    }
-
-    const errors = validateWasteTrackingIds(movements, rowNumbers)
-    expect(errors).toEqual([
-      {
-        coords: [2, 9],
-        message: 'Waste Tracking ID is required',
-        sheet: '7. Waste movement level'
-      }
-    ])
+    expect(() => validateWasteTrackingIdExists({ yourUniqueReference: 'REF2' })).toThrowError('Waste Tracking ID is required')
   })
 
-  test('returns empty array when all wasteTrackingIds are present', () => {
-    const movements = [
-      { yourUniqueReference: 'REF1', wasteTrackingId: 'WTID1' },
-      { yourUniqueReference: 'REF2', wasteTrackingId: 'WTID2' }
-    ]
-    const rowNumbers = {
-      REF1: { movementRow: 9 },
-      REF2: { movementRow: 10 }
-    }
-
-    const errors = validateWasteTrackingIds(movements, rowNumbers)
-    expect(errors).toEqual([])
+  test('returns movement when all wasteTrackingIds are present', () => {
+    const m = { yourUniqueReference: 'REF1', wasteTrackingId: 'WTID123' }
+    expect(validateWasteTrackingIdExists(m)).toEqual(m)
   })
 })
 
 describe('validateNoWasteTrackingIds', () => {
   test('returns errors when wasteTrackingId is present', () => {
-    const movements = [{ yourUniqueReference: 'REF1', wasteTrackingId: 'WTID1' }, { yourUniqueReference: 'REF2' }]
-    const rowNumbers = {
-      REF1: { movementRow: 9 },
-      REF2: { movementRow: 10 }
-    }
-
-    const errors = validateNoWasteTrackingIds(movements, rowNumbers)
-    expect(errors).toEqual([
-      {
-        coords: [2, 9],
-        message: 'Waste Tracking ID must not be present on a create upload',
-        sheet: '7. Waste movement level'
-      }
-    ])
+    expect(() => validateWasteTrackingIdMissing({ yourUniqueReference: 'REF2', wasteTrackingId: 'WTID123' })).toThrowError(
+      'Waste Tracking ID must not be present on a create upload'
+    )
   })
 
   test('returns empty array when no wasteTrackingIds are present', () => {
-    const movements = [{ yourUniqueReference: 'REF1' }, { yourUniqueReference: 'REF2' }]
-    const rowNumbers = {
-      REF1: { movementRow: 9 },
-      REF2: { movementRow: 10 }
-    }
-
-    const errors = validateNoWasteTrackingIds(movements, rowNumbers)
-    expect(errors).toEqual([])
+    const m = { yourUniqueReference: 'REF1' }
+    expect(validateWasteTrackingIdMissing(m)).toEqual(m)
   })
 })
 
