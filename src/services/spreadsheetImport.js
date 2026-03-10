@@ -67,15 +67,8 @@ const joinWasteItems = (movements, items, defraCustomerOrganisationId, transform
         delete x['yourUniqueReference']
         return x
       })
-      collectCellErrors(
-        errors.movements,
-        () => {
-          return (movements[i] = transform(movements[i]))
-        },
-        null,
-        [2, movements[i]['--rowNumber']],
-        {}
-      )
+      // WARNING: mutabliy updates movements array from supplied transform
+      collectCellErrors(errors.movements, () => (movements[i] = transform(movements[i])), null, [2, movements[i]['--rowNumber']], {}) // nosonar
       delete movements[i]['--rowNumber']
       delete is[r]
     } else {
