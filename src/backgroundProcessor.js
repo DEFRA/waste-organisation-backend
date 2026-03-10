@@ -11,8 +11,6 @@ import {
   workbookToByteArray,
   transformBulkApiErrors,
   updateErrors,
-  validateWasteTrackingIds,
-  validateNoWasteTrackingIds,
   wasteTrackingIdsToCoords,
   updateCellContent
 } from './services/spreadsheetImport.js'
