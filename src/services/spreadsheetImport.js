@@ -205,28 +205,6 @@ export const parseExcelFile = (() => {
   }
 })()
 
-export const validateWasteTrackingIds = (movements, rowNumbers) => {
-  const errors = []
-  for (const movement of movements) {
-    if (!movement.wasteTrackingId) {
-      const ref = movement.yourUniqueReference
-      errors.push(cellError(2, rowNumbers[ref].movementRow, 'Waste Tracking ID is required', movementWorksheetName))
-    }
-  }
-  return errors
-}
-
-export const validateNoWasteTrackingIds = (movements, rowNumbers) => {
-  const errors = []
-  for (const movement of movements) {
-    if (movement.wasteTrackingId) {
-      const ref = movement.yourUniqueReference
-      errors.push(cellError(2, rowNumbers[ref].movementRow, 'Waste Tracking ID must not be present on a create upload', movementWorksheetName))
-    }
-  }
-  return errors
-}
-
 const errorToCoords = (() => {
   const cleanErrorMessage = ({ message, key }) => {
     const name = key
