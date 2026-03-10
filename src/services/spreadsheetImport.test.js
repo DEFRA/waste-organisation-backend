@@ -260,7 +260,11 @@ describe('excel proccessor', () => {
 
   test('should parse buffer', { timeout: 100000 }, async () => {
     const buffer = await fs.readFile('./test-resources/example-spreadsheet.xlsx')
-    const { movements, errors } = await parseExcelFile(buffer)
+    const transformedMovements = []
+    const { movements, errors } = await parseExcelFile(buffer, 'org-id', (m) => {
+      transformedMovements.push(m)
+      return m
+    })
     expect(errors).toEqual({
       '7. Waste movement level': [],
       '8. Waste item level': [
@@ -277,7 +281,7 @@ describe('excel proccessor', () => {
     expect(movements).toEqual([
       {
         submittingOrganisation: {
-          defraCustomerOrganisationId: undefined
+          defraCustomerOrganisationId: 'org-id'
         },
         carrier: {
           organisationName: 'Qualitech Environmental Services Ltd',
@@ -338,6 +342,7 @@ describe('excel proccessor', () => {
         ]
       }
     ])
+    expect(movements).toEqual(transformedMovements)
   })
 
   test('should write errors buffer', { timeout: 100000 }, async () => {
