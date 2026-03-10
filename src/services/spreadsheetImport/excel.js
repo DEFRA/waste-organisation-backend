@@ -98,7 +98,7 @@ export const updateErrors = (() => {
   // prettier-ignore
   const colNames = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
                     'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK']
-  const coordsToCellName = (coords) => ` (${colNames[coords[1] - 1]}${coords[0]})`
+  const coordsToCellName = (coords) => ` (${colNames[coords[0] - 1]}${coords[1]})`
 
   const updateCell = (worksheet, coords, message) => {
     const [colNumber, rowNumber] = coords
