@@ -1,9 +1,15 @@
 # waste-organisation-backend
 
-Core delivery platform Node.js Backend Template.
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_waste-organisation-backend&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=DEFRA_waste-organisation-backend)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_waste-organisation-backend&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=DEFRA_waste-organisation-backend)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=DEFRA_waste-organisation-backend&metric=coverage)](https://sonarcloud.io/summary/new_code?id=DEFRA_waste-organisation-backend)
 
-- [Requirements](#requirements)
-  - [Node.js](#nodejs)
+The Waste Organisation Backend is a Hapi.js API service that manages waste receiver organisations,
+spreadsheet uploads, API code generation, and email notifications via GOV.UK Notify. It uses MongoDB
+for persistence and integrates with AWS S3/SQS (via LocalStack locally) for file storage and
+background processing.
+
+- [Prerequisites](#prerequisites)
 - [Environment variables](#environment-variables)
   - [GOV_NOTIFY_KEY](#gov_notify_key)
 - [Local development](#local-development)
@@ -12,10 +18,8 @@ Core delivery platform Node.js Backend Template.
   - [Testing](#testing)
   - [Production](#production)
   - [Npm scripts](#npm-scripts)
-  - [Update dependencies](#update-dependencies)
-  - [Formatting](#formatting)
-    - [Windows prettier issue](#windows-prettier-issue)
 - [API endpoints](#api-endpoints)
+- [Authentication](#authentication)
 - [Development helpers](#development-helpers)
   - [MongoDB Locks](#mongodb-locks)
   - [Proxy](#proxy)
@@ -23,26 +27,28 @@ Core delivery platform Node.js Backend Template.
   - [Development image](#development-image)
   - [Production image](#production-image)
   - [Docker Compose](#docker-compose)
-  - [Dependabot](#dependabot)
-  - [SonarCloud](#sonarcloud)
+- [SonarCloud](#sonarcloud)
+- [Dependabot](#dependabot)
 - [Licence](#licence)
   - [About the licence](#about-the-licence)
 
-## Requirements
+## Prerequisites
 
-### Node.js
+For latest minimum versions of Node.js and NPM, see the [package.json](./package.json) 'engines'
+property.
 
-Please install [Node.js](http://nodejs.org/) `>= v22` and [npm](https://nodejs.org/) `>= v11`. You will find it
-easier to use the Node Version Manager [nvm](https://github.com/creationix/nvm)
+- [Node.js](http://nodejs.org/)
+- [npm](https://nodejs.org/)
+- [Docker](https://www.docker.com/)
 
-To use the correct version of Node.js for this application, via nvm:
-
-```bash
-cd waste-organisation-backend
-nvm use
-```
+You may find it easier to manage Node.js versions using a version manager such
+as [nvm](https://github.com/creationix/nvm) or [n](https://www.npmjs.com/package/n). From within the
+project folder you can then either run `nvm use` or `n auto` to install the required version.
 
 ## Environment variables
+
+For most local development, you shouldn't need to override any of the env var defaults that are
+in [config.js](./src/config.js).
 
 ### `GOV_NOTIFY_KEY`
 
@@ -115,34 +121,30 @@ To view them in your command line run:
 npm run
 ```
 
-### Update dependencies
-
-To update dependencies use [npm-check-updates](https://github.com/raineorshine/npm-check-updates):
-
-> The following script is a good start. Check out all the options on
-> the [npm-check-updates](https://github.com/raineorshine/npm-check-updates)
-
-```bash
-ncu --interactive --format group
-```
-
-### Formatting
-
-#### Windows prettier issue
-
-If you are having issues with formatting of line breaks on Windows update your global git config by running:
-
-```bash
-git config --global core.autocrlf false
-```
-
 ## API endpoints
 
-| Endpoint             | Description                    |
-| :------------------- | :----------------------------- |
-| `GET: /health`       | Health                         |
-| `GET: /example    `  | Example API (remove as needed) |
-| `GET: /example/<id>` | Example API (remove as needed) |
+| Endpoint                                            | Method | Description                              |
+| :-------------------------------------------------- | :----- | :--------------------------------------- |
+| `/health`                                           | GET    | Health check (no auth required)          |
+| `/user/{userId}/organisations`                      | GET    | Get all organisations for a user         |
+| `/user/{userId}/organisation/{organisationId}`      | PUT    | Update organisation                      |
+| `/spreadsheet/{organisationId}`                     | GET    | Get all spreadsheets for an organisation |
+| `/spreadsheet/{organisationId}/{uploadId}`          | GET    | Get a specific spreadsheet               |
+| `/spreadsheet/{organisationId}/{uploadId}`          | PUT    | Update spreadsheet (triggers SQS job)    |
+| `/organisation/{apiCode}`                           | GET    | Lookup organisation by API code          |
+| `/organisation/{organisationId}/apiCodes`           | GET    | List API codes for an organisation       |
+| `/organisation/{organisationId}/apiCodes`           | POST   | Create a new API code                    |
+| `/organisation/{organisationId}/apiCodes/{apiCode}` | PUT    | Update API code (name/disabled status)   |
+
+## Authentication
+
+All endpoints except `/health` require API key authentication. The key can be provided via:
+
+- `x-auth-token` header
+- `Authorization: Basic` header
+
+API keys are configured via `WASTE_CLIENT_AUTH_*` environment variables (any variable with that
+prefix is treated as a valid pre-shared key).
 
 ## Development helpers
 
@@ -155,7 +157,6 @@ async function doStuff(server) {
   const lock = await server.locker.lock('unique-resource-name')
 
   if (!lock) {
-    // Lock unavailable
     return
   }
 
@@ -177,13 +178,10 @@ async function doStuff(server) {
   await using lock = await server.locker.lock('unique-resource-name')
 
   if (!lock) {
-    // Lock unavailable
     return
   }
 
   // do stuff
-
-  // lock automatically released
 }
 ```
 
@@ -212,6 +210,8 @@ return await fetch(url, {
 ```
 
 ## Docker
+
+Ensure you have run `npm install` before running any Docker commands.
 
 ### Development image
 
@@ -252,16 +252,20 @@ A local environment with:
 - waste-movement-backend
 - waste-tracking-id-backend
 
-The frontend's `compose.yml` uses the Docker Compose `include` directive to pull in this file, so infrastructure services (Localstack, Redis, MongoDB) are defined once here and shared across both projects. See the [frontend README](../waste-organisation-frontend/README.md#docker-compose-include) for details.
+```bash
+docker compose up --build -d
+```
 
-### Dependabot
+The frontend's `compose.yml` uses the Docker Compose `include` directive to pull in this file, so infrastructure services (Localstack, Redis, MongoDB) are defined once here and shared across both projects. See the [frontend README](../waste-organisation-frontend/README.md#docker-compose) for details.
 
-We have added an example dependabot configuration file to the repository. You can enable it by renaming
-the [.github/example.dependabot.yml](.github/example.dependabot.yml) to `.github/dependabot.yml`
+## SonarCloud
 
-### SonarCloud
+Instructions for setting up SonarCloud can be found
+in [sonar-project.properties](./sonar-project.properties).
 
-Instructions for setting up SonarCloud can be found in [sonar-project.properties](./sonar-project.properties)
+## Dependabot
+
+Dependabot automatically creates pull requests to update dependencies.
 
 ## Licence
 
@@ -269,14 +273,16 @@ THIS INFORMATION IS LICENSED UNDER THE CONDITIONS OF THE OPEN GOVERNMENT LICENCE
 
 <http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3>
 
-The following attribution statement MUST be cited in your products and applications when using this information.
+The following attribution statement MUST be cited in your products and applications when using this
+information.
 
 > Contains public sector information licensed under the Open Government license v3
 
 ### About the licence
 
-The Open Government Licence (OGL) was developed by the Controller of Her Majesty's Stationery Office (HMSO) to enable
-information providers in the public sector to license the use and re-use of their information under a common open
-licence.
+The Open Government Licence (OGL) was developed by the Controller of Her Majesty's Stationery
+Office (HMSO) to enable information providers in the public sector to license the use and re-use of
+their information under a common open licence.
 
-It is designed to encourage use and re-use of information freely and flexibly, with only a few conditions.
+It is designed to encourage use and re-use of information freely and flexibly, with only a few
+conditions.
