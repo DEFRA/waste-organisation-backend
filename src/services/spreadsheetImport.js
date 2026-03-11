@@ -232,7 +232,7 @@ const errorToCoords = (() => {
     const msg = cleanErrorMessage(error)
     const colNum = keyPathToColNum(errKeyPath.slice(1), movementMapping)
     if (colNum < 0) {
-      return { colNum, movementKey: errKeyPath.slice(1) }
+      return {}
     }
     const errorValue = movementMapping[colNum][0].reduce((x, y) => x[y], movementData[idx])
     return cellError(colNum, rowNumbers[ref].movementRow, msg, movementWorksheetName, errorValue)
@@ -244,7 +244,7 @@ const errorToCoords = (() => {
     // prettier-ignore
     const colNum = keyPathToColNum(errKeyPath.slice(3), itemMapping) // nosonar
     if (colNum < 0) {
-      return { colNum, itemKey: errKeyPath.slice(3) }
+      return {}
     }
     const wis = movementData[movementIdx]?.wasteItems
     const errorValue = itemMapping[colNum][0].reduce((x, y) => (x ? x[y] : null), wis ? wis[itemIdx] : null)
