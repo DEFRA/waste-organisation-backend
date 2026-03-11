@@ -214,7 +214,13 @@ const errorToCoords = (() => {
     const p = numIdx >= 0 ? path.slice(0, numIdx + 1) : path
     return mappings.findIndex((x) => {
       if (x[0]) {
-        return p?.every((y, i) => y === x[0][i])
+        const cnt = Math.min(x[0].length, p.length)
+        for (let c = 0; c < cnt; c++) {
+          if (p[c] !== x[0][c]) {
+            return false
+          }
+        }
+        return true
       } else {
         return false
       }
