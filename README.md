@@ -38,7 +38,7 @@ For latest minimum versions of Node.js and NPM, see the [package.json](./package
 property.
 
 - [Node.js](http://nodejs.org/)
-- [npm](https://nodejs.org/)
+- [npm](https://www.npmjs.com/)
 - [Docker](https://www.docker.com/)
 
 You may find it easier to manage Node.js versions using a version manager such
@@ -211,8 +211,6 @@ return await fetch(url, {
 
 ## Docker
 
-Ensure you have run `npm install` before running any Docker commands.
-
 ### Development image
 
 Build:
@@ -256,7 +254,7 @@ A local environment with:
 docker compose up --build -d
 ```
 
-The frontend's `compose.yml` uses the Docker Compose `include` directive to pull in this file, so infrastructure services (Localstack, Redis, MongoDB) are defined once here and shared across both projects. See the [frontend README](../waste-organisation-frontend/README.md#docker-compose) for details.
+The frontend's `compose.yml` uses the Docker Compose `include` directive to pull in this file, so infrastructure services (Localstack, Redis, MongoDB) are defined once here and shared across both projects. See the [frontend README](https://github.com/DEFRA/waste-organisation-frontend#docker-compose-include) for details.
 
 ## SonarCloud
 
