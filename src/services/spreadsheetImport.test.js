@@ -281,7 +281,15 @@ describe('transformBulkApiErrors', () => {
     ]
 
     const result = transformBulkApiErrors(movementData, rowNumbers, apiError)
-    expect(result).toEqual({})
+    expect(result).toEqual({
+      '8. Waste item level': [
+        {
+          coords: [12, 9],
+          message: 'pops is required when containsPops is true',
+          sheet: '8. Waste item level'
+        }
+      ]
+    })
   })
 })
 
