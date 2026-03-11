@@ -1,3 +1,10 @@
+import Excel from 'exceljs'
+import { createLogger } from '../../common/helpers/logging/logger.js'
+import { config } from '../../config.js'
+import { v4 as uuidv4 } from 'uuid'
+
+const logger = createLogger()
+
 export const cellError = (colNumber, rowNumber, message, sheet, errorValue) => {
   const x = { coords: [colNumber, rowNumber], message }
   if (errorValue) {
@@ -71,4 +78,80 @@ export const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }
     }
   })
   return { elements, errors }
+}
+
+export const readExcelBuffer = async (buffer) => {
+  logger.info('Starting parsing spreadsheet')
+  try {
+    const workbook = new Excel.Workbook()
+    return await workbook.xlsx.load(buffer, {
+      ignoreNodes: ['conditionalFormatting'] // breaks generated excel file
+    })
+  } catch {
+    return null
+  }
+}
+
+export const updateErrors = (() => {
+  const font = { bold: true, size: 12, color: { argb: 'FFD4351C' }, name: 'Calibri' }
+  const fillStyle = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFCCCC' }, bgColor: { argb: 'FFFFD9D9' } }
+  // prettier-ignore
+  const colNames = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
+                    'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK']
+  const coordsToCellName = (coords) => ` (${colNames[coords[0] - 1]}${coords[1]})`
+
+  const updateCell = (worksheet, coords, message) => {
+    const [colNumber, rowNumber] = coords
+    const row = worksheet.getRow(rowNumber)
+    const cell = row.getCell(colNumber)
+    const errorCell = row.getCell(1)
+    if (errorCell) {
+      errorCell.value = appendMessageToCell(errorCell, message + coordsToCellName(coords), font)
+    }
+    if (cell?.value) {
+      cell.value = { richText: [{ font, text: cellValueText(cell.value) }] }
+      cell.style.fill = { ...fillStyle }
+    } else {
+      cell.value = { richText: [{ font, text: 'Please provide a value' }] }
+    }
+  }
+  return (workbook, cellsAndMessages) => {
+    for (const worksheetName of Object.keys(cellsAndMessages)) {
+      const worksheet = workbook.getWorksheet(worksheetName)
+      for (const { coords, message } of cellsAndMessages[worksheetName]) {
+        updateCell(worksheet, coords, message)
+      }
+    }
+    return workbook
+  }
+})()
+
+export const updateCellContent = (() => {
+  const font = { bold: true, size: 12, color: { argb: '00000000' }, name: 'Calibri' }
+  const updateCell = (worksheet, coords, value) => {
+    const [colNumber, rowNumber] = coords
+    const row = worksheet.getRow(rowNumber)
+    const cell = row.getCell(colNumber)
+    cell.value = { richText: [{ font, text: String(value ?? '') }] }
+  }
+  return (workbook, cellsAndValues) => {
+    for (const worksheetName of Object.keys(cellsAndValues)) {
+      const worksheet = workbook.getWorksheet(worksheetName)
+      for (const { coords, value } of cellsAndValues[worksheetName]) {
+        updateCell(worksheet, coords, value)
+      }
+    }
+    return workbook
+  }
+})()
+
+export const workbookToByteArray = async (workbook) => {
+  /* v8 ignore start */
+  if (config.get('bulkUpload.copySpreadsheetToDisk')) {
+    const f = '/tmp/output-' + uuidv4() + '.xlsx' // nosonar
+    logger.info(`file: ${f}`)
+    await workbook.xlsx.writeFile(f)
+  }
+  /* v8 ignore stop */
+  return await workbook.xlsx.writeBuffer()
 }

@@ -4,6 +4,7 @@ import { ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs
 import * as encryption from './services/decrypt.js'
 import * as bulkImportModule from './services/bulkImport.js'
 import * as spreadsheetImportModule from './services/spreadsheetImport.js'
+import * as excelImportModule from './services/spreadsheetImport/excel.js'
 import fs from 'node:fs/promises'
 import { sendEmail } from './services/notify/index.js'
 
@@ -11,6 +12,27 @@ describe('background processor', () => {
   let message
   const wreckPostMock = vi.fn()
   const wreckPutMock = vi.fn()
+
+  const mockWorksheet = (fakeData) => {
+    const fakeRows = [[], [], [], [], [], [], [], []].concat(fakeData)
+    return {
+      eachRow: (rowCallback) => {
+        fakeRows.forEach((r, i) => {
+          const row = {
+            getCell: (col) => {
+              return { value: r[col - 1] }
+            },
+            eachCell: (cellCallback) => {
+              r.forEach((c, j) => {
+                cellCallback({ value: c }, j + 1)
+              })
+            }
+          }
+          rowCallback(row, i + 1)
+        })
+      }
+    }
+  }
 
   beforeAll(() => {
     message = {
@@ -442,26 +464,19 @@ describe('background processor', () => {
 
   it('should send validation failed when create upload has wasteTrackingIds', { timeout: 50000 }, async () => {
     vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
-    const mockWorkbook = {
-      xlsx: { writeBuffer: async () => Buffer.from('test') },
-      getWorksheet: () => ({ getRow: () => ({ getCell: () => ({ value: null }) }) })
-    }
-    vi.spyOn(spreadsheetImportModule, 'parseExcelFile').mockResolvedValue({
-      hasErrors: false,
-      workbook: mockWorkbook,
-      movements: [
-        {
-          wasteTrackingId: 'UNEXPECTED1',
-          yourUniqueReference: 'REF1',
-          submittingOrganisation: { defraCustomerOrganisationId: 'org-id' },
-          wasteItems: []
-        }
-      ],
-      rowNumbers: { REF1: { movementRow: 9, itemRows: [] } },
-      errors: { movements: [], items: [] }
-    })
-    vi.spyOn(spreadsheetImportModule, 'updateErrors').mockReturnValue(mockWorkbook)
     const mockSendFailed = vi.spyOn(sendEmail, 'sendValidationFailed').mockImplementation(vi.fn())
+    vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue({
+      xlsx: { writeBuffer: async () => Buffer.from('test xl file'), writeFile: async () => null },
+      getWorksheet: (wsName) => {
+        const w = {
+          '7. Waste movement level': mockWorksheet([['', 'waste tracking id', 'REF1', '']]), // extra waste tracking id
+          '8. Waste item level': mockWorksheet([['', 'REF1', '', '']])
+        }
+        return w[wsName]
+      }
+    })
+
+    const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
     const mockBulkImport = vi.spyOn(bulkImportModule, 'bulkImport')
 
     const createMessage = {
@@ -485,7 +500,67 @@ describe('background processor', () => {
     const { processJob } = await import('./backgroundProcessor.js')
     await processJob(s3Client, createMessage)
 
+    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
+      '7. Waste movement level': [
+        {
+          coords: [2, 9],
+          message: 'Waste Tracking ID must not be present on a create upload'
+        }
+      ],
+      '8. Waste item level': []
+    })
     expect(mockBulkImport).not.toHaveBeenCalled()
+    expect(mockSendFailed).toHaveBeenCalled()
+  })
+
+  it('should send validation failed when update upload has missing WTIDs', { timeout: 50000 }, async () => {
+    vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
+    const mockSendFailed = vi.spyOn(sendEmail, 'sendValidationFailed').mockImplementation(vi.fn())
+    vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue({
+      xlsx: { writeBuffer: async () => Buffer.from('test xl file'), writeFile: async () => null },
+      getWorksheet: (wsName) => {
+        const w = {
+          '7. Waste movement level': mockWorksheet([['', '', 'REF1', '']]), // no waste tracking id
+          '8. Waste item level': mockWorksheet([['', 'REF1', '', '']])
+        }
+        return w[wsName]
+      }
+    })
+
+    const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
+    const mockBulkUpdate = vi.spyOn(bulkImportModule, 'bulkUpdate')
+
+    const updateMessage = {
+      Body: JSON.stringify({
+        s3Bucket: 'bucket',
+        s3Key: 'key',
+        encryptedEmail: 'enc',
+        organisationId: 'org-id',
+        uploadId: 'upload-3',
+        uploadType: 'update'
+      })
+    }
+
+    const s3Client = {
+      send: async (_) => {
+        const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
+        return { Body: [buffer] }
+      }
+    }
+
+    const { processJob } = await import('./backgroundProcessor.js')
+    await processJob(s3Client, updateMessage)
+
+    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
+      '7. Waste movement level': [
+        {
+          coords: [2, 9],
+          message: 'Waste Tracking ID is required'
+        }
+      ],
+      '8. Waste item level': []
+    })
+    expect(mockBulkUpdate).not.toHaveBeenCalled()
     expect(mockSendFailed).toHaveBeenCalled()
   })
 
@@ -642,53 +717,5 @@ describe('background processor', () => {
 
     expect(response).toBe(undefined)
     expect(mockSendFailed).toHaveBeenCalledWith({ email: 'test@email.com', name: 'test@email.com' })
-  })
-
-  it('should send validation failed when update upload has missing WTIDs', { timeout: 50000 }, async () => {
-    vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
-    const mockWorkbook = {
-      xlsx: { writeBuffer: async () => Buffer.from('test') },
-      getWorksheet: () => ({ getRow: () => ({ getCell: () => ({ value: null }) }) })
-    }
-    vi.spyOn(spreadsheetImportModule, 'parseExcelFile').mockResolvedValue({
-      hasErrors: false,
-      workbook: mockWorkbook,
-      movements: [
-        {
-          yourUniqueReference: 'REF1',
-          submittingOrganisation: { defraCustomerOrganisationId: 'org-id' },
-          wasteItems: []
-        }
-      ],
-      rowNumbers: { REF1: { movementRow: 9, itemRows: [] } },
-      errors: { movements: [], items: [] }
-    })
-    vi.spyOn(spreadsheetImportModule, 'updateErrors').mockReturnValue(mockWorkbook)
-    const mockSendFailed = vi.spyOn(sendEmail, 'sendValidationFailed').mockImplementation(vi.fn())
-    const mockBulkUpdate = vi.spyOn(bulkImportModule, 'bulkUpdate')
-
-    const updateMessage = {
-      Body: JSON.stringify({
-        s3Bucket: 'bucket',
-        s3Key: 'key',
-        encryptedEmail: 'enc',
-        organisationId: 'org-id',
-        uploadId: 'upload-3',
-        uploadType: 'update'
-      })
-    }
-
-    const s3Client = {
-      send: async (_) => {
-        const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-        return { Body: [buffer] }
-      }
-    }
-
-    const { processJob } = await import('./backgroundProcessor.js')
-    await processJob(s3Client, updateMessage)
-
-    expect(mockBulkUpdate).not.toHaveBeenCalled()
-    expect(mockSendFailed).toHaveBeenCalled()
   })
 })

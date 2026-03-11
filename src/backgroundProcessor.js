@@ -11,8 +11,6 @@ import {
   workbookToByteArray,
   transformBulkApiErrors,
   updateErrors,
-  validateWasteTrackingIds,
-  validateNoWasteTrackingIds,
   wasteTrackingIdsToCoords,
   updateCellContent
 } from './services/spreadsheetImport.js'
@@ -20,6 +18,7 @@ import { decrypt } from './services/decrypt.js'
 import { sendEmail } from './services/notify/index.js'
 import { bulkImport, bulkUpdate } from './services/bulkImport.js'
 import { TRANSIENT_STATUS_CODES } from './services/httpStatusCodes.js'
+import { validateWasteTrackingIdExists, validateWasteTrackingIdMissing } from './services/spreadsheetImport/transforms.js'
 
 const logger = createLogger()
 
@@ -81,21 +80,12 @@ const sendInitalFailedEmail = async (workbook, decryptedEmail, decryptedName) =>
 const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, uploadId, uploadType }, decryptedEmail, decryptedName) => {
   const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
   logger.info(`UploadId: ${uploadId} -- Fetching bytes: ${buffer.length}`)
-  const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, organisationId)
+  const isUpdate = uploadType === 'update'
+  const validatorFn = isUpdate ? validateWasteTrackingIdExists : validateWasteTrackingIdMissing
+  const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, organisationId, validatorFn)
   if (hasErrors) {
     logger.warn(`UploadId: ${uploadId} -- Errors before sending to import API ${JSON.stringify(errors)}`)
     await sendInitalFailedEmail(workbook, decryptedEmail, decryptedName)
-    return
-  }
-
-  const isUpdate = uploadType === 'update'
-  const wtidErrors = isUpdate ? validateWasteTrackingIds(movements, rowNumbers) : validateNoWasteTrackingIds(movements, rowNumbers)
-
-  if (wtidErrors.length > 0) {
-    logger.warn(`UploadId: ${uploadId} -- Waste Tracking ID validation errors ${JSON.stringify(wtidErrors)}`)
-    updateErrors(workbook, { [wtidErrors[0].sheet]: wtidErrors })
-    const file = await workbookToByteArray(workbook)
-    await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file })
     return
   }
 
