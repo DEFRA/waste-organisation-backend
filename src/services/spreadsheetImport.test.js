@@ -249,6 +249,40 @@ describe('transformBulkApiErrors', () => {
     const errors = result['7. Waste movement level']
     expect(errors).toHaveLength(1)
   })
+
+  test('should partially match error key', () => {
+    const movementData = [
+      {
+        yourUniqueReference: 'REF1',
+        carrier: {
+          organisationName: 'Carrier Ltd',
+          wasteItems: [
+            {
+              pops: {
+                components: [
+                  {
+                    code: 'ALD',
+                    concentration: 50
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+    const rowNumbers = { REF1: { movementRow: 9, itemRows: [9] } }
+    const apiError = [
+      {
+        key: '0.wasteItems.0.pops',
+        errorType: 'UnexpectedError',
+        message: '"wasteItems[wasteItems].pops.sourceOfComponents" is required when containsPops is true'
+      }
+    ]
+
+    const result = transformBulkApiErrors(movementData, rowNumbers, apiError)
+    expect(result).toEqual({})
+  })
 })
 
 describe('excel proccessor', () => {

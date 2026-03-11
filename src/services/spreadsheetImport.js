@@ -212,7 +212,13 @@ const errorToCoords = (() => {
   const keyPathToColNum = (path, mappings) => {
     const numIdx = path.findIndex((x) => x.match(/^[0-9]+$/))
     const p = numIdx >= 0 ? path.slice(0, numIdx + 1) : path
-    return mappings.findIndex((x) => x[0]?.every((y, i) => y === p[i]))
+    return mappings.findIndex((x) => {
+      if (x[0]) {
+        return p?.every((y, i) => y === x[0][i])
+      } else {
+        return false
+      }
+    })
   }
 
   const wasteMovementErr = (movementData, idx, rowNumbers, errKeyPath, error) => {
@@ -220,7 +226,7 @@ const errorToCoords = (() => {
     const msg = cleanErrorMessage(error)
     const colNum = keyPathToColNum(errKeyPath.slice(1), movementMapping)
     if (colNum < 0) {
-      return {}
+      return { colNum, movementKey: errKeyPath.slice(1) }
     }
     const errorValue = movementMapping[colNum][0].reduce((x, y) => x[y], movementData[idx])
     return cellError(colNum, rowNumbers[ref].movementRow, msg, movementWorksheetName, errorValue)
@@ -232,11 +238,10 @@ const errorToCoords = (() => {
     // prettier-ignore
     const colNum = keyPathToColNum(errKeyPath.slice(3), itemMapping) // nosonar
     if (colNum < 0) {
-      return {}
+      return { colNum, itemKey: errKeyPath.slice(3) }
     }
-    const errorValue = itemMapping[colNum][0].reduce((x, y) => {
-      return x ? x[y] : null
-    }, movementData[movementIdx].wasteItems[itemIdx])
+    const wis = movementData[movementIdx]?.wasteItems
+    const errorValue = itemMapping[colNum][0].reduce((x, y) => (x ? x[y] : null), wis ? wis[itemIdx] : null)
     return cellError(colNum, rowNumbers[ref].itemRows[itemIdx], msg, itemWorksheetName, errorValue)
   }
 
@@ -245,10 +250,14 @@ const errorToCoords = (() => {
   return (movementData, rowNumbers, error) => {
     const errKeyPath = error.key.split('.')
     if (errKeyPath[0].match(/^[0-9]+$/)) {
+      let err
       if (errKeyPath[1] === 'wasteItems' && errKeyPath[2].match(/^[0-9]+$/)) {
-        return wasteItemErr(movementData, errKeyPath[0], errKeyPath[2], rowNumbers, errKeyPath, error)
+        err = wasteItemErr(movementData, errKeyPath[0], errKeyPath[2], rowNumbers, errKeyPath, error)
       } else {
-        return wasteMovementErr(movementData, errKeyPath[0], rowNumbers, errKeyPath, error)
+        err = wasteMovementErr(movementData, errKeyPath[0], rowNumbers, errKeyPath, error)
+      }
+      if (err?.coords) {
+        return err
       }
     }
     return cellError(1, firstRowOfDataInSpreadsheet, error.message)

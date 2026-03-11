@@ -98,6 +98,7 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
 
   if (apiResponse.errors) {
     logger.warn(`UploadId: ${uploadId} -- Errors from import API ${JSON.stringify(apiResponse.errors)}`)
+    logger.debug(`UploadId: ${uploadId} -- rowNumbers: ${JSON.stringify(rowNumbers)}`)
     const errs = transformBulkApiErrors(movements, rowNumbers, apiResponse.errors)
     logger.debug(`UploadId: ${uploadId} -- Cells to update with errors: ${JSON.stringify(errs)}`)
     updateErrors(workbook, errs)
