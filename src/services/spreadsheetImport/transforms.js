@@ -19,6 +19,15 @@ export const validateWasteTrackingIdMissing = (movement) => {
   return movement
 }
 
+export const validateMovementHasWasteItems = (movement) => {
+  if (!Array.isArray(movement.wasteItems) || movement.wasteItems.length <= 0) {
+    const e = Error('No waste items for unique reference')
+    e.colNumber = 3
+    throw e
+  }
+  return movement
+}
+
 export const compose = (...fns) => {
   return fns
     .filter((f) => typeof f === 'function')
