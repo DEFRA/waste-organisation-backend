@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises'
-import { parseExcelFile, transformBulkApiErrors, updateCellContent, wasteTrackingIdsToCoords } from '../spreadsheetImport.js'
+import { parseExcelFile } from '../spreadsheetImport.js'
 import { updateErrors } from './excel.js'
-import Excel from 'exceljs'
 
 describe('excel proccessor', () => {
   beforeAll(() => {

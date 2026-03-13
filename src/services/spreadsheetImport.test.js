@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises'
-import { parseExcelFile, transformBulkApiErrors, updateCellContent, updateErrors, wasteTrackingIdsToCoords } from './spreadsheetImport.js'
+import { parseExcelFile, transformBulkApiErrors, updateCellContent, wasteTrackingIdsToCoords } from './spreadsheetImport.js'
 import {
   parseBoolean,
   parseComponentCodes,
