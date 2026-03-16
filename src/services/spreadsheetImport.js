@@ -264,7 +264,7 @@ const errorToCoords = (() => {
         return err
       }
     }
-    return cellError(1, firstRowOfDataInSpreadsheet, error.message)
+    return cellError(1, firstRowOfDataInSpreadsheet, error.message, movementWorksheetName)
   }
 })()
 

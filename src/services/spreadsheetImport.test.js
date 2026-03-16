@@ -261,6 +261,29 @@ describe('transformBulkApiErrors', () => {
     expect(errors).toHaveLength(1)
   })
 
+  test('should add default error message when col not matched', () => {
+    const movementData = [{ yourUniqueReference: 'REF1', carrier: { organisationName: 'Carrier Ltd' } }]
+    const rowNumbers = { REF1: { movementRow: 9 } }
+    const apiErrors = [
+      {
+        key: '0.submittingOrganisation',
+        errorType: 'BusinessRuleViolation',
+        message: '[0].submittingOrganisation the submitting organisation does not match the Organisation that created the original waste item record'
+      }
+    ]
+
+    const result = transformBulkApiErrors(movementData, rowNumbers, apiErrors)
+    expect(result).toEqual({
+      '7. Waste movement level': [
+        {
+          coords: [1, 9],
+          message: '[0].submittingOrganisation the submitting organisation does not match the Organisation that created the original waste item record',
+          sheet: '7. Waste movement level'
+        }
+      ]
+    })
+  })
+
   test('should partially match error key', () => {
     const movementData = [
       {
