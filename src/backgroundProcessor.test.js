@@ -35,6 +35,7 @@ describe('background processor', () => {
   }
 
   beforeAll(() => {
+    vi.clearAllMocks()
     message = {
       Body: JSON.stringify({
         s3Bucket: 'randomString',
@@ -54,6 +55,7 @@ describe('background processor', () => {
       }
     }))
   })
+
   test('fetch S3 object', async () => {
     const { fetchS3Object } = await import('./backgroundProcessor.js')
 

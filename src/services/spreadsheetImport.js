@@ -22,7 +22,7 @@ import {
   updateCellContent as xlUpdateCellContent,
   workbookToByteArray as xlWorkbookToByteArray
 } from './spreadsheetImport/excel.js'
-import { compose, coerceRegistrationNumberWhenReasonSupplied } from './spreadsheetImport/transforms.js'
+import { compose, coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems } from './spreadsheetImport/transforms.js'
 
 const logger = createLogger()
 
@@ -53,7 +53,7 @@ const updateData = (cols) => {
 const joinWasteItems = (movements, items, defraCustomerOrganisationId, transform) => {
   const is = Object.groupBy(items, (x) => x['yourUniqueReference'])
   const errors = { movements: [], items: [] }
-  const movementRefCol = 3
+  const wasteTrackingIdCol = 2
   const itemRefCol = 2
   const rowNumbers = {}
   for (let i = 0; i < movements.length; i++) {
@@ -67,13 +67,11 @@ const joinWasteItems = (movements, items, defraCustomerOrganisationId, transform
         delete x['yourUniqueReference']
         return x
       })
-      // WARNING: mutabliy updates movements array from supplied transform
-      collectCellErrors(errors.movements, () => (movements[i] = transform(movements[i])), null, [2, movements[i]['--rowNumber']], {}) // nosonar
-      delete movements[i]['--rowNumber']
-      delete is[r]
-    } else {
-      errors.movements.push(cellError(movementRefCol, movements[i]['--rowNumber'], 'No waste items for unique reference'))
     }
+    // WARNING: mutabliy updates movements array from supplied transform
+    collectCellErrors(errors.movements, () => (movements[i] = transform(movements[i])), null, [wasteTrackingIdCol, movements[i]['--rowNumber']], {}) // nosonar
+    delete movements[i]['--rowNumber']
+    delete is[r]
   }
   if (Object.keys(is).length > 0) {
     for (const m of Object.values(is).flatMap((x) => x)) {
@@ -156,7 +154,7 @@ const itemWorksheetName = '8. Waste item level'
 export const parseExcelFile = (() => {
   const movementColName = updateData(movementMapping)
   const itemColName = updateData(itemMapping)
-  const transform = coerceRegistrationNumberWhenReasonSupplied
+  const transform = compose(coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems)
 
   return async (buffer, defraCustomerOrganisationId, validateFn) => {
     const workbook = await readExcelBuffer(buffer)

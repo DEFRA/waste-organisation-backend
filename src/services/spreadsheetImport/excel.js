@@ -56,7 +56,7 @@ export const collectCellErrors = (errors, updateFn, r, [colNumber, rowNumber], c
   try {
     updateFn(r, [colNumber, rowNumber], cellValueText(cell.value))
   } catch (e) {
-    errors.push(cellError(colNumber, rowNumber, e.message, null, cell.value))
+    errors.push(cellError(e.colNumber ?? colNumber, rowNumber, e.message, null, cell.value))
   }
 }
 

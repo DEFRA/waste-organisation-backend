@@ -7,14 +7,23 @@ export const coerceRegistrationNumberWhenReasonSupplied = (movement) => {
 
 export const validateWasteTrackingIdExists = (movement) => {
   if (!movement.wasteTrackingId) {
-    throw Error('Waste Tracking ID is required')
+    throw new Error('Waste Tracking ID is required')
   }
   return movement
 }
 
 export const validateWasteTrackingIdMissing = (movement) => {
   if (movement.wasteTrackingId) {
-    throw Error('Waste Tracking ID must not be present on a create upload')
+    throw new Error('Waste Tracking ID must not be present on a create upload')
+  }
+  return movement
+}
+
+export const validateMovementHasWasteItems = (movement) => {
+  if (!Array.isArray(movement.wasteItems) || movement.wasteItems.length <= 0) {
+    const e = new Error('No waste items for unique reference')
+    e.colNumber = 3
+    throw e
   }
   return movement
 }
