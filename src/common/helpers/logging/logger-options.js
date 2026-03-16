@@ -16,7 +16,7 @@ const formatters = {
   'pino-pretty': { transport: { target: 'pino-pretty' } }
 }
 
-export const loggerOptions = {
+export const loggerOptions = (traceId) => ({
   enabled: logConfig.isEnabled,
   ignorePaths: ['/health'],
   redact: {
@@ -28,10 +28,16 @@ export const loggerOptions = {
   nesting: true,
   mixin() {
     const mixinValues = {}
-    const traceId = getTraceId()
     if (traceId) {
       mixinValues.trace = { id: traceId }
+      return mixinValues
     }
+
+    const headerTraceId = getTraceId()
+    if (headerTraceId) {
+      mixinValues.trace = { id: headerTraceId }
+    }
+
     return mixinValues
   }
-}
+})

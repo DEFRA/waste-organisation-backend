@@ -34,6 +34,7 @@ describe('spreadsheet API', () => {
       spreadsheet: {
         organisationId: '456',
         fileId: 'file-id',
+        traceId: null,
         uploadId: '123',
         updatedAtTimstamp: expect.any(Date),
         version: 1
@@ -140,6 +141,7 @@ describe('spreadsheet API', () => {
         {
           uploadId: '1234',
           organisationId: '5678',
+          traceId: null,
           fileId: 'file-id',
           updatedAtTimstamp: expect.any(Date),
           version: 1
@@ -165,6 +167,7 @@ describe('spreadsheet API', () => {
         {
           uploadId: '1234',
           organisationId: '5678',
+          traceId: null,
           fileId: 'file-id',
           updatedAtTimstamp: expect.any(Date),
           version: 1
