@@ -273,8 +273,15 @@ describe('transformBulkApiErrors', () => {
     ]
 
     const result = transformBulkApiErrors(movementData, rowNumbers, apiErrors)
-    // const errors = result['7. Waste movement level']
-    expect(result).toEqual(123)
+    expect(result).toEqual({
+      '7. Waste movement level': [
+        {
+          coords: [1, 9],
+          message: '[0].submittingOrganisation the submitting organisation does not match the Organisation that created the original waste item record',
+          sheet: '7. Waste movement level'
+        }
+      ]
+    })
   })
 
   test('should partially match error key', () => {
