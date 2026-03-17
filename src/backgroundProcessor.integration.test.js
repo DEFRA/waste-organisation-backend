@@ -7,6 +7,9 @@ import { config } from './config.js'
 
 vi.mock('./services/bulkImport.js')
 vi.mock('./services/notify/index.js')
+vi.mock('./common/helpers/logging/logger.js', () => ({
+  createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), trace: vi.fn() })
+}))
 
 const ENCRYPTION_KEY = config.get('encryptionKey')
 const TEST_EMAIL = 'integration-test@example.com'
