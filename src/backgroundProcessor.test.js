@@ -718,6 +718,6 @@ describe('background processor', () => {
     const response = await processJob(s3Client, unexpectedErrorMessage)
 
     expect(response).toBe(undefined)
-    expect(mockSendFailed).toHaveBeenCalledWith({ email: 'test@email.com', name: 'test@email.com' })
+    expect(mockSendFailed).toHaveBeenCalledWith({ email: 'test@email.com', name: 'test@email.com', logger: expect.anything() })
   })
 })

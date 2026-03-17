@@ -33,7 +33,6 @@ const sendJob = async (client, QueueUrl, jobData) => {
   }
 
   try {
-    logger.info(`params: ${params}`)
     const command = new SendMessageCommand(params)
     const result = await client.send(command)
     logger.info(`Job sent to queue: ${result.MessageId}`)
@@ -55,7 +54,7 @@ const putHandler = async (request, h) => {
     const organisationId = request.params.organisationId
     const uploadId = request.params.uploadId
     const data = await updateWithOptimisticLock(request.db.collection(spreadsheetCollection), { uploadId, organisationId }, (dbSpreadsheet) => {
-      const s = { organisationId, uploadId, ...request?.payload?.spreadsheet, updatedAtTimstamp: new Date() }
+      const s = { organisationId, uploadId, ...request?.payload?.spreadsheet, updatedAtTimstamp: new Date(), traceId: request.getTraceId() }
       return mergeAndValidate(dbSpreadsheet, s, spreadsheetSchema)
     })
     // TODO check data for criteria to schedule processing

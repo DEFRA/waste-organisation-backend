@@ -1,8 +1,9 @@
-import { vi } from 'vitest'
+import { expect, vi } from 'vitest'
 import fs from 'node:fs/promises'
 import { parseExcelFile, transformBulkApiErrors, updateErrors, wasteTrackingIdsToCoords, updateCellContent } from './spreadsheetImport.js'
 import { TRANSIENT_STATUS_CODES } from './httpStatusCodes.js'
 import { v4 as uuidv4 } from 'uuid'
+import { faker } from '@faker-js/faker'
 
 const conf = {
   endpoint: 'http://localhost:3002',
@@ -77,7 +78,8 @@ describe('mock bulk import data', () => {
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
     const { movements } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44')
 
-    const res = await bulkImport('abc1234', movements, conf)
+    const traceId = faker.string.uuid()
+    const res = await bulkImport('abc1234', movements, traceId, conf)
     expect(res.errors).toBe(undefined)
   })
 
@@ -92,9 +94,23 @@ describe('mock bulk import data', () => {
     const { movements } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44')
     movements[0].wasteTrackingId = 'ABC123'
 
-    const res = await bulkUpdate('abc1234', movements, conf)
+    const traceId = faker.string.uuid()
+
+    const res = await bulkUpdate('abc1234', movements, traceId, conf)
+
     expect(res.movements).toEqual([{ wasteTrackingId: 'ABC123' }])
-    expect(wreckPutMock).toHaveBeenCalled()
+
+    const expectedRequest = {
+      headers: {
+        Authorization: expect.anything(),
+        'content-type': 'application/json',
+        'x-cdp-request-id': traceId
+      },
+      json: 'strict',
+      payload: movements
+    }
+
+    expect(wreckPutMock).toHaveBeenCalledWith(expect.anything(), expectedRequest)
   })
 
   test('should expect some errors', { timeout: 100000 }, async () => {
@@ -107,8 +123,9 @@ describe('mock bulk import data', () => {
     })
 
     const { bulkImport } = await import('./bulkImport.js')
+    const traceId = faker.string.uuid()
 
-    const res = await bulkImport('abc1234', testMovements, conf)
+    const res = await bulkImport('abc1234', testMovements, traceId, conf)
     expect(res.errors).toEqual([{ message: 1 }, { message: 2 }, { message: 3 }])
   })
 
@@ -119,8 +136,9 @@ describe('mock bulk import data', () => {
     })
 
     const { bulkImport } = await import('./bulkImport.js')
+    const traceId = faker.string.uuid()
 
-    const res = await bulkImport('abc1234', testMovements, conf)
+    const res = await bulkImport('abc1234', testMovements, traceId, conf)
     expect(res).toEqual({ failed: true })
   })
 
@@ -131,8 +149,9 @@ describe('mock bulk import data', () => {
     })
 
     const { bulkImport } = await import('./bulkImport.js')
+    const traceId = faker.string.uuid()
 
-    const res = await bulkImport('abc1234', testMovements, conf)
+    const res = await bulkImport('abc1234', testMovements, traceId, conf)
     expect(res).toEqual({ failed: true })
   })
 
@@ -143,8 +162,9 @@ describe('mock bulk import data', () => {
     })
 
     const { bulkImport } = await import('./bulkImport.js')
+    const traceId = faker.string.uuid()
 
-    const res = await bulkImport('abc1234', testMovements, conf)
+    const res = await bulkImport('abc1234', testMovements, traceId, conf)
     expect(res).toEqual({ failed: true })
   })
 
@@ -155,8 +175,9 @@ describe('mock bulk import data', () => {
     })
 
     const { bulkImport } = await import('./bulkImport.js')
+    const traceId = faker.string.uuid()
 
-    await expect(bulkImport('abc1234', testMovements, conf)).rejects.toEqual({ output: { statusCode } })
+    await expect(bulkImport('abc1234', testMovements, traceId, conf)).rejects.toEqual({ output: { statusCode } })
   })
 
   test('should return failed for non-transient error (500)', { timeout: 100000 }, async () => {
@@ -166,8 +187,9 @@ describe('mock bulk import data', () => {
     })
 
     const { bulkImport } = await import('./bulkImport.js')
+    const traceId = faker.string.uuid()
 
-    const res = await bulkImport('abc1234', testMovements, conf)
+    const res = await bulkImport('abc1234', testMovements, traceId, conf)
     expect(res).toEqual({ failed: true })
   })
 
@@ -178,7 +200,9 @@ describe('mock bulk import data', () => {
 
     const { bulkImport } = await import('./bulkImport.js')
 
-    const res = await bulkImport('abc1234', testMovements, conf)
+    const traceId = faker.string.uuid()
+
+    const res = await bulkImport('abc1234', testMovements, traceId, conf)
     expect(res).toEqual({ failed: true })
   })
 })
