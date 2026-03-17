@@ -3,11 +3,12 @@ import fs from 'node:fs/promises'
 import Excel from 'exceljs'
 
 import { encrypt } from './test-utils/encrypt.js'
+import { config } from './config.js'
 
 vi.mock('./services/bulkImport.js')
 vi.mock('./services/notify/index.js')
 
-const ENCRYPTION_KEY = '1r1S98SiPcNEN0vtKm3uiXchW0KYzScxArmmKrYkfKg='
+const ENCRYPTION_KEY = config.get('encryptionKey')
 const TEST_EMAIL = 'integration-test@example.com'
 const TEST_NAME = JSON.stringify({ firstName: 'Test' })
 
@@ -91,8 +92,11 @@ describe('backgroundProcessor integration', () => {
     expect(emailArg.file).toBeInstanceOf(Buffer)
 
     const workbook = await loadWorkbookFromEmailCall(notifyModule.sendEmail.sendValidationFailed)
-    const ws = workbook.getWorksheet('7. Waste movement level')
-    expect(ws).toBeDefined()
+    const ws = workbook.getWorksheet('8. Waste item level')
+    const errorCell = ws.getCell('A10')
+    expect(errorCell.value.richText.length).toBeGreaterThan(0)
+    expect(errorCell.value.richText[0].text).toContain('No waste movements for unique reference')
+    expect(errorCell.value.richText[0].font.color.argb).toBe('FFD4351C')
   })
 
   it('API validation errors - sends validation failed email with error annotations', { timeout: 30000 }, async () => {
@@ -115,8 +119,13 @@ describe('backgroundProcessor integration', () => {
     expect(emailArg.email).toBe(TEST_EMAIL)
 
     const workbook = await loadWorkbookFromEmailCall(notifyModule.sendEmail.sendValidationFailed)
-    const ws = workbook.getWorksheet('7. Waste movement level')
-    expect(ws).toBeDefined()
+    const ws = workbook.getWorksheet('8. Waste item level')
+    const errorCell = ws.getCell('A9')
+    expect(errorCell.value.richText.length).toBeGreaterThan(0)
+    expect(errorCell.value.richText[0].text).toContain('ewc codes must be a valid EWC code')
+    expect(errorCell.value.richText[0].font.color.argb).toBe('FFD4351C')
+    const dataCell = ws.getCell('C9')
+    expect(dataCell.style.fill.fgColor.argb).toBe('FFFFCCCC')
   })
 
   it('API permanent failure - sends failed email without file', { timeout: 30000 }, async () => {
