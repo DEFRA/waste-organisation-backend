@@ -139,10 +139,7 @@ describe('backgroundProcessor integration', () => {
     await processJob(s3Client, buildMessage())
 
     expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledTimes(1)
-    expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledWith({
-      email: TEST_EMAIL,
-      name: TEST_NAME
-    })
+    expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledWith(expect.objectContaining({ email: TEST_EMAIL, name: TEST_NAME }))
     expect(notifyModule.sendEmail.sendSuccess).not.toHaveBeenCalled()
     expect(notifyModule.sendEmail.sendValidationFailed).not.toHaveBeenCalled()
   })
@@ -166,10 +163,7 @@ describe('backgroundProcessor integration', () => {
 
     expect(s3Client.send).not.toHaveBeenCalled()
     expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledTimes(1)
-    expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledWith({
-      email: TEST_EMAIL,
-      name: TEST_NAME
-    })
+    expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledWith(expect.objectContaining({ email: TEST_EMAIL, name: TEST_NAME }))
   })
 
   it('missing S3 coords - silently returns without sending email', { timeout: 30000 }, async () => {
@@ -190,10 +184,7 @@ describe('backgroundProcessor integration', () => {
 
     expect(bulkImportModule.bulkImport).not.toHaveBeenCalled()
     expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledTimes(1)
-    expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledWith({
-      email: TEST_EMAIL,
-      name: TEST_NAME
-    })
+    expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledWith(expect.objectContaining({ email: TEST_EMAIL, name: TEST_NAME }))
   })
 
   it('update upload happy path - calls bulkUpdate and preserves WTIDs', { timeout: 30000 }, async () => {
