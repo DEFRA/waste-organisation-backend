@@ -90,7 +90,7 @@ export const readExcelBuffer = async (buffer) => {
   try {
     const workbook = new Excel.Workbook()
     return await workbook.xlsx.load(buffer, {
-      ignoreNodes: [] // ['conditionalFormatting'] // breaks generated excel file
+      ignoreNodes: ['conditionalFormatting'] // breaks generated excel file
     })
   } catch {
     return null
