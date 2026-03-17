@@ -55,8 +55,13 @@ export const appendMessageToCell = (cell, message, font) => {
 export const collectCellErrors = (errors, updateFn, r, [colNumber, rowNumber], cell) => {
   try {
     updateFn(r, [colNumber, rowNumber], cellValueText(cell.value))
-  } catch (e) {
-    errors.push(cellError(e.colNumber ?? colNumber, rowNumber, e.message, null, cell.value))
+  } catch (ex) {
+    const f = (e) => errors.push(cellError(e.colNumber ?? colNumber, rowNumber, e.message, null, cell.value))
+    if (Array.isArray(ex.collectedErrors)) {
+      ex.collectedErrors.map(f)
+    } else {
+      f(ex)
+    }
   }
 }
 
@@ -85,7 +90,7 @@ export const readExcelBuffer = async (buffer) => {
   try {
     const workbook = new Excel.Workbook()
     return await workbook.xlsx.load(buffer, {
-      ignoreNodes: ['conditionalFormatting'] // breaks generated excel file
+      ignoreNodes: [] // ['conditionalFormatting'] // breaks generated excel file
     })
   } catch {
     return null
