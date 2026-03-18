@@ -28,11 +28,39 @@ export const validateMovementHasWasteItems = (movement) => {
   return movement
 }
 
+const flattenErrors = (e) => {
+  if (e.collectedErrors) {
+    return e.collectedErrors.flatMap(flattenErrors)
+  } else {
+    return [e]
+  }
+}
+
 export const compose = (...fns) => {
-  return fns
+  const composed = fns
     .filter((f) => typeof f === 'function')
     .reduceRight(
-      (composed, fn) => (x) => fn(composed(x)),
-      (x) => x
+      ({ f, errors }, fn) => ({
+        f: (x) => {
+          try {
+            return fn(f(x))
+          } catch (e) {
+            errors.push(e)
+            return x
+          }
+        },
+        errors
+      }),
+      { errors: [], f: (x) => x }
     )
+  return (x) => {
+    const { errors, f } = composed
+    const result = f(x)
+    if (errors.length > 0) {
+      const e = new Error('Collected Errors')
+      e.collectedErrors = errors.flatMap(flattenErrors)
+      throw e
+    }
+    return result
+  }
 }
