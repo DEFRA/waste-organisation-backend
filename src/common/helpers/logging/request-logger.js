@@ -4,7 +4,7 @@ import { loggerOptions } from './logger-options.js'
 
 const requestLogger = {
   plugin: hapiPino,
-  options: loggerOptions
+  options: loggerOptions()
 }
 
 export { requestLogger }
