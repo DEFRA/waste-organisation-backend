@@ -84,11 +84,14 @@ const getUploadsByFilenameHandler = async (request, h) => {
   const s3Client = constructS3Client()
   const enrichedUploads = await Promise.all(
     uploads.map(async ({ uploadId, s3Bucket, s3Key }) => {
-      if (!s3Bucket || !s3Key) return { uploadId }
+      if (!s3Bucket || !s3Key) {
+        return { uploadId }
+      }
       try {
         const url = await getSignedUrl(s3Client, new GetObjectCommand({ Bucket: s3Bucket, Key: `${s3Key}-processed` }), { expiresIn: 3600 })
         return { uploadId, processedFileUrl: url }
-      } catch (_err) {
+      } catch (err) {
+        logger.warn(`Failed to generate presigned URL for ${s3Key}-processed: ${err.message}`)
         return { uploadId }
       }
     })

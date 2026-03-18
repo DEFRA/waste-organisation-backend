@@ -68,7 +68,9 @@ export const deleteMessage = async (client, QueueUrl, receiptHandle) => {
 }
 
 const storeProcessedFile = async (s3Client, s3Bucket, s3Key, file) => {
-  if (!config.get('isTestRoutesEnabled')) return
+  if (!config.get('isTestRoutesEnabled')) {
+    return
+  }
   await s3Client.send(
     new PutObjectCommand({
       Bucket: s3Bucket,
