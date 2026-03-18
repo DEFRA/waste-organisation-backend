@@ -4,11 +4,13 @@ import { mergeAndValidate } from '../domain/index.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { spreadsheetCollection, findAllSpreadsheets, findUploadIdsByFilename } from '../repositories/spreadsheet.js'
 import { SendMessageCommand } from '@aws-sdk/client-sqs'
+import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import Boom from '@hapi/boom'
 import joi from 'joi'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
 import { getSpreadsheetsResponseSchema, getUploadsByFilenameResponseSchema, putSpreadsheetResponseSchema } from './schemas/spreadsheet.js'
+import { constructS3Client } from '../backgroundProcessor.js'
 
 const logger = createLogger()
 
@@ -76,7 +78,25 @@ const getUploadsByFilenameHandler = async (request, h) => {
   if (uploads.length === 0) {
     throw Boom.notFound('No spreadsheets found for the given filename')
   }
-  return h.response({ message: 'success', uploads })
+
+  const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner')
+  const s3Client = constructS3Client()
+  const enrichedUploads = await Promise.all(
+    uploads.map(async ({ uploadId, s3Bucket, s3Key }) => {
+      if (!s3Bucket || !s3Key) {
+        return { uploadId }
+      }
+      try {
+        const url = await getSignedUrl(s3Client, new GetObjectCommand({ Bucket: s3Bucket, Key: `${s3Key}-processed` }), { expiresIn: 3600 })
+        return { uploadId, processedFileUrl: url }
+      } catch (err) {
+        logger.warn(`Failed to generate presigned URL for ${s3Key}-processed: ${err.message}`)
+        return { uploadId }
+      }
+    })
+  )
+
+  return h.response({ message: 'success', uploads: enrichedUploads })
 }
 
 const getUploadsByFilenameOptions = {

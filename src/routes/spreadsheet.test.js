@@ -1,6 +1,11 @@
 import { initialiseServer, WASTE_CLIENT_AUTH_TEST_TOKEN, stopServer } from '../common/helpers/initialse-test-server.js'
 import { paths, pathTo } from '../config/paths.js'
 import { config } from '../config.js'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+
+vi.mock('@aws-sdk/s3-request-presigner', () => ({
+  getSignedUrl: vi.fn().mockResolvedValue('https://mock-presigned-url.com/processed-file')
+}))
 
 const originalGet = config.get.bind(config)
 
@@ -67,6 +72,44 @@ describe('spreadsheet API', () => {
     expect(statusCode).toBe(200)
     expect(result.message).toBe('success')
     expect(result.uploads).toEqual(expect.arrayContaining([{ uploadId: 'upload-a' }, { uploadId: 'upload-b' }]))
+  })
+
+  test('should return processedFileUrl when upload has s3 coordinates', async () => {
+    await server.inject({
+      method: 'PUT',
+      url: pathTo(paths.putSpreadsheet, { uploadId: 'upload-s3', organisationId: 'org-s3' }),
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN },
+      payload: { spreadsheet: { filename: 's3-file.xlsx', s3Bucket: 'test-bucket', s3Key: 'test-key' } }
+    })
+
+    const { result, statusCode } = await server.inject({
+      method: 'GET',
+      url: paths.getUploadsByFilename.replace('{organisationId}', 'org-s3') + '?filename=s3-file.xlsx',
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN }
+    })
+
+    expect(statusCode).toBe(200)
+    expect(result.uploads).toEqual([{ uploadId: 'upload-s3', processedFileUrl: 'https://mock-presigned-url.com/processed-file' }])
+  })
+
+  test('should omit processedFileUrl when getSignedUrl throws', async () => {
+    getSignedUrl.mockRejectedValueOnce(new Error('NoSuchKey'))
+
+    await server.inject({
+      method: 'PUT',
+      url: pathTo(paths.putSpreadsheet, { uploadId: 'upload-s3-err', organisationId: 'org-s3-err' }),
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN },
+      payload: { spreadsheet: { filename: 's3-err-file.xlsx', s3Bucket: 'test-bucket', s3Key: 'err-key' } }
+    })
+
+    const { result, statusCode } = await server.inject({
+      method: 'GET',
+      url: paths.getUploadsByFilename.replace('{organisationId}', 'org-s3-err') + '?filename=s3-err-file.xlsx',
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN }
+    })
+
+    expect(statusCode).toBe(200)
+    expect(result.uploads).toEqual([{ uploadId: 'upload-s3-err' }])
   })
 
   test('should return 404 when no spreadsheets match filename', async () => {

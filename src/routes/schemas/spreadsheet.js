@@ -16,7 +16,12 @@ export const getUploadsByFilenameResponseSchema = joi.object({
   message: messageSchema,
   uploads: joi
     .array()
-    .items(joi.object({ uploadId: joi.string().required() }))
+    .items(
+      joi.object({
+        uploadId: joi.string().required(),
+        processedFileUrl: joi.string().optional()
+      })
+    )
     .required()
 })
 
