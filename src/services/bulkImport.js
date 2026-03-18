@@ -22,9 +22,17 @@ const extractValidationErrors = (e, uploadId) => {
   return { failed: true }
 }
 
-const apiCall = async (asyncFunc, { username, password }, payload, uploadId) => {
+const apiCall = async (asyncFunc, { username, password }, payload, uploadId, traceId) => {
   try {
-    const headers = { Authorization: 'Basic ' + Buffer.from(username + ':' + password).toString('base64'), 'content-type': 'application/json' }
+    const headers = {
+      Authorization: 'Basic ' + Buffer.from(username + ':' + password).toString('base64'),
+      'content-type': 'application/json'
+    }
+
+    if (traceId) {
+      headers[config.get('tracing.header')] = traceId
+    }
+
     const r = { json: 'strict', headers }
     if (payload) {
       r.payload = payload
@@ -56,11 +64,11 @@ const urlFor = (bulkUploadId, conf) => {
   }
 }
 
-const bulkRequest = async (method, bulkUploadId, movements, conf) => {
+const bulkRequest = async (method, bulkUploadId, movements, traceId, conf) => {
   const c = conf ?? config.get('bulkUpload')
   const url = urlFor(bulkUploadId, c)
-  return apiCall((r) => wreck[method](url, r), c.basicAuth, movements, bulkUploadId)
+  return apiCall((r) => wreck[method](url, r), c.basicAuth, movements, bulkUploadId, traceId)
 }
 
-export const bulkImport = (id, movements, conf) => bulkRequest('post', id, movements, conf)
-export const bulkUpdate = (id, movements, conf) => bulkRequest('put', id, movements, conf)
+export const bulkImport = (id, movements, traceId, conf) => bulkRequest('post', id, movements, traceId, conf)
+export const bulkUpdate = (id, movements, traceId, conf) => bulkRequest('put', id, movements, traceId, conf)

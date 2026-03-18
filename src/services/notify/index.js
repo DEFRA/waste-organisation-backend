@@ -1,5 +1,4 @@
 import { NotifyClient } from 'notifications-node-client'
-
 import { config } from '../../config.js'
 import { createLogger } from '../../common/helpers/logging/logger.js'
 const apiKey = config.get('notify.govNotifyKey')
@@ -7,18 +6,18 @@ const apiKey = config.get('notify.govNotifyKey')
 const successTemplate = config.get('notify.successTemplate')
 const failedTemplate = config.get('notify.failedTemplate')
 const failedWithFileTemplate = config.get('notify.failedWithFileTemplate')
-
-const logger = createLogger()
-
 export const sendEmail = {
-  sendSuccess: async ({ email, name, file }) => send(successTemplate, email, name, file),
-  sendFailed: async ({ email, name }) => send(failedTemplate, email, name),
-  sendValidationFailed: async ({ email, name, file }) => send(failedWithFileTemplate, email, name, file)
+  sendSuccess: async ({ email, name, file, logger }) => send({ template: successTemplate, email, name, file, logger }),
+  sendFailed: async ({ email, name, logger }) => send({ template: failedTemplate, email, name, logger }),
+  sendValidationFailed: async ({ email, name, file, logger }) => send({ template: failedWithFileTemplate, email, name, file, logger })
 }
 
-const send = async (template, email, name, file) => {
-  const notifyClient = new NotifyClient(apiKey)
+const send = async ({ template, email, name, file, logger }) => {
+  if (!logger) {
+    logger = createLogger()
+  }
 
+  const notifyClient = new NotifyClient(apiKey)
   let nameObject = null
 
   try {
@@ -37,13 +36,11 @@ const send = async (template, email, name, file) => {
       logger.info(`Attaching file`)
       personalisation.link_to_file = notifyClient.prepareUpload(file)
     }
-
     const response = await notifyClient.sendEmail(template, email, { personalisation })
-    //   // TODO write the email response into the mongo db record for later debugging (not in prod - don't store PII)
-
-    logger.info(`Email Response data: ${response?.data}`)
+    logger.info(`Email Sent`)
     return response
   } catch (err) {
     logger.error(`Error sending emails: ${err}`)
+    return null
   }
 }

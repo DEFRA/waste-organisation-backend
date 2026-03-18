@@ -91,7 +91,7 @@ const sendInitalFailedEmail = async (s3Client, s3Bucket, s3Key, workbook, decryp
   }
 }
 
-const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, uploadId, uploadType }, decryptedEmail, decryptedName) => {
+const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, uploadId, uploadType }, decryptedEmail, decryptedName, traceId) => {
   const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
   logger.info(`UploadId: ${uploadId} -- Fetching bytes: ${buffer.length}`)
   const isUpdate = uploadType === 'update'
@@ -103,7 +103,7 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
     return
   }
 
-  const apiResponse = isUpdate ? await bulkUpdate(uploadId, movements) : await bulkImport(uploadId, movements)
+  const apiResponse = isUpdate ? await bulkUpdate(uploadId, movements, traceId) : await bulkImport(uploadId, movements, traceId)
 
   if (apiResponse.failed) {
     await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName })
@@ -138,29 +138,30 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
 }
 
 export const processJob = async (s3Client, message) => {
-  logger.info(`Message: ${JSON.stringify(message)}`)
-  const { s3Bucket, s3Key, encryptedEmail, encryptedName, organisationId, uploadId, uploadType, hasError } = JSON.parse(message.Body)
+  const { s3Bucket, s3Key, encryptedEmail, encryptedName, organisationId, uploadId, uploadType, hasError, traceId } = JSON.parse(message.Body)
+  const processJobLogger = createLogger(traceId)
+  processJobLogger.info(`Message: ${JSON.stringify(message)}`)
   const decryptedEmail = decrypt(encryptedEmail, config.get('encryptionKey'))
   const decryptedName = decrypt(encryptedName, config.get('encryptionKey'))
 
   if (hasError) {
-    await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName })
+    await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName, logger: processJobLogger })
     return
   }
 
   if (!s3Key || !s3Bucket) {
-    logger.info(`Message missing s3 coords: ${JSON.stringify(message)}`)
+    processJobLogger.info(`Message missing s3 coords: ${JSON.stringify(message)}`)
     return
   }
   try {
-    await processSpreadsheet(s3Client, { s3Bucket, s3Key, organisationId, uploadId, uploadType }, decryptedEmail, decryptedName)
+    await processSpreadsheet(s3Client, { s3Bucket, s3Key, organisationId, uploadId, uploadType }, decryptedEmail, decryptedName, traceId)
   } catch (e) {
     const statusCode = e.output?.statusCode
     if (TRANSIENT_STATUS_CODES.has(statusCode)) {
       throw e
     }
-    logger.error(`UploadId: ${uploadId} -- Unexpected error processing spreadsheet: ${e.stack}`)
-    await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName })
+    processJobLogger.error(`UploadId: ${uploadId} -- Unexpected error processing spreadsheet: ${e.stack}`)
+    await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName, logger: processJobLogger })
   }
 }
 

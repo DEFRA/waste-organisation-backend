@@ -18,5 +18,6 @@ export const spreadsheetSchema = joi.object({
   updatedAtTimstamp: joi.date(),
   hasError: joi.boolean(),
   errorMessage: joi.string(),
-  uploadType: joi.string().valid('create', 'update')
+  uploadType: joi.string().valid('create', 'update'),
+  traceId: joi.string().optional()
 })

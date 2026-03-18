@@ -35,7 +35,7 @@ describe('Notify', () => {
     }
     expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
     expect(actualResponse).toBe(sendEmailMock())
-    expect(loggerInfoMock).toBeCalledWith('Email Response data: response')
+    expect(loggerInfoMock).toBeCalledWith('Email Sent')
   })
 
   it('should return email response if name is not parsable to JSON', async () => {
@@ -47,7 +47,7 @@ describe('Notify', () => {
     }
     expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
     expect(actualResponse).toBe(sendEmailMock())
-    expect(loggerInfoMock).toBeCalledWith('Email Response data: response')
+    expect(loggerInfoMock).toBeCalledWith('Email Sent')
   })
 
   it('should handle if there is no name', async () => {
@@ -59,7 +59,7 @@ describe('Notify', () => {
     }
     expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
     expect(actualResponse).toBe(sendEmailMock())
-    expect(loggerInfoMock).toBeCalledWith('Email Response data: response')
+    expect(loggerInfoMock).toBeCalledWith('Email Sent')
   })
 
   it('should return email response with file link', async () => {
