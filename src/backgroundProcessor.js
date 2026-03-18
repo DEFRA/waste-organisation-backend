@@ -2,7 +2,7 @@
 // import { mergeAndValidate } from '../domain/index.js'
 // import { updateWithOptimisticLock } from '../repositories/index.js'
 // import { spreadsheetCollection } from '../repositories/spreadsheet.js'
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs'
 import { config } from './config.js'
 import { createLogger } from './common/helpers/logging/logger.js'
@@ -22,7 +22,7 @@ import { validateWasteTrackingIdExists, validateWasteTrackingIdMissing } from '.
 
 const logger = createLogger()
 
-const constructS3Client = () => {
+export const constructS3Client = () => {
   return new S3Client({
     region: config.get('aws.region'),
     endpoint: config.get('aws.s3Endpoint'),
@@ -67,9 +67,21 @@ export const deleteMessage = async (client, QueueUrl, receiptHandle) => {
   }
 }
 
-const sendInitalFailedEmail = async (workbook, decryptedEmail, decryptedName) => {
+const storeProcessedFile = async (s3Client, s3Bucket, s3Key, file) => {
+  if (!config.get('isTestRoutesEnabled')) return
+  await s3Client.send(
+    new PutObjectCommand({
+      Bucket: s3Bucket,
+      Key: `${s3Key}-processed`,
+      Body: file
+    })
+  )
+}
+
+const sendInitalFailedEmail = async (s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName) => {
   if (workbook) {
     const file = await workbookToByteArray(workbook)
+    await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
     logger.info(`sending validation failed message ${file ? 'with file' : 'without file'}`)
     await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file })
   } else {
@@ -85,7 +97,7 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
   const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, organisationId, validatorFn)
   if (hasErrors) {
     logger.warn(`UploadId: ${uploadId} -- Errors before sending to import API ${JSON.stringify(errors)}`)
-    await sendInitalFailedEmail(workbook, decryptedEmail, decryptedName)
+    await sendInitalFailedEmail(s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName)
     return
   }
 
@@ -103,6 +115,7 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
     logger.debug(`UploadId: ${uploadId} -- Cells to update with errors: ${JSON.stringify(errs)}`)
     updateErrors(workbook, errs)
     const file = await workbookToByteArray(workbook)
+    await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
     await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file })
     return
   }
@@ -115,6 +128,7 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
       updateCellContent(workbook, coords)
     }
     const file = await workbookToByteArray(workbook)
+    await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
     await sendEmail.sendSuccess({ email: decryptedEmail, name: decryptedName, file })
     return
   }

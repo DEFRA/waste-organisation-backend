@@ -8,7 +8,7 @@ export const createSpreadsheetIndexes = async (db) => {
 export const findUploadIdsByFilename = (db, organisationId, filename) => {
   return db
     .collection(spreadsheetCollection)
-    .find({ organisationId: { $eq: organisationId }, filename: { $eq: filename } }, { projection: { _id: 0, uploadId: 1 } })
+    .find({ organisationId: { $eq: organisationId }, filename: { $eq: filename } }, { projection: { _id: 0, uploadId: 1, s3Bucket: 1, s3Key: 1 } })
     .toArray()
 }
 
