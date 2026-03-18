@@ -82,12 +82,6 @@
     "notifications-node-client": {
       "axios": "1.13.5"
     },
-    "eslint": {
-      "minimatch": "3.1.5"
-    },
-    "neostandard": {
-      "minimatch": "3.1.5"
-    },
     "exceljs": {
       "minimatch": "5.1.9"
     },
