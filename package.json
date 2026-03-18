@@ -89,6 +89,9 @@
     },
     "exceljs": {
       "minimatch": "5.1.9"
+    },
+    "@aws-sdk/client-sqs": {
+      "fast-xml-parser": "5.5.6"
     }
   }
 }
