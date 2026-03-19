@@ -18,8 +18,8 @@ import { sqsPlugin } from './plugins/sqs.js'
 
 // prettier-ignore
 export const plugins = {
-  tracing: requestTracing, // requestTracing - trace header logging and propagation
   logger: requestLogger,   // requestLogger  - automatically logs incoming requests
+  tracing: requestTracing, // requestTracing - trace header logging and propagation
   secureContext,           // secureContext  - loads CA certificates from environment config
   pulse,                   // pulse          - provides shutdown handlers
   mongoDb: {               // mongoDb        - sets up mongo connection pool and attaches to `server` and `request` objects
