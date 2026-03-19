@@ -28,25 +28,6 @@ describe('loggerOptions', () => {
     expect(expected.trace.id).toBe(traceId)
   })
 
-  describe('getChildBindings', () => {
-    it('should return trace id and req when tracing header is present', () => {
-      const traceId = faker.string.uuid()
-      const request = { headers: { 'x-cdp-request-id': traceId } }
-      const options = loggerOptions()
-      const bindings = options.getChildBindings(request)
-
-      expect(bindings).toEqual({ req: request, trace: { id: traceId } })
-    })
-
-    it('should return only req when tracing header is absent', () => {
-      const request = { headers: {} }
-      const options = loggerOptions()
-      const bindings = options.getChildBindings(request)
-
-      expect(bindings).toEqual({ req: request })
-    })
-  })
-
   it('should not return traceId if traceId is not set', () => {
     vi.mock('@defra/hapi-tracing', { spy: true })
 

@@ -5,7 +5,6 @@ import { getTraceId } from '@defra/hapi-tracing'
 const logConfig = config.get('log')
 const serviceName = config.get('serviceName')
 const serviceVersion = config.get('serviceVersion')
-const tracingHeader = config.get('tracing.header')
 
 const formatters = {
   ecs: {
@@ -27,10 +26,6 @@ export const loggerOptions = (traceId) => ({
   level: logConfig.level,
   ...formatters[logConfig.format],
   nesting: true,
-  getChildBindings(request) {
-    const headerTraceId = request.headers[tracingHeader]
-    return headerTraceId ? { req: request, trace: { id: headerTraceId } } : { req: request }
-  },
   mixin() {
     const mixinValues = {}
     if (traceId) {
