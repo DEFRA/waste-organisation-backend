@@ -16,6 +16,8 @@ const formatters = {
   'pino-pretty': { transport: { target: 'pino-pretty' } }
 }
 
+const tracingHeader = config.get('tracing.header')
+
 export const loggerOptions = (traceId) => ({
   enabled: logConfig.isEnabled,
   ignorePaths: ['/health'],
@@ -26,6 +28,10 @@ export const loggerOptions = (traceId) => ({
   level: logConfig.level,
   ...formatters[logConfig.format],
   nesting: true,
+  getChildBindings(request) {
+    const headerTraceId = request.headers[tracingHeader]
+    return headerTraceId ? { req: request, trace: { id: headerTraceId } } : { req: request }
+  },
   mixin() {
     const mixinValues = {}
     if (traceId) {
