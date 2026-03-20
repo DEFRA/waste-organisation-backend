@@ -181,6 +181,7 @@ describe('some unit tests for parsers', () => {
 
   test('validateMovementHasWasteItems', () => {
     expect(() => validateMovementHasWasteItems({})).toThrowError()
+    expect(() => validateMovementHasWasteItems({ wasteItems: [] })).toThrowError()
     expect(validateMovementHasWasteItems({ wasteItems: [{}] })).toEqual({ wasteItems: [{}] })
   })
 })
