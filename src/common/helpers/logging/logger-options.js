@@ -30,9 +30,6 @@ export const loggerOptions = (traceId) => ({
   nesting: true,
   getChildBindings(request) {
     const headerTraceId = request.headers[tracingHeader]
-    console.log(`DEBUG getChildBindings - all headers: ${JSON.stringify(request.headers)}`)
-    console.log(`DEBUG getChildBindings - tracingHeader [${tracingHeader}]: ${headerTraceId}`)
-    console.log(`DEBUG getChildBindings - getTraceId(): ${getTraceId()}`)
     return headerTraceId ? { req: request, trace: { id: headerTraceId } } : { req: request }
   },
   mixin() {
