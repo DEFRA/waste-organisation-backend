@@ -9,7 +9,8 @@ export const paths = {
   createApiCode:        '/organisation/{organisationId}/apiCodes',
   listApiCodes:         '/organisation/{organisationId}/apiCodes',
   lookupOrgFromApiCode: '/organisation/{apiCode}',
-  getUploadsByFilename: '/test/spreadsheet/{organisationId}/uploads'
+  getUploadsByFilename: '/test/spreadsheet/{organisationId}/uploads',
+  postMovement:         '/organisation/{organisationId}/movements'
 }
 
 export const pathTo = (route, params) => {

@@ -31,7 +31,8 @@ describe('Notify', () => {
     const { sendEmail } = await import('./index.js')
     const actualResponse = await sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }) })
     const personalisation = {
-      'first name': 'Joe Bloggs'
+      'first name': 'Joe Bloggs',
+      'upload id': null
     }
     expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
     expect(actualResponse).toBe(sendEmailMock())
@@ -43,7 +44,8 @@ describe('Notify', () => {
     const { sendEmail } = await import('./index.js')
     const actualResponse = await sendEmail.sendSuccess({ email, name: 'Random String' })
     const personalisation = {
-      'first name': null
+      'first name': null,
+      'upload id': null
     }
     expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
     expect(actualResponse).toBe(sendEmailMock())
@@ -55,7 +57,8 @@ describe('Notify', () => {
     const { sendEmail } = await import('./index.js')
     const actualResponse = await sendEmail.sendSuccess({ email })
     const personalisation = {
-      'first name': null
+      'first name': null,
+      'upload id': null
     }
     expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
     expect(actualResponse).toBe(sendEmailMock())
@@ -69,6 +72,7 @@ describe('Notify', () => {
     await sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }), file })
     const personalisation = {
       'first name': 'Joe Bloggs',
+      'upload id': null,
       link_to_file: 'link'
     }
 
