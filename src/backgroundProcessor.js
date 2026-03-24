@@ -80,14 +80,14 @@ const storeProcessedFile = async (s3Client, s3Bucket, s3Key, file) => {
   )
 }
 
-const sendInitalFailedEmail = async (s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName) => {
+const sendInitialFailedEmail = async (s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName, uploadId) => {
   if (workbook) {
     const file = await workbookToByteArray(workbook)
     await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
     logger.info(`sending validation failed message ${file ? 'with file' : 'without file'}`)
-    await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file })
+    await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file, uploadId })
   } else {
-    await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName })
+    await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName, uploadId })
   }
 }
 
@@ -99,14 +99,14 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
   const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, organisationId, validatorFn)
   if (hasErrors) {
     logger.warn(`UploadId: ${uploadId} -- Errors before sending to import API ${JSON.stringify(errors)}`)
-    await sendInitalFailedEmail(s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName)
+    await sendInitialFailedEmail(s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName, uploadId)
     return
   }
 
   const apiResponse = isUpdate ? await bulkUpdate(uploadId, movements, traceId) : await bulkImport(uploadId, movements, traceId)
 
   if (apiResponse.failed) {
-    await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName })
+    await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName, uploadId })
     return
   }
 
@@ -118,7 +118,7 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
     updateErrors(workbook, errs)
     const file = await workbookToByteArray(workbook)
     await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
-    await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file })
+    await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file, uploadId })
     return
   }
 
@@ -131,7 +131,7 @@ const processSpreadsheet = async (s3Client, { s3Bucket, s3Key, organisationId, u
     }
     const file = await workbookToByteArray(workbook)
     await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
-    await sendEmail.sendSuccess({ email: decryptedEmail, name: decryptedName, file })
+    await sendEmail.sendSuccess({ email: decryptedEmail, name: decryptedName, file, uploadId })
     return
   }
   logger.error(`UploadId: ${uploadId} -- Unhandled case. No errors or waste tracking ids generated for ${uploadId}`)
@@ -145,7 +145,7 @@ export const processJob = async (s3Client, message) => {
   const decryptedName = decrypt(encryptedName, config.get('encryptionKey'))
 
   if (hasError) {
-    await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName, logger: processJobLogger })
+    await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName, uploadId, logger: processJobLogger })
     return
   }
 
@@ -161,7 +161,7 @@ export const processJob = async (s3Client, message) => {
       throw e
     }
     processJobLogger.error(`UploadId: ${uploadId} -- Unexpected error processing spreadsheet: ${e.stack}`)
-    await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName, logger: processJobLogger })
+    await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName, uploadId, logger: processJobLogger })
   }
 }
 
