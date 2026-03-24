@@ -37,24 +37,25 @@ const flattenErrors = (e) => {
 }
 
 export const compose = (...fns) => {
-  const composed = fns
-    .filter((f) => typeof f === 'function')
-    .reduceRight(
-      ({ f, errors }, fn) => ({
-        f: (x) => {
-          try {
-            return fn(f(x))
-          } catch (e) {
-            errors.push(e)
-            return x
-          }
-        },
-        errors
-      }),
-      { errors: [], f: (x) => x }
-    )
+  const composed = (es) =>
+    fns
+      .filter((f) => typeof f === 'function')
+      .reduceRight(
+        ({ f, errors }, fn) => ({
+          f: (x) => {
+            try {
+              return fn(f(x))
+            } catch (e) {
+              errors.push(e)
+              return x
+            }
+          },
+          errors
+        }),
+        { errors: es, f: (x) => x }
+      )
   return (x) => {
-    const { errors, f } = composed
+    const { errors, f } = composed([])
     const result = f(x)
     if (errors.length > 0) {
       const e = new Error('Collected Errors')
