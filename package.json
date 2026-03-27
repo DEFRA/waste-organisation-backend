@@ -44,7 +44,7 @@
     "@hapi/vision": "7.0.3",
     "aws-embedded-metrics": "4.2.0",
     "aws4": "1.13.2",
-    "convict": "6.2.4",
+    "convict": "6.2.5",
     "convict-format-with-validator": "6.2.0",
     "exceljs": "4.4.0",
     "global-agent": "3.0.0",
@@ -85,7 +85,8 @@
     "exceljs": {
       "minimatch": "5.1.9"
     },
-    "fast-xml-parser": "5.5.6"
+    "fast-xml-parser": "5.5.9",
+    "brace-expansion": "2.0.3"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "4.59.0"
