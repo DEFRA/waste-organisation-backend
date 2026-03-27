@@ -19,7 +19,9 @@ export const getUploadsByFilenameResponseSchema = joi.object({
     .items(
       joi.object({
         uploadId: joi.string().required(),
-        processedFileUrl: joi.string().optional()
+        processedFileUrl: joi.string().optional(),
+        hasError: joi.boolean().optional(),
+        errorMessage: joi.string().optional()
       })
     )
     .required()
