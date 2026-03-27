@@ -18,10 +18,10 @@ export const getUploadsByFilenameResponseSchema = joi.object({
     .array()
     .items(
       joi.object({
-        uploadId: joi.string().required(),
-        processedFileUrl: joi.string().optional(),
-        hasError: joi.boolean().optional(),
-        errorMessage: joi.string().optional()
+        uploadId: joi.string().required().description('Unique upload identifier'),
+        processedFileUrl: joi.string().optional().description('Pre-signed S3 URL for the processed spreadsheet'),
+        hasError: joi.boolean().optional().description('True when the CDP uploader rejected the file due to errors or incompatible type'),
+        errorMessage: joi.string().optional().description('Details of the rejection reason')
       })
     )
     .required()
