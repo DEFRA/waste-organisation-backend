@@ -112,6 +112,42 @@ describe('spreadsheet API', () => {
     expect(result.uploads).toEqual([{ uploadId: 'upload-s3-err' }])
   })
 
+  test('should return hasError when upload has error flag', async () => {
+    await server.inject({
+      method: 'PUT',
+      url: pathTo(paths.putSpreadsheet, { uploadId: 'upload-err', organisationId: 'org-err' }),
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN },
+      payload: { spreadsheet: { filename: 'err-file.xlsx', hasError: true } }
+    })
+
+    const { result, statusCode } = await server.inject({
+      method: 'GET',
+      url: paths.getUploadsByFilename.replace('{organisationId}', 'org-err') + '?filename=err-file.xlsx',
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN }
+    })
+
+    expect(statusCode).toBe(200)
+    expect(result.uploads).toEqual([{ uploadId: 'upload-err', hasError: true }])
+  })
+
+  test('should return errorMessage when upload has error details', async () => {
+    await server.inject({
+      method: 'PUT',
+      url: pathTo(paths.putSpreadsheet, { uploadId: 'upload-err-msg', organisationId: 'org-err-msg' }),
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN },
+      payload: { spreadsheet: { filename: 'err-msg-file.xlsx', hasError: true, errorMessage: 'Incompatible file type' } }
+    })
+
+    const { result, statusCode } = await server.inject({
+      method: 'GET',
+      url: paths.getUploadsByFilename.replace('{organisationId}', 'org-err-msg') + '?filename=err-msg-file.xlsx',
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN }
+    })
+
+    expect(statusCode).toBe(200)
+    expect(result.uploads).toEqual([{ uploadId: 'upload-err-msg', hasError: true, errorMessage: 'Incompatible file type' }])
+  })
+
   test('should return 404 when no spreadsheets match filename', async () => {
     const { statusCode } = await server.inject({
       method: 'GET',

@@ -82,16 +82,24 @@ const getUploadsByFilenameHandler = async (request, h) => {
   const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner')
   const s3Client = constructS3Client()
   const enrichedUploads = await Promise.all(
-    uploads.map(async ({ uploadId, s3Bucket, s3Key }) => {
+    uploads.map(async ({ uploadId, s3Bucket, s3Key, hasError, errorMessage }) => {
+      const upload = { uploadId }
+      if (hasError) {
+        upload.hasError = true
+      }
+      if (errorMessage) {
+        upload.errorMessage = errorMessage
+      }
       if (!s3Bucket || !s3Key) {
-        return { uploadId }
+        return upload
       }
       try {
         const url = await getSignedUrl(s3Client, new GetObjectCommand({ Bucket: s3Bucket, Key: `${s3Key}-processed` }), { expiresIn: 3600 })
-        return { uploadId, processedFileUrl: url }
+        upload.processedFileUrl = url
+        return upload
       } catch (err) {
         logger.warn(`Failed to generate presigned URL for ${s3Key}-processed: ${err.message}`)
-        return { uploadId }
+        return upload
       }
     })
   )
@@ -102,8 +110,14 @@ const getUploadsByFilenameHandler = async (request, h) => {
 const getUploadsByFilenameOptions = {
   auth: apiKeyAuthStrategy,
   tags: ['api', 'test'],
+  description: 'Get uploads by filename',
+  notes: [
+    'Returns uploads matching the given filename for an organisation.',
+    'Includes hasError/errorMessage when the CDP uploader rejected a file due to errors or incompatible type.'
+  ],
   validate: {
-    query: joi.object({ filename: joi.string().required() })
+    query: joi.object({ filename: joi.string().required().description('The original filename of the uploaded spreadsheet') }),
+    params: joi.object({ organisationId: joi.string().required().description('The organisation identifier') })
   },
   response: { schema: getUploadsByFilenameResponseSchema, sample: 0 }
 }
