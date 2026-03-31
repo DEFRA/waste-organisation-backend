@@ -32,7 +32,8 @@ describe('Notify', () => {
     const actualResponse = await sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }) })
     const personalisation = {
       'first name': 'Joe Bloggs',
-      'upload id': null
+      'upload id': null,
+      filename: null
     }
     expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
     expect(actualResponse).toBe(sendEmailMock())
@@ -45,7 +46,8 @@ describe('Notify', () => {
     const actualResponse = await sendEmail.sendSuccess({ email, name: 'Random String' })
     const personalisation = {
       'first name': null,
-      'upload id': null
+      'upload id': null,
+      filename: null
     }
     expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
     expect(actualResponse).toBe(sendEmailMock())
@@ -58,7 +60,8 @@ describe('Notify', () => {
     const actualResponse = await sendEmail.sendSuccess({ email })
     const personalisation = {
       'first name': null,
-      'upload id': null
+      'upload id': null,
+      filename: null
     }
     expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
     expect(actualResponse).toBe(sendEmailMock())
@@ -73,6 +76,7 @@ describe('Notify', () => {
     const personalisation = {
       'first name': 'Joe Bloggs',
       'upload id': null,
+      filename: null,
       link_to_file: 'link'
     }
 
@@ -87,7 +91,20 @@ describe('Notify', () => {
     await sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }), referenceNumber })
     const personalisation = {
       'first name': 'Joe Bloggs',
-      'upload id': 'abc-123'
+      'upload id': 'abc-123',
+      filename: null
+    }
+    expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
+  })
+
+  it('should include filename in personalisation when provided', async () => {
+    sendEmailMock.mockReturnValue({ data: 'response' })
+    const { sendEmail } = await import('./index.js')
+    await sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }), filename: 'test.xlsx' })
+    const personalisation = {
+      'first name': 'Joe Bloggs',
+      'upload id': null,
+      filename: 'test.xlsx'
     }
     expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
   })
