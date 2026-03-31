@@ -65,11 +65,11 @@ export const collectCellErrors = (errors, updateFn, r, [colNumber, rowNumber], c
   }
 }
 
-export const worksheetToArray = ({ worksheet, keyCol, updateFn, minRow, maxCol }) => {
+export const worksheetToArray = ({ worksheet, keyCols, updateFn, minRow, maxCol }) => {
   const elements = []
   const errors = []
   worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber > minRow && row.getCell(keyCol).value) {
+    if (rowNumber > minRow && keyCols.some((keyCol) => row.getCell(keyCol).value)) {
       row.getCell(1).value = emptyCell()
       const r = {}
       row.eachCell((cell, colNumber) => {

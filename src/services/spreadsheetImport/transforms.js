@@ -28,6 +28,18 @@ export const validateMovementHasWasteItems = (movement) => {
   return movement
 }
 
+export const validateUniqueReference = () => {
+  const seenUniqueRefs = new Set()
+  return (movement) => {
+    if (movement.yourUniqueReference && seenUniqueRefs.has(movement.yourUniqueReference)) {
+      throw new Error('Duplicate reference')
+    } else {
+      seenUniqueRefs.add(movement.yourUniqueReference)
+      return movement
+    }
+  }
+}
+
 const flattenErrors = (e) => {
   if (e.collectedErrors) {
     return e.collectedErrors.flatMap(flattenErrors)
