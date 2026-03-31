@@ -9,7 +9,7 @@ const logger = createLogger()
 const formatErrorDetail = (e) => (e instanceof Error ? e.stack : JSON.stringify(e))
 
 const extractValidationErrors = (e, uploadId) => {
-  logger.debug(`UploadId: ${uploadId} -- Validation errors processing spreadsheet ${e.data}`)
+  logger.debug(`ReferenceNumber: ${uploadId} -- Validation errors processing spreadsheet ${e.data}`)
   const payloadIsArray = Array.isArray(e.data?.payload)
   const validationPayload = payloadIsArray ? e.data.payload : []
   const errors = validationPayload.flatMap((v) => v?.validation?.errors || [])
@@ -18,7 +18,9 @@ const extractValidationErrors = (e, uploadId) => {
   }
   const payloadType = e.data?.payload === undefined ? 'undefined' : typeof e.data.payload
   const payloadLength = payloadIsArray ? e.data.payload.length : 'n/a'
-  logger.warn(`UploadId: ${uploadId} -- Bulk API returned 400 with no extractable validation errors (payload type: ${payloadType}, length: ${payloadLength})`)
+  logger.warn(
+    `ReferenceNumber: ${uploadId} -- Bulk API returned 400 with no extractable validation errors (payload type: ${payloadType}, length: ${payloadLength})`
+  )
   return { failed: true }
 }
 
@@ -37,13 +39,13 @@ const apiCall = async (asyncFunc, { username, password }, payload, uploadId, tra
     if (payload) {
       r.payload = payload
     }
-    logger.debug(`UploadId: ${uploadId} -- Sending to Bulk API: ${JSON.stringify(payload)}`)
+    logger.debug(`ReferenceNumber: ${uploadId} -- Sending to Bulk API: ${JSON.stringify(payload)}`)
     const response = await asyncFunc(r)
-    logger.debug(`UploadId: ${uploadId} -- Result from Bulk API (status): ${JSON.stringify(response.payload)}`)
+    logger.debug(`ReferenceNumber: ${uploadId} -- Result from Bulk API (status): ${JSON.stringify(response.payload)}`)
     return response.payload
   } catch (e) {
     const statusCode = e.output?.statusCode
-    logger.error(`UploadId: ${uploadId} -- ERROR calling bulk import api (status: ${statusCode}) ${formatErrorDetail(e)}`)
+    logger.error(`ReferenceNumber: ${uploadId} -- ERROR calling bulk import api (status: ${statusCode}) ${formatErrorDetail(e)}`)
     if (statusCode === HTTP_BAD_REQUEST) {
       return extractValidationErrors(e, uploadId)
     }
@@ -59,7 +61,7 @@ const urlFor = (bulkUploadId, conf) => {
     const u = conf.endpoint.replace(/\/$/, '')
     return u + pathTo(conf.url, { bulkUploadId })
   } catch (e) {
-    logger.error(`UploadId: ${bulkUploadId} -- Error generating bulk endpoint url ${conf}`)
+    logger.error(`ReferenceNumber: ${bulkUploadId} -- Error generating bulk endpoint url ${conf}`)
     throw e
   }
 }

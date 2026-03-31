@@ -99,12 +99,12 @@ const processSpreadsheet = async (
   traceId
 ) => {
   const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
-  logger.info(`UploadId: ${referenceNumber} -- Fetching bytes: ${buffer.length}`)
+  logger.info(`ReferenceNumber: ${referenceNumber} -- Fetching bytes: ${buffer.length}`)
   const isUpdate = uploadType === 'update'
   const validatorFn = isUpdate ? validateWasteTrackingIdExists : validateWasteTrackingIdMissing
   const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, organisationId, validatorFn)
   if (hasErrors) {
-    logger.warn(`UploadId: ${referenceNumber} -- Errors before sending to import API ${JSON.stringify(errors)}`)
+    logger.warn(`ReferenceNumber: ${referenceNumber} -- Errors before sending to import API ${JSON.stringify(errors)}`)
     await sendInitialFailedEmail(s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName, referenceNumber, filename)
     return
   }
@@ -117,10 +117,10 @@ const processSpreadsheet = async (
   }
 
   if (apiResponse.errors) {
-    logger.warn(`UploadId: ${referenceNumber} -- Errors from import API ${JSON.stringify(apiResponse.errors)}`)
-    logger.debug(`UploadId: ${referenceNumber} -- rowNumbers: ${JSON.stringify(rowNumbers)}`)
+    logger.warn(`ReferenceNumber: ${referenceNumber} -- Errors from import API ${JSON.stringify(apiResponse.errors)}`)
+    logger.debug(`ReferenceNumber: ${referenceNumber} -- rowNumbers: ${JSON.stringify(rowNumbers)}`)
     const errs = transformBulkApiErrors(movements, rowNumbers, apiResponse.errors)
-    logger.debug(`UploadId: ${referenceNumber} -- Cells to update with errors: ${JSON.stringify(errs)}`)
+    logger.debug(`ReferenceNumber: ${referenceNumber} -- Cells to update with errors: ${JSON.stringify(errs)}`)
     updateErrors(workbook, errs)
     const file = await workbookToByteArray(workbook)
     await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
@@ -129,10 +129,10 @@ const processSpreadsheet = async (
   }
 
   if (apiResponse.movements) {
-    logger.debug(`UploadId: ${referenceNumber} -- Movements returned from Bulk API`)
+    logger.debug(`ReferenceNumber: ${referenceNumber} -- Movements returned from Bulk API`)
     if (!isUpdate) {
       const coords = wasteTrackingIdsToCoords(movements, rowNumbers, apiResponse.movements)
-      logger.debug(`UploadId: ${referenceNumber} -- Cells to update with waste tracking ids: ${JSON.stringify(coords)}`)
+      logger.debug(`ReferenceNumber: ${referenceNumber} -- Cells to update with waste tracking ids: ${JSON.stringify(coords)}`)
       updateCellContent(workbook, coords)
     }
     const file = await workbookToByteArray(workbook)
@@ -140,7 +140,7 @@ const processSpreadsheet = async (
     await sendEmail.sendSuccess({ email: decryptedEmail, name: decryptedName, file, referenceNumber, filename })
     return
   }
-  logger.error(`UploadId: ${referenceNumber} -- Unhandled case. No errors or waste tracking ids generated for ${referenceNumber}`)
+  logger.error(`ReferenceNumber: ${referenceNumber} -- Unhandled case. No errors or waste tracking ids generated for ${referenceNumber}`)
 }
 
 export const processJob = async (s3Client, message) => {
@@ -176,7 +176,7 @@ export const processJob = async (s3Client, message) => {
     if (TRANSIENT_STATUS_CODES.has(statusCode)) {
       throw e
     }
-    processJobLogger.error(`UploadId: ${emailReferenceNumber} -- Unexpected error processing spreadsheet: ${e.stack}`)
+    processJobLogger.error(`ReferenceNumber: ${emailReferenceNumber} -- Unexpected error processing spreadsheet: ${e.stack}`)
     await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName, referenceNumber: emailReferenceNumber, filename, logger: processJobLogger })
   }
 }
