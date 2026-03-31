@@ -80,7 +80,7 @@ const storeProcessedFile = async (s3Client, s3Bucket, s3Key, file) => {
   )
 }
 
-const sendInitialFailedEmail = async (s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName, referenceNumber, filename) => {
+const sendInitialFailedEmail = async ({ s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName, referenceNumber, filename }) => {
   if (workbook) {
     const file = await workbookToByteArray(workbook)
     await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
@@ -105,7 +105,7 @@ const processSpreadsheet = async (
   const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, organisationId, validatorFn)
   if (hasErrors) {
     logger.warn(`ReferenceNumber: ${referenceNumber} -- Errors before sending to import API ${JSON.stringify(errors)}`)
-    await sendInitialFailedEmail(s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName, referenceNumber, filename)
+    await sendInitialFailedEmail({ s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName, referenceNumber, filename })
     return
   }
 
