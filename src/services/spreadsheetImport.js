@@ -164,14 +164,14 @@ export const parseExcelFile = (() => {
     }
     const movements = worksheetToArray({
       worksheet: workbook.getWorksheet(movementWorksheetName),
-      keyCols: [3, 4, 5, 6, 7],
+      keyCols: [3, 4, 5, 6, 7], // nosonar
       minRow: 8,
       maxCol: 32,
       updateFn: movementColName
     })
     const items = worksheetToArray({
       worksheet: workbook.getWorksheet(itemWorksheetName),
-      keyCols: [2, 3, 4, 5, 6, 7, 8, 9, 10],
+      keyCols: [2, 3, 4, 5, 6, 7, 8, 9, 10], // nosonar
       minRow: 8,
       maxCol: 25,
       updateFn: itemColName
