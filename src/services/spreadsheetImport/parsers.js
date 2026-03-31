@@ -134,6 +134,15 @@ export const parseToString = (existing, data) => {
   return data ? data.toString().trim() : existing
 }
 
+export const requiredString = (existing, data) => {
+  const d = data ? data.toString().trim() : existing
+  if (d) {
+    return d
+  } else {
+    throw new Error('Please provide a value')
+  }
+}
+
 export const parseToNumber = (existing, data) => {
   return data ? Number(data) : existing
 }

@@ -532,4 +532,57 @@ describe('excel proccessor', () => {
     expect(cell1.value.richText[0].text).toBe('')
     expect(cell2.value.richText[0].text).toBe('')
   })
+
+  test('should validate that the "yourUniqueReference" field is provided', { timeout: 50000 }, async () => {
+    const buffer = Buffer.from('test xl file')
+    mockWorkbook(
+      buffer,
+      [['', '', '', 'company name', '', '', '']],
+      [
+        ['', '', 'ewc code 1', ''],
+        ['', '', 'ewc code 2', '']
+      ]
+    )
+    const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
+    const { hasErrors } = await parseExcelFile(buffer, 'org-id', validateWasteTrackingIdMissing)
+    expect(hasErrors).toEqual(true)
+    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
+      '7. Waste movement level': [{ coords: [3, 9], message: 'Please provide a value' }],
+      '8. Waste item level': [
+        { coords: [2, 9], message: 'Please provide a value' },
+        { coords: [2, 10], message: 'Please provide a value' }
+      ]
+    })
+  })
+
+  test("should validate that yourUniqueReference's are unique for waste movements", async () => {
+    const buffer = Buffer.from('test xl file')
+    mockWorkbook(
+      buffer,
+      [
+        ['', '', '123', 'company name', '', '', ''],
+        ['', '', '123', 'company name', '', '', '']
+      ],
+      [
+        ['', '123', 'ewc code 1', ''],
+        ['', '123', 'ewc code 2', '']
+      ]
+    )
+    const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
+    const { hasErrors } = await parseExcelFile(buffer, 'org-id', validateWasteTrackingIdMissing)
+    expect(hasErrors).toEqual(true)
+    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
+      '7. Waste movement level': [
+        {
+          coords: [2, 10],
+          message: 'Duplicate reference'
+        },
+        {
+          coords: [3, 10],
+          message: 'No waste items for unique reference'
+        }
+      ],
+      '8. Waste item level': []
+    })
+  })
 })
