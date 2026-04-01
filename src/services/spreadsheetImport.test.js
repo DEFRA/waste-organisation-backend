@@ -559,15 +559,99 @@ describe('excel proccessor', () => {
     const buffer = Buffer.from('test xl file')
     mockWorkbook(
       buffer,
-      // prettier-ignore
       [
-        ['', '', '', 'Spectrum Control', 'Fetherstone Lane', 'MK12 5EW', 'ZP3537SL', '', 'info@roberthopkins.co.uk', '0121 553 0403', '13/01/2026', 'SPECTR/66032', '', '', 'CBDU80960', '', 'Robert Hopkins Environmental Services ltd', '', '', '', '', 'Road', 'R13 ENV'],
-        ['', '', '', 'Spectrum Control', 'Fetherstone Lane', 'MK12 5EW', 'ZP3537SL', '', 'info@roberthopkins.co.uk', '0121 553 0403', '13/01/2026', 'SPECTR/66032', '', '', 'CBDU80960', '', 'Robert Hopkins Environmental Services ltd', '', '', '', '', 'Road', 'R13 ENV']
+        [
+          '',
+          '',
+          '',
+          'Spectrum Control',
+          'Fetherstone Lane',
+          'MK12 5EW',
+          'ZP3537SL',
+          '',
+          'info@roberthopkins.co.uk',
+          '0121 553 0403',
+          '13/01/2026',
+          'SPECTR/66032',
+          '',
+          '',
+          'CBDU80960',
+          '',
+          'Robert Hopkins Environmental Services ltd',
+          '',
+          '',
+          '',
+          '',
+          'Road',
+          'R13 ENV'
+        ],
+        [
+          '',
+          '',
+          '',
+          'Spectrum Control',
+          'Fetherstone Lane',
+          'MK12 5EW',
+          'ZP3537SL',
+          '',
+          'info@roberthopkins.co.uk',
+          '0121 553 0403',
+          '13/01/2026',
+          'SPECTR/66032',
+          '',
+          '',
+          'CBDU80960',
+          '',
+          'Robert Hopkins Environmental Services ltd',
+          '',
+          '',
+          '',
+          '',
+          'Road',
+          'R13 ENV'
+        ]
       ],
-      // prettier-ignore
       [
-        ['', '', '200135', 'WEEE WASTE', 'Solid', '1', 'IBC', 'Kilograms', '1000', 'Yes', 'No', '', 'PROVIDED_WITH_WASTE', 'Yes', 'HP14', '', 'PROVIDED_WITH_WASTE', 'R13'],
-        ['', '', '191201', 'Paper', 'Solid', '1', 'IBC', 'Kilograms', '1000', 'Yes', 'No', '', 'PROVIDED_WITH_WASTE', 'No', 'N/H', '', 'PROVIDED_WITH_WASTE', 'D15']
+        [
+          '',
+          '',
+          '200135',
+          'WEEE WASTE',
+          'Solid',
+          '1',
+          'IBC',
+          'Kilograms',
+          '1000',
+          'Yes',
+          'No',
+          '',
+          'PROVIDED_WITH_WASTE',
+          'Yes',
+          'HP14',
+          '',
+          'PROVIDED_WITH_WASTE',
+          'R13'
+        ],
+        [
+          '',
+          '',
+          '191201',
+          'Paper',
+          'Solid',
+          '1',
+          'IBC',
+          'Kilograms',
+          '1000',
+          'Yes',
+          'No',
+          '',
+          'PROVIDED_WITH_WASTE',
+          'No',
+          'N/H',
+          '',
+          'PROVIDED_WITH_WASTE',
+          'D15'
+        ]
       ]
     )
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
