@@ -31,7 +31,9 @@ export const validateMovementHasWasteItems = (movement) => {
 export const validateUniqueReference = () => {
   const seenUniqueRefs = new Set()
   return (movement) => {
-    if (movement.yourUniqueReference && seenUniqueRefs.has(movement.yourUniqueReference)) {
+    if (!movement.yourUniqueReference) {
+      throw new Error('Please provide a value')
+    } else if (movement.yourUniqueReference && seenUniqueRefs.has(movement.yourUniqueReference)) {
       throw new Error('Duplicate reference')
     } else {
       seenUniqueRefs.add(movement.yourUniqueReference)

@@ -559,13 +559,15 @@ describe('excel proccessor', () => {
     const buffer = Buffer.from('test xl file')
     mockWorkbook(
       buffer,
+      // prettier-ignore
       [
-        ['', '', '123', 'company name', '', '', ''],
-        ['', '', '123', 'company name', '', '', '']
+        ['', '', '', 'Spectrum Control', 'Fetherstone Lane', 'MK12 5EW', 'ZP3537SL', '', 'info@roberthopkins.co.uk', '0121 553 0403', '13/01/2026', 'SPECTR/66032', '', '', 'CBDU80960', '', 'Robert Hopkins Environmental Services ltd', '', '', '', '', 'Road', 'R13 ENV'],
+        ['', '', '', 'Spectrum Control', 'Fetherstone Lane', 'MK12 5EW', 'ZP3537SL', '', 'info@roberthopkins.co.uk', '0121 553 0403', '13/01/2026', 'SPECTR/66032', '', '', 'CBDU80960', '', 'Robert Hopkins Environmental Services ltd', '', '', '', '', 'Road', 'R13 ENV']
       ],
+      // prettier-ignore
       [
-        ['', '123', 'ewc code 1', ''],
-        ['', '123', 'ewc code 2', '']
+        ['', '', '200135', 'WEEE WASTE', 'Solid', '1', 'IBC', 'Kilograms', '1000', 'Yes', 'No', '', 'PROVIDED_WITH_WASTE', 'Yes', 'HP14', '', 'PROVIDED_WITH_WASTE', 'R13'],
+        ['', '', '191201', 'Paper', 'Solid', '1', 'IBC', 'Kilograms', '1000', 'Yes', 'No', '', 'PROVIDED_WITH_WASTE', 'No', 'N/H', '', 'PROVIDED_WITH_WASTE', 'D15']
       ]
     )
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
@@ -574,15 +576,38 @@ describe('excel proccessor', () => {
     expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
       '7. Waste movement level': [
         {
-          coords: [2, 10],
-          message: 'Duplicate reference'
+          coords: [3, 9],
+          message: 'Please provide a value'
+        },
+        {
+          coords: [3, 10],
+          message: 'Please provide a value'
         },
         {
           coords: [3, 10],
           message: 'No waste items for unique reference'
         }
       ],
-      '8. Waste item level': []
+      '8. Waste item level': [
+        {
+          coords: [2, 9],
+          message: 'Please provide a value'
+        },
+        {
+          coords: [18, 9],
+          errorValue: 'R13',
+          message: 'Cannot parse disposal / recovery codes (R13)'
+        },
+        {
+          coords: [2, 10],
+          message: 'Please provide a value'
+        },
+        {
+          coords: [18, 10],
+          errorValue: 'D15',
+          message: 'Cannot parse disposal / recovery codes (D15)'
+        }
+      ]
     })
   })
 })
