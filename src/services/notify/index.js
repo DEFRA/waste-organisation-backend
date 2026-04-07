@@ -7,12 +7,14 @@ const successTemplate = config.get('notify.successTemplate')
 const failedTemplate = config.get('notify.failedTemplate')
 const failedWithFileTemplate = config.get('notify.failedWithFileTemplate')
 export const sendEmail = {
-  sendSuccess: async ({ email, name, file, uploadId, logger }) => send({ template: successTemplate, email, name, file, uploadId, logger }),
-  sendFailed: async ({ email, name, uploadId, logger }) => send({ template: failedTemplate, email, name, uploadId, logger }),
-  sendValidationFailed: async ({ email, name, file, uploadId, logger }) => send({ template: failedWithFileTemplate, email, name, file, uploadId, logger })
+  sendSuccess: async ({ email, name, file, referenceNumber, filename, logger }) =>
+    send({ template: successTemplate, email, name, file, referenceNumber, filename, logger }),
+  sendFailed: async ({ email, name, referenceNumber, filename, logger }) => send({ template: failedTemplate, email, name, referenceNumber, filename, logger }),
+  sendValidationFailed: async ({ email, name, file, referenceNumber, filename, logger }) =>
+    send({ template: failedWithFileTemplate, email, name, file, referenceNumber, filename, logger })
 }
 
-const send = async ({ template, email, name, file, uploadId, logger }) => {
+const send = async ({ template, email, name, file, referenceNumber, filename, logger }) => {
   if (!logger) {
     logger = createLogger()
   }
@@ -31,7 +33,8 @@ const send = async ({ template, email, name, file, uploadId, logger }) => {
   try {
     const personalisation = {
       'first name': nameObject ? nameObject.firstName : null,
-      'upload id': uploadId ?? null
+      'upload id': referenceNumber ?? null,
+      filename: filename ?? null
     }
     if (file) {
       logger.info(`Attaching file`)

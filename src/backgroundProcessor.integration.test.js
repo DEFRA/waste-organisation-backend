@@ -166,6 +166,29 @@ describe('backgroundProcessor integration', () => {
     expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledWith(expect.objectContaining({ email: TEST_EMAIL, name: TEST_NAME }))
   })
 
+  it('hasError with referenceNumber - uses referenceNumber in failed email', { timeout: 30000 }, async () => {
+    notifyModule.sendEmail.sendFailed.mockResolvedValue()
+
+    const s3Client = { send: vi.fn() }
+    await processJob(s3Client, buildMessage({ hasError: true, referenceNumber: 'ref-number-123' }))
+
+    expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledTimes(1)
+    expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledWith(expect.objectContaining({ referenceNumber: 'ref-number-123' }))
+  })
+
+  it('referenceNumber - uses referenceNumber in success email', { timeout: 30000 }, async () => {
+    bulkImportModule.bulkImport.mockResolvedValue({
+      movements: [{ wasteTrackingId: 'WTID002' }]
+    })
+    notifyModule.sendEmail.sendSuccess.mockResolvedValue()
+
+    const s3Client = buildS3Client('valid-spreadsheet.xlsx')
+    await processJob(s3Client, buildMessage({ referenceNumber: 'ref-number-456' }))
+
+    expect(notifyModule.sendEmail.sendSuccess).toHaveBeenCalledTimes(1)
+    expect(notifyModule.sendEmail.sendSuccess).toHaveBeenCalledWith(expect.objectContaining({ referenceNumber: 'ref-number-456' }))
+  })
+
   it('missing S3 coords - silently returns without sending email', { timeout: 30000 }, async () => {
     const s3Client = { send: vi.fn() }
     await processJob(s3Client, buildMessage({ s3Bucket: undefined, s3Key: undefined }))

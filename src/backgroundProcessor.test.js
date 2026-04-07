@@ -657,7 +657,7 @@ describe('background processor', () => {
     const response = await processJob(s3Client, createMessage)
 
     expect(response).toBe(undefined)
-    expect(mockSendFailed).toHaveBeenCalledWith({ email: 'test@email.com', name: 'test@email.com', uploadId: 'upload-failed' })
+    expect(mockSendFailed).toHaveBeenCalledWith({ email: 'test@email.com', name: 'test@email.com', referenceNumber: 'upload-failed' })
   })
 
   it('should rethrow transient errors from processSpreadsheet', { timeout: 50000 }, async () => {
@@ -718,6 +718,11 @@ describe('background processor', () => {
     const response = await processJob(s3Client, unexpectedErrorMessage)
 
     expect(response).toBe(undefined)
-    expect(mockSendFailed).toHaveBeenCalledWith({ email: 'test@email.com', name: 'test@email.com', uploadId: 'upload-unexpected', logger: expect.anything() })
+    expect(mockSendFailed).toHaveBeenCalledWith({
+      email: 'test@email.com',
+      name: 'test@email.com',
+      referenceNumber: 'upload-unexpected',
+      logger: expect.anything()
+    })
   })
 })

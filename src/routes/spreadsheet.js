@@ -82,8 +82,11 @@ const getUploadsByFilenameHandler = async (request, h) => {
   const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner')
   const s3Client = constructS3Client()
   const enrichedUploads = await Promise.all(
-    uploads.map(async ({ uploadId, s3Bucket, s3Key, hasError, errorMessage }) => {
+    uploads.map(async ({ uploadId, s3Bucket, s3Key, hasError, errorMessage, referenceNumber }) => {
       const upload = { uploadId }
+      if (referenceNumber) {
+        upload.referenceNumber = referenceNumber
+      }
       if (hasError) {
         upload.hasError = true
       }

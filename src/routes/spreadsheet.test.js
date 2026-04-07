@@ -148,6 +148,24 @@ describe('spreadsheet API', () => {
     expect(result.uploads).toEqual([{ uploadId: 'upload-err-msg', hasError: true, errorMessage: 'Incompatible file type' }])
   })
 
+  test('should return referenceNumber when upload has one', async () => {
+    await server.inject({
+      method: 'PUT',
+      url: pathTo(paths.putSpreadsheet, { uploadId: 'upload-ref', organisationId: 'org-ref' }),
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN },
+      payload: { spreadsheet: { filename: 'ref-file.xlsx', referenceNumber: 'ref-abc-123' } }
+    })
+
+    const { result, statusCode } = await server.inject({
+      method: 'GET',
+      url: paths.getUploadsByFilename.replace('{organisationId}', 'org-ref') + '?filename=ref-file.xlsx',
+      headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN }
+    })
+
+    expect(statusCode).toBe(200)
+    expect(result.uploads).toEqual([{ uploadId: 'upload-ref', referenceNumber: 'ref-abc-123' }])
+  })
+
   test('should return 404 when no spreadsheets match filename', async () => {
     const { statusCode } = await server.inject({
       method: 'GET',
