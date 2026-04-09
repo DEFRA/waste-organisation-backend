@@ -176,7 +176,7 @@ export const parseExcelFile = (() => {
       worksheet: workbook.getWorksheet(itemWorksheetName),
       keyCols: [2, 3, 4, 5, 6, 7, 8, 9, 10], // nosonar
       minRow: 8,
-      maxCol: itemColName.length,
+      maxCol: itemMapping.length,
       updateFn: itemColName
     })
     const joined = joinWasteItems(movements.elements, items.elements, defraCustomerOrganisationId, compose(validateFn, transform, validateUniqueReference()))
