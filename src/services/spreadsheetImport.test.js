@@ -180,9 +180,9 @@ describe('some unit tests for parsers', () => {
   })
 
   test('validateMovementHasWasteItems', () => {
-    expect(() => validateMovementHasWasteItems({})).toThrowError()
-    expect(() => validateMovementHasWasteItems({ wasteItems: [] })).toThrowError()
-    expect(validateMovementHasWasteItems({ wasteItems: [{}] })).toEqual({ wasteItems: [{}] })
+    expect(() => validateMovementHasWasteItems({ yourUniqueReference: 'fish' })).toThrowError()
+    expect(() => validateMovementHasWasteItems({ yourUniqueReference: 'fish', wasteItems: [] })).toThrowError()
+    expect(validateMovementHasWasteItems({ yourUniqueReference: 'fish', wasteItems: [{}] })).toEqual({ yourUniqueReference: 'fish', wasteItems: [{}] })
   })
 })
 
@@ -402,6 +402,7 @@ describe('excel proccessor', () => {
         }
       ]
     })
+    expect(movements).toEqual(transformedMovements)
     expect(movements).toEqual([
       {
         submittingOrganisation: {
@@ -466,7 +467,6 @@ describe('excel proccessor', () => {
         ]
       }
     ])
-    expect(movements).toEqual(transformedMovements)
   })
 
   test('should write errors buffer', { timeout: 100000 }, async () => {
@@ -678,13 +678,13 @@ describe('excel proccessor', () => {
           message: 'Please provide a value'
         },
         {
+          coords: [2, 10],
+          message: 'Please provide a value'
+        },
+        {
           coords: [18, 9],
           errorValue: 'R13',
           message: 'Cannot parse disposal / recovery codes (R13)'
-        },
-        {
-          coords: [2, 10],
-          message: 'Please provide a value'
         },
         {
           coords: [18, 10],

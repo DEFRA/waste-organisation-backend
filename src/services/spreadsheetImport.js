@@ -77,9 +77,10 @@ const joinWasteItems = (movements, items, defraCustomerOrganisationId, transform
     }
   }
   if (Object.keys(is).length > 0) {
-    for (const m of Object.values(is).flatMap((x) => x)) {
-      const msg = m['yourUniqueReference'] ? 'No waste movements for unique reference' : 'Please provide a value'
-      errors.items.push(cellError(itemRefCol, m['--rowNumber'], msg))
+    for (const i of Object.values(is).flatMap((x) => x)) {
+      if (i['yourUniqueReference']) {
+        errors.items.push(cellError(itemRefCol, i['--rowNumber'], 'No waste movements for unique reference'))
+      }
     }
   }
   return { movements, errors, rowNumbers }

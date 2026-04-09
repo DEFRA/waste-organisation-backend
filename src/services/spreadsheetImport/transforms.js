@@ -20,7 +20,7 @@ export const validateWasteTrackingIdMissing = (movement) => {
 }
 
 export const validateMovementHasWasteItems = (movement) => {
-  if (!Array.isArray(movement.wasteItems) || movement.wasteItems.length <= 0) {
+  if (movement.yourUniqueReference && (!Array.isArray(movement.wasteItems) || movement.wasteItems.length <= 0)) {
     const e = new Error('No waste items for unique reference')
     e.colNumber = 3
     throw e
@@ -31,9 +31,7 @@ export const validateMovementHasWasteItems = (movement) => {
 export const validateUniqueReference = () => {
   const seenUniqueRefs = new Set()
   return (movement) => {
-    if (!movement.yourUniqueReference) {
-      throw new Error('Please provide a value')
-    } else if (movement.yourUniqueReference && seenUniqueRefs.has(movement.yourUniqueReference)) {
+    if (movement.yourUniqueReference && seenUniqueRefs.has(movement.yourUniqueReference)) {
       throw new Error('Duplicate reference')
     } else {
       seenUniqueRefs.add(movement.yourUniqueReference)
