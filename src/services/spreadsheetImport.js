@@ -60,7 +60,7 @@ const joinWasteItems = (movements, items, defraCustomerOrganisationId, transform
   for (let i = 0; i < movements.length; i++) {
     const r = movements[i]['yourUniqueReference']
     rowNumbers[r] = { movementRow: movements[i]['--rowNumber'], itemRows: [] }
-    if (is[r] && is[r].length > 0) {
+    if (r && is[r] && is[r].length > 0) {
       movements[i].submittingOrganisation = { defraCustomerOrganisationId }
       movements[i].wasteItems = is[r].map((x) => {
         rowNumbers[r].itemRows.push(x['--rowNumber'])
@@ -72,11 +72,15 @@ const joinWasteItems = (movements, items, defraCustomerOrganisationId, transform
     // WARNING: mutabliy updates movements array from supplied transform
     collectCellErrors(errors.movements, () => (movements[i] = transform(movements[i])), null, [wasteTrackingIdCol, movements[i]['--rowNumber']], {}) // nosonar
     delete movements[i]['--rowNumber']
-    delete is[r]
+    if (r) {
+      delete is[r]
+    }
   }
   if (Object.keys(is).length > 0) {
-    for (const m of Object.values(is).flatMap((x) => x)) {
-      errors.items.push(cellError(itemRefCol, m['--rowNumber'], 'No waste movements for unique reference'))
+    for (const i of Object.values(is).flatMap((x) => x)) {
+      if (i['yourUniqueReference']) {
+        errors.items.push(cellError(itemRefCol, i['--rowNumber'], 'No waste movements for unique reference'))
+      }
     }
   }
   return { movements, errors, rowNumbers }
@@ -166,14 +170,14 @@ export const parseExcelFile = (() => {
       worksheet: workbook.getWorksheet(movementWorksheetName),
       keyCols: [3, 4, 5, 6, 7], // nosonar
       minRow: 8,
-      maxCol: 32,
+      maxCol: movementMapping.length,
       updateFn: movementColName
     })
     const items = worksheetToArray({
       worksheet: workbook.getWorksheet(itemWorksheetName),
       keyCols: [2, 3, 4, 5, 6, 7, 8, 9, 10], // nosonar
       minRow: 8,
-      maxCol: 25,
+      maxCol: itemMapping.length,
       updateFn: itemColName
     })
     const joined = joinWasteItems(movements.elements, items.elements, defraCustomerOrganisationId, compose(validateFn, transform, validateUniqueReference()))
