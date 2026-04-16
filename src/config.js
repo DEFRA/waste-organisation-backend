@@ -52,6 +52,12 @@ export const config = convict({
       format: Boolean,
       env: 'BULK_UPLOAD_COPY_SPREADSHEET_TO_DISK',
       default: false
+    },
+    spreadsheetTimezone: {
+      doc: 'The timezone to assume that dates in the spreadsheet are in',
+      format: String,
+      env: 'BULK_UPLOAD_SPREADSHEET_TIMEZONE',
+      default: 'Europe/London'
     }
   },
   notify: {
