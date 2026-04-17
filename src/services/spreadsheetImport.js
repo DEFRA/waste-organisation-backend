@@ -175,7 +175,7 @@ export const parseExcelFile = (() => {
     })
     const items = worksheetToArray({
       worksheet: workbook.getWorksheet(itemWorksheetName),
-      keyCols: [2, 3, 4, 5, 6, 7, 8, 9, 10], // nosonar
+      keyCols: [2, 3, 4, 5, 6, 7, 8, 9], // nosonar
       minRow: 8,
       maxCol: itemMapping.length,
       updateFn: itemColName
@@ -184,8 +184,8 @@ export const parseExcelFile = (() => {
     logger.trace(`joined excel data: ${JSON.stringify(joined, null, 4)}`)
     if (movements.errors.length > 0 || items.errors.length > 0 || joined.errors.items.length > 0 || joined.errors.movements.length > 0) {
       const errors = {
-        [movementWorksheetName]: movements.errors.concat(joined.errors.movements),
-        [itemWorksheetName]: items.errors.concat(joined.errors.items)
+        [movementWorksheetName]: distinct(movements.errors.concat(joined.errors.movements)),
+        [itemWorksheetName]: distinct(items.errors.concat(joined.errors.items))
       }
       xlUpdateErrors(workbook, errors)
       return {
