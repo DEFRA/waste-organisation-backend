@@ -70,8 +70,15 @@ export const worksheetToArray = ({ worksheet, keyCols, updateFn, minRow, maxCol 
   const errors = []
   worksheet.eachRow((row, rowNumber) => {
     if (rowNumber > minRow && keyCols.some((keyCol) => row.getCell(keyCol).value)) {
-      row.getCell(1).value = emptyCell()
+      row.getCell(1).value = emptyCell() // wipe error cells
       const r = {}
+      // initialse missing keyCols with empty data
+      keyCols.forEach((colNumber) => {
+        if (row.getCell(colNumber)?.value == null) {
+          collectCellErrors(errors, updateFn, r, [colNumber, rowNumber], { value: '' })
+        }
+      })
+      // extract cell data
       row.eachCell((cell, colNumber) => {
         stripFormatting(cell)
         if (colNumber < maxCol) {

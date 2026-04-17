@@ -540,7 +540,7 @@ describe('excel proccessor', () => {
       [['', '', '', 'company name', '', '', '']],
       [
         ['', '', 'ewc code 1', ''],
-        ['', '', 'ewc code 2', '']
+        ['', null, 'ewc code 2', '']
       ]
     )
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
