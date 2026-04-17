@@ -160,3 +160,16 @@ export const parseRegStatements = (existing, data) => {
     throw new Error('Cannot parse regulatory position statements')
   }
 }
+
+export const correctDateTimezone = (existing, data) => {
+  if (data instanceof Date) {
+    // Warning: assumes Europe/London timezone
+    if (data.getTimezoneOffset() < 0) {
+      return new Date(data.getTime() - 60 * 60 * 1000) // subtract 1 hour
+    } else {
+      return data
+    }
+  } else {
+    return data || existing
+  }
+}
