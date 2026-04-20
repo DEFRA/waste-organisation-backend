@@ -1,5 +1,6 @@
 import { createLogger } from '../common/helpers/logging/logger.js'
 import {
+  correctDateTimezone,
   parseBoolean,
   parseComponentCodes,
   parseComponentNames,
@@ -110,7 +111,7 @@ const movementMapping = [
   [['receiver', 'regulatoryPositionStatements'], parseRegStatements],
   [['receiver', 'emailAddress'], parseToString],
   [['receiver', 'phoneNumber'], parseToString],
-  [['dateTimeReceived']],
+  [['dateTimeReceived'], correctDateTimezone],
   [['hazardousWasteConsignmentCode'], parseToString],
   [['reasonForNoConsignmentCode'], parseToString],
   [['specialHandlingRequirements'], parseToString],

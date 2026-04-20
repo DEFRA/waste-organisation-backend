@@ -382,7 +382,9 @@ describe('excel proccessor', () => {
     expect(workbook).toEqual(undefined)
   })
 
-  test('should parse buffer', { timeout: 100000 }, async () => {
+  test('should parse buffer with timezone shifting', { timeout: 100000 }, async () => {
+    const oldTimezone = process.env.TZ
+    process.env.TZ = 'Europe/London'
     const buffer = await fs.readFile('./test-resources/example-spreadsheet.xlsx')
     const transformedMovements = []
     const { movements, errors } = await parseExcelFile(buffer, 'org-id', (m) => {
@@ -413,7 +415,7 @@ describe('excel proccessor', () => {
           registrationNumber: '',
           reasonForNoRegistrationNumber: 'ON_SITE'
         },
-        dateTimeReceived: new Date('2026-01-14T11:05:00.000Z'),
+        dateTimeReceived: new Date('2026-05-14T11:15:05.000Z'),
         hazardousWasteConsignmentCode: 'KAWASA/19963',
         receipt: {
           address: {
@@ -422,6 +424,7 @@ describe('excel proccessor', () => {
           }
         },
         receiver: {
+          authorisationNumber: 'abc123',
           siteName: 'Kawasaki Precision Machinery UK Ltd'
         },
         yourUniqueReference: 'KAWASA/19963',
@@ -467,6 +470,7 @@ describe('excel proccessor', () => {
         ]
       }
     ])
+    process.env.TZ = oldTimezone
   })
 
   test('should write errors buffer', { timeout: 100000 }, async () => {
