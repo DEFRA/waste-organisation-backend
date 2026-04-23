@@ -3,7 +3,7 @@ import { mergeAndValidate, createApiCode, orgSchemaWithouApiCodes } from '../dom
 import { orgCollection } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
-import { addVersionField, response } from './schemas/common.js'
+import { addVersionField, response } from './swagger-common.js'
 
 export const organisations = [
   {

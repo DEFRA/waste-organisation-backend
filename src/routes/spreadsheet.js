@@ -10,7 +10,7 @@ import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
 import { constructS3Client } from '../backgroundProcessor.js'
-import { addVersionField, response } from './schemas/common.js'
+import { addVersionField, response } from './swagger-common.js'
 
 const logger = createLogger()
 

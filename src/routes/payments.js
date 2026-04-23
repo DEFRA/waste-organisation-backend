@@ -5,7 +5,7 @@ import { mergeAndValidate } from '../domain/index.js'
 import { paymentCollection } from '../repositories/payment.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
-import { addVersionField, response } from './schemas/common.js'
+import { addVersionField, response } from './swagger-common.js'
 // swagger import { getPaymentsResponseSchema, putPaymentResponseSchema } from './schemas/payment.js'
 // DONE authentication - pre-shared key?
 
