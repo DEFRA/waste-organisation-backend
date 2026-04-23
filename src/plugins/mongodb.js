@@ -2,6 +2,7 @@ import { MongoClient } from 'mongodb'
 import { LockManager } from 'mongo-locks'
 import { createOrgIndexes } from '../repositories/organisation.js'
 import { createSpreadsheetIndexes } from '../repositories/spreadsheet.js'
+import { createPaymentIndexes } from '../repositories/payment.js'
 
 export const mongoDb = {
   plugin: {
@@ -45,4 +46,5 @@ async function createIndexes(db) {
   await db.collection('mongo-locks').createIndex({ id: 1 })
   await createOrgIndexes(db)
   await createSpreadsheetIndexes(db)
+  await createPaymentIndexes(db)
 }

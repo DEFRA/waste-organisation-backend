@@ -1,27 +1,15 @@
-// import Boom from '@hapi/boom'
 import { paths } from '../config/paths.js'
-import { mergeAndValidate, createApiCode } from '../domain/organisation.js'
-import { findAllOrganisationsForUser, orgCollection } from '../repositories/organisation.js'
+import { mergeAndValidate, createApiCode, orgSchemaWithouApiCodes } from '../domain/organisation.js'
+import { orgCollection } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
-import { getOrganisationsResponseSchema, putOrganisationResponseSchema } from './schemas/organisation.js'
-// DONE authentication - pre-shared key?
+import { addVersionField, response } from './schemas/common.js'
 
 export const organisations = [
   {
-    method: 'GET',
-    path: paths.getOrganisations,
-    options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: getOrganisationsResponseSchema, sample: 0 } },
-    handler: async (request, h) => {
-      const orgs = await findAllOrganisationsForUser(request.db, request.params.userId)
-      orgs.forEach((o) => delete o.apiCodes)
-      return h.response({ message: 'success', organisations: orgs })
-    }
-  },
-  {
     method: 'PUT',
     path: paths.putOrganisation,
-    options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: putOrganisationResponseSchema, sample: 0 } },
+    options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: response({ organisation: addVersionField(orgSchemaWithouApiCodes) }), sample: 0 } },
     handler: async (request, h) => {
       try {
         const organisation = await updateWithOptimisticLock(
