@@ -10,7 +10,7 @@ import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
 import { constructS3Client } from '../backgroundProcessor.js'
-import { addVersionField, response } from './swagger-common.js'
+import { addVersionField, swaggerResponse } from './swagger-common.js'
 
 const logger = createLogger()
 
@@ -21,7 +21,7 @@ const getHandler = async (request, h) => {
 
 const spreadsheetResponseSchema = addVersionField(spreadsheetSchema)
 
-export const getUploadsByFilenameResponseSchema = response({
+export const getUploadsByFilenameResponseSchema = swaggerResponse({
   uploads: [
     joi.object({
       uploadId: joi.string().required().description('Unique upload identifier'),
@@ -33,8 +33,8 @@ export const getUploadsByFilenameResponseSchema = response({
   ]
 })
 
-const getOptions = { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: response({ spreadsheets: [spreadsheetResponseSchema] }), sample: 0 } }
-const putOptions = { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: response({ spreadsheet: spreadsheetResponseSchema }), sample: 0 } }
+const getOptions = { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ spreadsheets: [spreadsheetResponseSchema] }), sample: 0 } }
+const putOptions = { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ spreadsheet: spreadsheetResponseSchema }), sample: 0 } }
 
 const sendJob = async (client, QueueUrl, jobData) => {
   const params = {

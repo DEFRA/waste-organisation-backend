@@ -5,7 +5,7 @@ import { mergeAndValidate } from '../domain/index.js'
 import { paymentCollection } from '../repositories/payment.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
-import { addVersionField, response } from './swagger-common.js'
+import { addVersionField, swaggerResponse } from './swagger-common.js'
 // swagger import { getPaymentsResponseSchema, putPaymentResponseSchema } from './schemas/payment.js'
 // DONE authentication - pre-shared key?
 
@@ -13,7 +13,7 @@ export const payments = [
   {
     method: 'GET',
     path: paths.payment,
-    options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: response({ payment: addVersionField(paymentSchema) }), sample: 0 } },
+    options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ payment: addVersionField(paymentSchema) }), sample: 0 } },
     handler: async (request, h) => {
       const payment = await request.db
         .collection(paymentCollection)
@@ -25,7 +25,7 @@ export const payments = [
   {
     method: 'PUT',
     path: paths.payment,
-    options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: response({ payment: addVersionField(paymentSchema) }), sample: 0 } },
+    options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ payment: addVersionField(paymentSchema) }), sample: 0 } },
     handler: async (request, h) => {
       try {
         const payment = await updateWithOptimisticLock(
@@ -34,7 +34,7 @@ export const payments = [
           (dbPayment) => {
             const paymentId = request.params.paymentId
             const organisationId = request.params.organisationId
-            const payment = mergeAndValidate(
+            return mergeAndValidate(
               dbPayment,
               {
                 paymentId,
@@ -43,7 +43,6 @@ export const payments = [
               },
               paymentSchema
             )
-            return payment
           }
         )
         return h.response({ message: 'success', payment })

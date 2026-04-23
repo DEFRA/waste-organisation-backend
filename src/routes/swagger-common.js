@@ -9,7 +9,7 @@ export const addVersionField = (schema) =>
 
 export const errorSchema = joi.array().items(joi.alternatives().try(joi.string(), joi.object()))
 
-export const response = (response) => {
+export const swaggerResponse = (response) => {
   const r = Object.keys(response).reduce((s, k) => {
     if (Array.isArray(response[k])) {
       s[k] = joi.array().items(addVersionField(response[k][0]))

@@ -3,13 +3,17 @@ import { mergeAndValidate, createApiCode, orgSchemaWithouApiCodes } from '../dom
 import { orgCollection } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
-import { addVersionField, response } from './swagger-common.js'
+import { addVersionField, swaggerResponse } from './swagger-common.js'
 
 export const organisations = [
   {
     method: 'PUT',
     path: paths.putOrganisation,
-    options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: response({ organisation: addVersionField(orgSchemaWithouApiCodes) }), sample: 0 } },
+    options: {
+      auth: apiKeyAuthStrategy,
+      tags: ['api'],
+      response: { schema: swaggerResponse({ organisation: addVersionField(orgSchemaWithouApiCodes) }), sample: 0 }
+    },
     handler: async (request, h) => {
       try {
         const organisation = await updateWithOptimisticLock(
