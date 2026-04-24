@@ -9,12 +9,15 @@ export const apiCodeSchema = joi.object({
   isDisabled: joi.boolean()
 })
 
-export const orgSchema = joi.object({
+export const orgSchemaWithouApiCodes = joi.object({
   organisationId: joi.string().required(),
   users: joi.array().items(joi.string()), // NOTE removed this: .required()
   name: joi.string(),
-  apiCodes: joi.array().items(apiCodeSchema),
   isWasteReceiver: joi.boolean()
+})
+
+export const orgSchema = orgSchemaWithouApiCodes.append({
+  apiCodes: joi.array().items(apiCodeSchema)
 })
 
 export const ensureUserInOrg = (org, organisationId, userId) => {

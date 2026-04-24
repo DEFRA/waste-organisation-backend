@@ -1,3 +1,5 @@
+import Boom from '@hapi/boom'
+import joi from 'joi'
 import { paths } from '../config/paths.js'
 import { spreadsheetSchema } from '../domain/spreadsheet.js'
 import { mergeAndValidate } from '../domain/index.js'
@@ -6,11 +8,9 @@ import { spreadsheetCollection, findAllSpreadsheets, findUploadIdsByFilename } f
 import { SendMessageCommand } from '@aws-sdk/client-sqs'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { createLogger } from '../common/helpers/logging/logger.js'
-import Boom from '@hapi/boom'
-import joi from 'joi'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
-import { getSpreadsheetsResponseSchema, getUploadsByFilenameResponseSchema, putSpreadsheetResponseSchema } from './schemas/spreadsheet.js'
 import { constructS3Client } from '../backgroundProcessor.js'
+import { addVersionField, swaggerResponse } from './swagger-common.js'
 
 const logger = createLogger()
 
@@ -19,8 +19,22 @@ const getHandler = async (request, h) => {
   return h.response({ spreadsheets, message: 'success' })
 }
 
-const getOptions = { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: getSpreadsheetsResponseSchema, sample: 0 } }
-const putOptions = { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: putSpreadsheetResponseSchema, sample: 0 } }
+const spreadsheetResponseSchema = addVersionField(spreadsheetSchema)
+
+export const getUploadsByFilenameResponseSchema = swaggerResponse({
+  uploads: [
+    joi.object({
+      uploadId: joi.string().required().description('Unique upload identifier'),
+      referenceNumber: joi.string().optional().description('User-facing reference number for the upload'),
+      processedFileUrl: joi.string().optional().description('Pre-signed S3 URL for the processed spreadsheet'),
+      hasError: joi.boolean().optional().description('True when the CDP uploader rejected the file due to errors or incompatible type'),
+      errorMessage: joi.string().optional().description('Details of the rejection reason')
+    })
+  ]
+})
+
+const getOptions = { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ spreadsheets: [spreadsheetResponseSchema] }), sample: 0 } }
+const putOptions = { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ spreadsheet: spreadsheetResponseSchema }), sample: 0 } }
 
 const sendJob = async (client, QueueUrl, jobData) => {
   const params = {
