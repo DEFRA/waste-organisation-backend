@@ -10,7 +10,8 @@ export const paths = {
   listApiCodes:         '/organisation/{organisationId}/apiCodes',
   lookupOrgFromApiCode: '/organisation/{apiCode}',
   getUploadsByFilename: '/test/spreadsheet/{organisationId}/uploads',
-  payment:              '/organisation/{organisationId}/payment/{paymentId}'
+  payment:              '/organisation/{organisationId}/payment/{paymentId}',
+  initiatePayment:      '/organisation/{organisationId}/initiatePayment'
 }
 
 export const pathTo = (route, params) => {
