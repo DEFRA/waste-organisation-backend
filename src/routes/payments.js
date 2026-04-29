@@ -61,13 +61,13 @@ export const payments = [
     path: paths.initiatePayment,
     options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ payment: addVersionField(paymentSchema) }), sample: 0 } },
     handler: async (request, h) => {
+      console.log('here: ')
+      const { organisationId } = request.params
+      const { amount, description, returnUrl, metadata } = request.payload.payment
+      if (metadata?.organisationId !== organisationId) {
+        throw boom.forbidden(`wrong organisationId in metadata: ${metadata?.organisationId} !== ${organisationId}`)
+      }
       try {
-        console.log('here: ')
-        const { organisationId } = request.params
-        const { amount, description, returnUrl, metadata } = request.payload.payment
-        if (metadata?.organisationId !== organisationId) {
-          throw boom.forbidden(`wrong organisationId in metadata: ${metadata?.organisationId} !== ${organisationId}`)
-        }
         const { payload, status, statusCode } = await createGovPayPayment({ amount, description, returnUrl, metadata }, console)
         console.log('here: ', 0)
         if (status === 'success') {
