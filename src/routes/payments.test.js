@@ -7,13 +7,12 @@ describe('payment API', () => {
 
   beforeAll(async () => {
     vi.clearAllMocks()
-    server = await initialiseServer()
-
     vi.doMock('@hapi/wreck', () => ({
       default: {
         post: wreckPostMock.mockReturnValue({ payload: { post: 'response' } })
       }
     }))
+    server = await initialiseServer()
   })
 
   afterAll(async () => {
@@ -77,8 +76,12 @@ describe('payment API', () => {
   })
 
   test('initiate payment', async () => {
+    const organisationId = 'abc123'
     wreckPostMock.mockImplementation(async () => {
       return {
+        res: {
+          statusCode: 200
+        },
         payload: {
           amount: 14500,
           description: 'Pay your council tax.',
@@ -129,18 +132,47 @@ describe('payment API', () => {
               href: 'https://publicapi.payments.service.gov.uk/v1/payments/hu20sqlact5260q2nanm0q8u93/cancel',
               method: 'POST'
             }
+          },
+          metadata: {
+            organisationId,
+            organisationName: 'organisation name'
           }
         }
       }
     })
-    const r1 = await server.inject({
+    const { statusCode, payload } = await server.inject({
       method: 'POST',
       headers: {
         'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
       },
-      url: pathTo(paths.initiatePayment, { organisationId: 111 }),
-      payload: { payment: { amount: 2134, status: 'PENDING' } }
+      url: pathTo(paths.initiatePayment, { organisationId }),
+      payload: {
+        payment: {
+          amount: 2134,
+          description: 'SERVICE_CHARGE_DESCRIPTION',
+          return_url: `http://example.com/paymentDetails`,
+          status: 'PENDING',
+          metadata: {
+            organisationId,
+            organisationName: 'organisation name'
+          }
+        }
+      }
     })
-    expect(r1.statusCode).toBe(200)
+    expect(statusCode).toBe(200)
+    expect(JSON.parse(payload)).toEqual({
+      message: 'success',
+      payment: {
+        paymentId: 'hu20sqlact5260q2nanm0q8u93',
+        organisationId: 'abc123',
+        amount: 2134,
+        description: 'SERVICE_CHARGE_DESCRIPTION',
+        metadata: { organisationId: 'abc123', organisationName: 'organisation name' },
+        reference: expect.anything(),
+        returnUrl: null,
+        status: 'payment_in_progress',
+        version: 1
+      }
+    })
   })
 })

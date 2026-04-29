@@ -90,6 +90,37 @@ export const config = convict({
       env: 'GOV_NOTIFY_FAILED_WITH_FILE_TEMPLATE'
     }
   },
+  govPay: {
+    apiUrl: {
+      doc: 'The base URL for the GovPay Public API.',
+      format: String,
+      nullable: false,
+      default: 'http://localhost:8080/govpay-stub',
+      env: 'GOVPAY_API_URL'
+    },
+    apiKey: {
+      doc: 'GovPay API key for creating payments.',
+      format: String,
+      nullable: false,
+      env: 'GOVPAY_API_KEY',
+      default: 'test123',
+      sensitive: true
+    },
+    serviceChargeAmountPence: {
+      doc: 'Service charge amount in pence.',
+      format: Number,
+      nullable: false,
+      default: 2600,
+      env: 'GOVPAY_SERVICE_CHARGE_AMOUNT_PENCE'
+    },
+    webhookSigningSecret: {
+      doc: 'The signing secret unique to the GOV.UK Pay webhook',
+      format: String,
+      nullable: true,
+      sensitive: true,
+      default: null
+    }
+  },
   aws: {
     region: {
       doc: 'AWS region',

@@ -1,6 +1,4 @@
 import * as mockMongo from 'vitest-mongodb'
-import { createServer, plugins } from '../../api-server.js'
-import { updateClientAuthKeys } from '../../config.js'
 
 export const WASTE_CLIENT_AUTH_TEST_TOKEN = 'mytesttoken'
 
@@ -18,6 +16,9 @@ const mockSqs = () => ({
 })
 
 export const initialiseServer = async () => {
+  const { createServer, plugins } = await import('../../api-server.js')
+  const { updateClientAuthKeys } = await import('../../config.js')
+
   process.env.WASTE_CLIENT_AUTH_TEST_TOKEN = WASTE_CLIENT_AUTH_TEST_TOKEN
   process.env.WASTE_CLIENT_AUTH_TEST_1 = 'my test token 1'
   process.env.WASTE_CLIENT_AUTH_TEST_2 = '4d5d48cb-456a-470a-8814-eae2758be90d'
