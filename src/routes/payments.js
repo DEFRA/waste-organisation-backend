@@ -61,43 +61,29 @@ export const payments = [
     path: paths.initiatePayment,
     options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ payment: addVersionField(paymentSchema) }), sample: 0 } },
     handler: async (request, h) => {
-      console.log('here: ')
       const { organisationId } = request.params
       const { amount, description, returnUrl, metadata } = request.payload.payment
       if (metadata?.organisationId !== organisationId) {
         throw boom.forbidden(`wrong organisationId in metadata: ${metadata?.organisationId} !== ${organisationId}`)
       }
-      try {
-        const { payload, status, statusCode } = await createGovPayPayment({ amount, description, returnUrl, metadata }, console)
-        console.log('here: ', 0)
-        if (status === 'success') {
-          console.log('here: ', 1, metadata)
-          const payment = await updateWithOptimisticLock(
-            request.db.collection(paymentCollection),
-            { paymentId: payload.payment_id, organisationId: request.params.organisationId },
-            (_dbPayment) => {
-              return initiatePayment(organisationId, payload.payment_id, amount, description, returnUrl, metadata)
-            }
-          )
-          console.log('here: ', 2)
-          return h.response({ message: 'success', payment })
-        } else {
-          console.log('here: ', 3, payload)
-          const message = payload?.description ?? payload?.message ?? payload?.detail ?? `GovPay returned status ${statusCode}`
-          request.logger.error(`Error contacting GovPay ${status}, ${payload}`)
-          const r = {
-            message: 'error',
-            errors: [{ message }]
+      const { payload, status, statusCode } = await createGovPayPayment({ amount, description, returnUrl, metadata }, console)
+      if (status === 'success') {
+        const payment = await updateWithOptimisticLock(
+          request.db.collection(paymentCollection),
+          { paymentId: payload.payment_id, organisationId: request.params.organisationId },
+          (_dbPayment) => {
+            return initiatePayment(organisationId, payload.payment_id, amount, description, returnUrl, metadata)
           }
-          console.log('here: ', 4, message, r)
-          return h.response(r)
-        }
-      } catch (e) {
-        console.log('here: ', 5, e)
-        return h.response({
+        )
+        return h.response({ message: 'success', payment })
+      } else {
+        const message = payload?.description ?? payload?.message ?? payload?.detail ?? `GovPay returned status ${statusCode}`
+        request.logger.error(`Error contacting GovPay ${status}, ${payload}`)
+        const r = {
           message: 'error',
-          errors: e.isJoi ? e.details : [{ message: `${e}` }]
-        })
+          errors: [{ message }]
+        }
+        return h.response(r)
       }
     }
   }
