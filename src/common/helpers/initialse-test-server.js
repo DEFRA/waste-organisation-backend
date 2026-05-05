@@ -29,11 +29,12 @@ export const initialiseServer = async () => {
   if (globalThis?.__MONGO_URI__) {
     mongoDb.options.mongoUrl = globalThis.__MONGO_URI__
   }
-  const server = await createServer({
-    mongoDb,
-    sqsPlugin: mockSqs()
-  })
+  const sqsPlugin = mockSqs()
+  const server = await createServer({ mongoDb, sqsPlugin })
   await server.initialize()
+  server.testPlugins = plugins
+  server.testPlugins.mongoDb = mongoDb
+  server.testPlugins.sqsPlugin = sqsPlugin
   return server
 }
 

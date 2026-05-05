@@ -13,7 +13,9 @@ export const orgSchemaWithouApiCodes = joi.object({
   organisationId: joi.string().required(),
   users: joi.array().items(joi.string()), // NOTE removed this: .required()
   name: joi.string(),
-  isWasteReceiver: joi.boolean()
+  isWasteReceiver: joi.boolean(),
+  isDisabled: joi.boolean(),
+  disabledReason: joi.string()
 })
 
 export const orgSchema = orgSchemaWithouApiCodes.append({
@@ -76,3 +78,15 @@ export const updateApiCode = (org, apiCode, name, isDisabled) => {
 export const createOrg = (organisationId) => ({
   organisationId
 })
+
+export const disableOrg = (org, reason) => {
+  org.isDisabled = true
+  org.disabledReason = reason
+  return org
+}
+
+export const enableOrg = (org) => {
+  org.isDisabled = false
+  org.disabledReason = null
+  return org
+}

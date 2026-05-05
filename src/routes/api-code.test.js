@@ -122,6 +122,36 @@ describe('api codes', () => {
     expect(statusCode).toBe(200)
   })
 
+  test('should disable api code when org disabled', async () => {
+    const r = await server.inject({
+      method: 'POST',
+      url: pathTo(paths.createApiCode, {
+        organisationId: 456
+      }),
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
+      payload: {}
+    })
+    expect(r.statusCode).toBe(200)
+    const x = await server.db.collection('organisations').findOne({ organisationId: { $eq: 456 } }, { projection: { _id: 0 } })
+    console.log(`Log: ${JSON.stringify(x)}`)
+    const apiCode = r.result.code
+    expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
+    const { result, statusCode } = await server.inject({
+      method: 'PUT',
+      url: pathTo(paths.putOrganisation, { userId, organisationId: 456 }),
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
+      payload: {
+        // TODO disable org and fix test
+      }
+    })
+    expect(result.isDisabled).toEqual(true)
+    expect(statusCode).toBe(200)
+  })
+
   test('check validation errors', async () => {
     const r = await server.inject({
       method: 'POST',
