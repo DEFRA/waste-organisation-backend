@@ -1,6 +1,10 @@
+import { beforeEach } from 'vitest'
 import { initialiseServer, WASTE_CLIENT_AUTH_TEST_TOKEN, stopServer } from '../common/helpers/initialse-test-server.js'
 import { paths, pathTo } from '../config/paths.js'
 import { updateApiCode } from '../domain/organisation.js'
+
+const USER_ID = 123
+const ORGANISATION_ID = 456
 
 describe('api codes', () => {
   let server
@@ -11,6 +15,20 @@ describe('api codes', () => {
 
   afterAll(async () => {
     stopServer(server)
+  })
+
+  beforeEach(async () => {
+    await updateOrganisation(server, USER_ID, ORGANISATION_ID, {
+      name: 'Bob',
+      isDisabled: false,
+      apiCodes: [
+        {
+          code: 'fafde9f0-9d6f-46b3-b4e1-b0133e905637',
+          name: 'Bob',
+          isDisabled: false
+        }
+      ]
+    })
   })
 
   test('404 for not found org', async () => {
@@ -25,35 +43,24 @@ describe('api codes', () => {
   })
 
   test('should list saved api codes', async () => {
-    for (const apiCode of [
-      {
+    const r = await createApiCode(server, ORGANISATION_ID, {
+      apiCode: {
         name: 'Alice'
-      },
-      {
-        name: 'Bob'
       }
-    ]) {
-      const r = await server.inject({
-        method: 'POST',
-        url: pathTo(paths.createApiCode, {
-          organisationId: 456
-        }),
-        headers: {
-          'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
-        },
-        payload: { apiCode }
-      })
-      expect(r.statusCode).toBe(200)
-    }
+    })
+
+    expect(r.statusCode).toBe(200)
+
     const { result, statusCode } = await server.inject({
       method: 'GET',
-      url: pathTo(paths.listApiCodes, { organisationId: 456 }),
+      url: pathTo(paths.listApiCodes, { organisationId: ORGANISATION_ID }),
       headers: {
         'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
       }
     })
-    expect(result.apiCodes[0].name).toEqual('Alice')
-    expect(result.apiCodes[1].name).toEqual('Bob')
+
+    expect(result.apiCodes[0].name).toEqual('Bob')
+    expect(result.apiCodes[1].name).toEqual('Alice')
     expect(result.apiCodes[0].code.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
     expect(result.apiCodes[1].code.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
     expect(result.apiCodes[0].isDisabled).toEqual(false)
@@ -62,122 +69,74 @@ describe('api codes', () => {
   })
 
   test('should PUT api code', async () => {
-    const r = await server.inject({
-      method: 'POST',
-      url: pathTo(paths.createApiCode, {
-        organisationId: 456
-      }),
-      headers: {
-        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
-      },
-      payload: {}
-    })
+    const r = await createApiCode(server, ORGANISATION_ID, {})
+
     expect(r.statusCode).toBe(200)
     const apiCode = r.result.code
     expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
-    const { result, statusCode } = await server.inject({
-      method: 'PUT',
-      url: pathTo(paths.saveApiCode, { apiCode, organisationId: 456 }),
-      headers: {
-        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
-      },
-      payload: {
-        apiCode: {
-          name: 'Bob'
-        }
+
+    const { result, statusCode } = await saveApiCode(server, ORGANISATION_ID, apiCode, {
+      apiCode: {
+        name: 'Joe'
       }
     })
 
-    expect(result.name).toEqual('Bob')
+    expect(result.name).toEqual('Joe')
     expect(statusCode).toBe(200)
   })
 
   test('should disable api code', async () => {
-    const r = await server.inject({
-      method: 'POST',
-      url: pathTo(paths.createApiCode, {
-        organisationId: 456
-      }),
-      headers: {
-        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
-      },
-      payload: {}
-    })
+    const r = await createApiCode(server, ORGANISATION_ID, {})
     expect(r.statusCode).toBe(200)
     const apiCode = r.result.code
     expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
-    const { result, statusCode } = await server.inject({
-      method: 'PUT',
-      url: pathTo(paths.saveApiCode, { apiCode, organisationId: 456 }),
-      headers: {
-        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
-      },
-      payload: {
-        apiCode: {
-          isDisabled: true
-        }
+
+    const { result, statusCode } = await saveApiCode(server, ORGANISATION_ID, apiCode, {
+      apiCode: {
+        isDisabled: true
       }
     })
+
     expect(result.isDisabled).toEqual(true)
     expect(statusCode).toBe(200)
   })
 
   test('should disable api code when org disabled', async () => {
-    const r = await server.inject({
-      method: 'POST',
-      url: pathTo(paths.createApiCode, {
-        organisationId: 456
-      }),
-      headers: {
-        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
-      },
-      payload: {}
+    await updateOrganisation(server, USER_ID, ORGANISATION_ID, {
+      name: 'Bob',
+      isDisabled: true
     })
-    expect(r.statusCode).toBe(200)
-    const x = await server.db.collection('organisations').findOne({ organisationId: { $eq: 456 } }, { projection: { _id: 0 } })
-    console.log(`Log: ${JSON.stringify(x)}`)
-    const apiCode = r.result.code
-    expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
-    const { result, statusCode } = await server.inject({
-      method: 'PUT',
-      url: pathTo(paths.putOrganisation, { userId, organisationId: 456 }),
-      headers: {
-        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
-      },
-      payload: {
-        // TODO disable org and fix test
-      }
-    })
-    expect(result.isDisabled).toEqual(true)
-    expect(statusCode).toBe(200)
-  })
 
-  test('check validation errors', async () => {
-    const r = await server.inject({
-      method: 'POST',
-      url: pathTo(paths.createApiCode, {
-        organisationId: 456
-      }),
-      headers: {
-        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
-      },
-      payload: {}
-    })
+    const r = await createApiCode(server, ORGANISATION_ID, { name: 'Bob', isDisabled: false })
+
     expect(r.statusCode).toBe(200)
+
     const apiCode = r.result.code
     expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
     const { statusCode } = await server.inject({
-      method: 'PUT',
-      url: pathTo(paths.saveApiCode, { apiCode, organisationId: 456 }),
+      method: 'GET',
+      url: pathTo(paths.lookupOrgFromApiCode, { apiCode }),
       headers: {
         'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
-      },
-      payload: {
-        apiCode: {
-          name: 123
-        }
       }
     })
+
+    expect(statusCode).toBe(404)
+  })
+
+  test('check validation errors', async () => {
+    const r = await createApiCode(server, ORGANISATION_ID, {})
+
+    expect(r.statusCode).toBe(200)
+    const apiCode = r.result.code
+    expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
+
+    const { statusCode } = await saveApiCode(server, ORGANISATION_ID, apiCode, {
+      apiCode: {
+        name: 123
+      }
+    })
+
     expect(statusCode).toBe(400)
   })
 
@@ -293,3 +252,42 @@ describe('api code domain tests', () => {
     }
   })
 })
+
+const updateOrganisation = async (server, userId, organisationId, organisation) => {
+  await server.inject({
+    method: 'PUT',
+    url: pathTo(paths.putOrganisation, { userId, organisationId }),
+    headers: {
+      'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+    },
+    payload: {
+      organisation
+    }
+  })
+}
+
+const createApiCode = (server, organisationId, payload) => {
+  return server.inject({
+    method: 'POST',
+    url: pathTo(paths.createApiCode, {
+      organisationId
+    }),
+    headers: {
+      'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+    },
+    payload
+  })
+}
+
+const saveApiCode = async (server, organisationId, apiCode, payload) => {
+  const { result, statusCode } = await server.inject({
+    method: 'PUT',
+    url: pathTo(paths.saveApiCode, { apiCode, organisationId }),
+    headers: {
+      'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+    },
+    payload
+  })
+
+  return { result, statusCode }
+}
