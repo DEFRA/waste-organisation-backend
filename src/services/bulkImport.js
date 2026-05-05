@@ -15,7 +15,7 @@ const extractValidationErrors = (e, uploadId, logger) => {
     }
   }
   if (typeof e.data?.payload === 'object') {
-    const errors = e.data?.payload?.validation?.errors
+    const errors = e.data?.payload?.validation?.errors || []
     if (errors.length > 0) {
       return { errors }
     }

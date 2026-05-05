@@ -332,7 +332,7 @@ describe('transformBulkApiErrors', () => {
 })
 
 describe('excel proccessor', () => {
-  beforeAll(() => {
+  beforeEach(() => {
     vi.clearAllMocks()
   })
 
@@ -476,32 +476,6 @@ describe('excel proccessor', () => {
     process.env.TZ = oldTimezone
   })
 
-  test('should write errors buffer', { timeout: 100000 }, async () => {
-    const buffer = Buffer.from('test xl file')
-    mockWorkbook(
-      buffer,
-      [['', 'waste tracking id', 'REF1', '']],
-      [
-        ['', 'REF1', '', ''],
-        ['', 'REF2', '', '']
-      ]
-    )
-    const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
-    const mockTransform = vi.fn().mockImplementation(() => {
-      const e = Error('test error')
-      e.colNumber = 33
-      throw e
-    })
-
-    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, mockTransform)
-    expect(hasErrors).toEqual(true)
-    expect(mockTransform).toHaveBeenCalled()
-    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
-      '7. Waste movement level': [{ coords: [33, 9], message: 'test error' }],
-      '8. Waste item level': [{ coords: [2, 10], message: 'No waste movements for unique reference' }]
-    })
-  })
-
   test('should write waste tracking ids', { timeout: 50000 }, async () => {
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
     const { workbook, movements, rowNumbers } = await parseExcelFile(buffer, 'org-id', logger)
@@ -538,6 +512,32 @@ describe('excel proccessor', () => {
     const cell2 = worksheet.getRow(10).getCell(2)
     expect(cell1.value.richText[0].text).toBe('')
     expect(cell2.value.richText[0].text).toBe('')
+  })
+
+  test('should write errors buffer', { timeout: 100000 }, async () => {
+    const buffer = Buffer.from('test xl file')
+    mockWorkbook(
+      buffer,
+      [['', 'waste tracking id', 'REF1', '']],
+      [
+        ['', 'REF1', '', ''],
+        ['', 'REF2', '', '']
+      ]
+    )
+    const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
+    const mockTransform = vi.fn().mockImplementation(() => {
+      const e = Error('test error')
+      e.colNumber = 33
+      throw e
+    })
+
+    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, mockTransform)
+    expect(hasErrors).toEqual(true)
+    expect(mockTransform).toHaveBeenCalled()
+    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
+      '7. Waste movement level': [{ coords: [33, 9], message: 'test error' }],
+      '8. Waste item level': [{ coords: [2, 10], message: 'No waste movements for unique reference' }]
+    })
   })
 
   test('should validate that the "yourUniqueReference" field is provided', { timeout: 50000 }, async () => {
@@ -824,5 +824,36 @@ describe('excel proccessor', () => {
         }
       ]
     })
+  })
+
+  test('should have errors when worksheets are missing', { timeout: 100000 }, async () => {
+    const buffer = Buffer.from('test xl file')
+    const movementData = [['', 'waste tracking id', 'REF1', '']]
+    const itemData = [
+      ['', 'REF1', '', ''],
+      ['', 'REF2', '', '']
+    ]
+    vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue({
+      xlsx: { writeBuffer: async () => buffer, writeFile: async () => null },
+      getWorksheet: (wsName) => {
+        const w = {
+          'renamed - Waste movement level': mockWorksheet(movementData),
+          'renamed - Waste item level': mockWorksheet(itemData)
+        }
+        return w[wsName]
+      }
+    })
+
+    const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
+    const mockTransform = vi.fn().mockImplementation(() => {
+      const e = Error('test error')
+      e.colNumber = 33
+      throw e
+    })
+
+    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, mockTransform)
+    expect(hasErrors).toEqual(true)
+    expect(mockTransform).not.toHaveBeenCalled()
+    expect(mockUpdateErrors).not.toHaveBeenCalled()
   })
 })
