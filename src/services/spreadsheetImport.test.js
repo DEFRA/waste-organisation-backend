@@ -856,4 +856,24 @@ describe('excel proccessor', () => {
     expect(mockTransform).not.toHaveBeenCalled()
     expect(mockUpdateErrors).not.toHaveBeenCalled()
   })
+
+  test('should have errors when there is no data', { timeout: 100000 }, async () => {
+    const buffer = Buffer.from('test xl file')
+    mockWorkbook(buffer, [], [])
+
+    const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
+
+    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger)
+    expect(hasErrors).toEqual(true)
+    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
+      '7. Waste movement level': [
+        {
+          coords: [1, 9],
+          message: 'No movements recognised',
+          sheet: '7. Waste movement level'
+        }
+      ],
+      '8. Waste item level': []
+    })
+  })
 })
