@@ -22,6 +22,9 @@ import {
 } from './spreadsheetImport/transforms.js'
 import { expect } from 'vitest'
 import * as excelImportModule from './spreadsheetImport/excel.js'
+import { createLogger } from '../common/helpers/logging/logger.js'
+
+const logger = createLogger()
 
 describe('some unit tests for parsers', () => {
   test('ewc codes can be numbers', () => {
@@ -377,7 +380,7 @@ describe('excel proccessor', () => {
   }
 
   test('should reject not excel files', async () => {
-    const { hasErrors, workbook } = await parseExcelFile(Buffer.from('fish'))
+    const { hasErrors, workbook } = await parseExcelFile(Buffer.from('fish'), 'org-id', logger)
     expect(hasErrors).toEqual(true)
     expect(workbook).toEqual(undefined)
   })
@@ -387,7 +390,7 @@ describe('excel proccessor', () => {
     process.env.TZ = 'Europe/London'
     const buffer = await fs.readFile('./test-resources/example-spreadsheet.xlsx')
     const transformedMovements = []
-    const { movements, errors } = await parseExcelFile(buffer, 'org-id', (m) => {
+    const { movements, errors } = await parseExcelFile(buffer, 'org-id', logger, (m) => {
       transformedMovements.push(m)
       return m
     })
@@ -490,7 +493,7 @@ describe('excel proccessor', () => {
       throw e
     })
 
-    const { hasErrors } = await parseExcelFile(buffer, 'org-id', mockTransform)
+    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, mockTransform)
     expect(hasErrors).toEqual(true)
     expect(mockTransform).toHaveBeenCalled()
     expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
@@ -501,7 +504,7 @@ describe('excel proccessor', () => {
 
   test('should write waste tracking ids', { timeout: 50000 }, async () => {
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-    const { workbook, movements, rowNumbers } = await parseExcelFile(buffer)
+    const { workbook, movements, rowNumbers } = await parseExcelFile(buffer, 'org-id', logger)
     const bulkImportResult = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
 
     const coords = wasteTrackingIdsToCoords(movements, rowNumbers, bulkImportResult.movements)
@@ -520,7 +523,7 @@ describe('excel proccessor', () => {
 
   test('updateCellContent handles null and undefined values', { timeout: 50000 }, async () => {
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-    const { workbook } = await parseExcelFile(buffer)
+    const { workbook } = await parseExcelFile(buffer, 'org-id', logger)
     const worksheetName = '7. Waste movement level'
 
     updateCellContent(workbook, {
@@ -548,7 +551,7 @@ describe('excel proccessor', () => {
       ]
     )
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
-    const { hasErrors } = await parseExcelFile(buffer, 'org-id', validateWasteTrackingIdMissing)
+    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, validateWasteTrackingIdMissing)
     expect(hasErrors).toEqual(true)
     expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
       '7. Waste movement level': [{ coords: [3, 9], message: 'Please provide a value' }],
@@ -659,7 +662,7 @@ describe('excel proccessor', () => {
       ]
     )
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
-    const { hasErrors } = await parseExcelFile(buffer, 'org-id', validateWasteTrackingIdMissing)
+    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, validateWasteTrackingIdMissing)
     expect(hasErrors).toEqual(true)
     expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
       '7. Waste movement level': [
@@ -795,7 +798,7 @@ describe('excel proccessor', () => {
       ]
     )
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
-    const { hasErrors } = await parseExcelFile(buffer, 'org-id', validateWasteTrackingIdMissing)
+    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, validateWasteTrackingIdMissing)
     expect(hasErrors).toEqual(true)
     expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
       '7. Waste movement level': [

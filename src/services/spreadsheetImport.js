@@ -1,4 +1,3 @@
-import { createLogger } from '../common/helpers/logging/logger.js'
 import {
   correctDateTimezone,
   parseBoolean,
@@ -25,8 +24,6 @@ import {
   workbookToByteArray as xlWorkbookToByteArray
 } from './spreadsheetImport/excel.js'
 import { compose, coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems, validateUniqueReference } from './spreadsheetImport/transforms.js'
-
-const logger = createLogger()
 
 const updateData = (cols) => {
   const updateIn = (data, path, v, func) => {
@@ -162,9 +159,13 @@ export const parseExcelFile = (() => {
   const itemColName = updateData(itemMapping)
   const transform = compose(coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems)
 
-  return async (buffer, defraCustomerOrganisationId, validateFn) => {
+  return async (buffer, defraCustomerOrganisationId, logger, validateFn) => {
     const workbook = await readExcelBuffer(buffer)
     if (workbook == null) {
+      return { hasErrors: true }
+    }
+    if (workbook.getWorksheet(movementWorksheetName) == null || workbook.getWorksheet(itemWorksheetName) == null) {
+      logger.error('Excel Workbook lacks the correct worksheets: ${workbook.worksheets.map(ws => ws.name).join(', ')}')
       return { hasErrors: true }
     }
     const movements = worksheetToArray({

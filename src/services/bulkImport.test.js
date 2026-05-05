@@ -1,9 +1,12 @@
+import { createLogger } from '../common/helpers/logging/logger.js'
 import { expect, vi } from 'vitest'
 import fs from 'node:fs/promises'
 import { parseExcelFile, transformBulkApiErrors, updateErrors, wasteTrackingIdsToCoords, updateCellContent } from './spreadsheetImport.js'
 import { TRANSIENT_STATUS_CODES } from './httpStatusCodes.js'
 import { v4 as uuidv4 } from 'uuid'
 import { faker } from '@faker-js/faker'
+
+const logger = createLogger()
 
 const conf = {
   endpoint: 'http://localhost:3002',
@@ -16,18 +19,20 @@ describe.skip('bulk import api calls data - requires service dependencies to be 
   test('should import some data', { timeout: 50000 }, async () => {
     const { bulkImport } = await import('./bulkImport.js')
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-    const { movements } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44')
-
-    const res = await bulkImport('abc1234', movements, conf)
+    const { movements } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44', console)
+    // const movements = []
+    console.log('movements: ', JSON.stringify(movements, null, 4))
+    const res = await bulkImport('abc1234', movements, 'traceId', conf, console)
     expect(res.errors).toBe(undefined)
+    expect(true).toBe(false)
   })
 
-  test('should update waste tracking IDs', { timeout: 50000 }, async () => {
+  test.skip('should update waste tracking IDs', { timeout: 50000 }, async () => {
     // const { bulkImport } = await import('./bulkImport.js')
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-    const { rowNumbers, movements } = await parseExcelFile(buffer, uuidv4().toString())
+    const { rowNumbers, movements } = await parseExcelFile(buffer, uuidv4().toString(), console)
     expect(movements.length).toBe(1)
-    // const res = await bulkImport(uuidv4().toString(), movements, conf)
+    // const res = await bulkImport(uuidv4().toString(), movements, conf, console)
     const res = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
     const coords = wasteTrackingIdsToCoords(movements, rowNumbers, res.movements)
     expect(coords).toEqual([])
@@ -50,7 +55,7 @@ describe('mock bulk import data', () => {
   test('should update waste tracking IDs', { timeout: 50000 }, async () => {
     // const { bulkImport } = await import('./bulkImport.js')
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-    const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, uuidv4().toString())
+    const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, uuidv4().toString(), logger)
     expect(movements.length).toBe(1)
     expect(errors).toEqual({ items: [], movements: [] })
     expect(hasErrors).toEqual(false)
@@ -76,10 +81,10 @@ describe('mock bulk import data', () => {
     const { bulkImport } = await import('./bulkImport.js')
 
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-    const { movements } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44')
+    const { movements } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44', logger)
 
     const traceId = faker.string.uuid()
-    const res = await bulkImport('abc1234', movements, traceId, conf)
+    const res = await bulkImport('abc1234', movements, traceId, conf, logger)
     expect(res.errors).toBe(undefined)
   })
 
@@ -91,12 +96,12 @@ describe('mock bulk import data', () => {
     const { bulkUpdate } = await import('./bulkImport.js')
 
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-    const { movements } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44')
+    const { movements } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44', logger)
     movements[0].wasteTrackingId = 'ABC123'
 
     const traceId = faker.string.uuid()
 
-    const res = await bulkUpdate('abc1234', movements, traceId, conf)
+    const res = await bulkUpdate('abc1234', movements, traceId, conf, logger)
 
     expect(res.movements).toEqual([{ wasteTrackingId: 'ABC123' }])
 
@@ -125,7 +130,7 @@ describe('mock bulk import data', () => {
     const { bulkImport } = await import('./bulkImport.js')
     const traceId = faker.string.uuid()
 
-    const res = await bulkImport('abc1234', testMovements, traceId, conf)
+    const res = await bulkImport('abc1234', testMovements, traceId, conf, logger)
     expect(res.errors).toEqual([{ message: 1 }, { message: 2 }, { message: 3 }])
   })
 
@@ -138,7 +143,7 @@ describe('mock bulk import data', () => {
     const { bulkImport } = await import('./bulkImport.js')
     const traceId = faker.string.uuid()
 
-    const res = await bulkImport('abc1234', testMovements, traceId, conf)
+    const res = await bulkImport('abc1234', testMovements, traceId, conf, logger)
     expect(res).toEqual({ failed: true })
   })
 
@@ -151,7 +156,7 @@ describe('mock bulk import data', () => {
     const { bulkImport } = await import('./bulkImport.js')
     const traceId = faker.string.uuid()
 
-    const res = await bulkImport('abc1234', testMovements, traceId, conf)
+    const res = await bulkImport('abc1234', testMovements, traceId, conf, logger)
     expect(res).toEqual({ failed: true })
   })
 
@@ -164,8 +169,30 @@ describe('mock bulk import data', () => {
     const { bulkImport } = await import('./bulkImport.js')
     const traceId = faker.string.uuid()
 
-    const res = await bulkImport('abc1234', testMovements, traceId, conf)
+    const res = await bulkImport('abc1234', testMovements, traceId, conf, logger)
     expect(res).toEqual({ failed: true })
+  })
+
+  test('should return failed when 400 error has array payload that is an object, not an array', { timeout: 100000 }, async () => {
+    wreckPostMock.mockImplementation(async () => {
+      // eslint-disable-next-line no-throw-literal
+      throw {
+        output: { statusCode: 400 },
+        data: {
+          payload: {
+            validation: {
+              errors: [{ message: '"BulkReceiveMovementRequest" must contain at least 1 items' }]
+            }
+          }
+        }
+      }
+    })
+
+    const { bulkImport } = await import('./bulkImport.js')
+    const traceId = faker.string.uuid()
+
+    const res = await bulkImport('abc1234', testMovements, traceId, conf, logger)
+    expect(res.errors).toEqual([{ message: '"BulkReceiveMovementRequest" must contain at least 1 items' }])
   })
 
   test.each([...TRANSIENT_STATUS_CODES])('should throw on transient error (%i)', { timeout: 100000 }, async (statusCode) => {
@@ -177,7 +204,7 @@ describe('mock bulk import data', () => {
     const { bulkImport } = await import('./bulkImport.js')
     const traceId = faker.string.uuid()
 
-    await expect(bulkImport('abc1234', testMovements, traceId, conf)).rejects.toEqual({ output: { statusCode } })
+    await expect(bulkImport('abc1234', testMovements, traceId, conf, logger)).rejects.toEqual({ output: { statusCode } })
   })
 
   test('should return failed for non-transient error (500)', { timeout: 100000 }, async () => {
@@ -189,7 +216,7 @@ describe('mock bulk import data', () => {
     const { bulkImport } = await import('./bulkImport.js')
     const traceId = faker.string.uuid()
 
-    const res = await bulkImport('abc1234', testMovements, traceId, conf)
+    const res = await bulkImport('abc1234', testMovements, traceId, conf, logger)
     expect(res).toEqual({ failed: true })
   })
 
@@ -201,8 +228,7 @@ describe('mock bulk import data', () => {
     const { bulkImport } = await import('./bulkImport.js')
 
     const traceId = faker.string.uuid()
-
-    const res = await bulkImport('abc1234', testMovements, traceId, conf)
+    const res = await bulkImport('abc1234', testMovements, traceId, conf, logger)
     expect(res).toEqual({ failed: true })
   })
 })
@@ -277,9 +303,8 @@ describe('Error transforms bulk import data', () => {
       }
     ]
   ])('should convert error messages from data import', { timeout: 100000 }, async (fileName, errs, result) => {
-    console.log('fileName: ', fileName)
     const buffer = await fs.readFile(fileName)
-    const { workbook, hasErrors, movements, rowNumbers, errors } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44')
+    const { workbook, hasErrors, movements, rowNumbers, errors } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44', logger)
     if (hasErrors) {
       expect({ fileName, errors, movements, rowNumbers, hasErrors }).toBe({})
     }
