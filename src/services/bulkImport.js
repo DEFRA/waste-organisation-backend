@@ -13,7 +13,8 @@ const extractValidationErrors = (e, uploadId, logger) => {
     if (errors.length > 0) {
       return { errors }
     }
-  } else if (typeof e.data?.payload === 'object') {
+  }
+  if (typeof e.data?.payload === 'object') {
     const errors = e.data?.payload?.validation?.errors
     if (errors.length > 0) {
       return { errors }
