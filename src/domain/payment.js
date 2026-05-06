@@ -38,7 +38,7 @@ export const initiatePayment = (organisationId, paymentId, amount, description, 
 }
 
 // TODO think about mapping statuses
-const govPayStatusToStatus = (() => {
+export const govPayStatusToStatus = (() => {
   const paymentMapping = {
     created: 'payment_in_progress',
     started: 'payment_in_progress',
