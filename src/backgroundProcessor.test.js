@@ -7,6 +7,9 @@ import * as spreadsheetImportModule from './services/spreadsheetImport.js'
 import * as excelImportModule from './services/spreadsheetImport/excel.js'
 import fs from 'node:fs/promises'
 import { sendEmail } from './services/notify/index.js'
+import { createLogger } from './common/helpers/logging/logger.js'
+
+const logger = createLogger()
 
 describe('background processor', () => {
   let message
@@ -84,7 +87,8 @@ describe('background processor', () => {
         }
       },
       'http://example.com/queue',
-      'handle'
+      'handle',
+      logger
     )
     expect(sideEffect.input.QueueUrl).toEqual('http://example.com/queue')
     expect(sideEffect.input.ReceiptHandle).toEqual('handle')
@@ -100,7 +104,8 @@ describe('background processor', () => {
         }
       },
       'http://example.com/queue',
-      'handle'
+      'handle',
+      logger
     )
 
     expect(response).toBeUndefined()
@@ -128,6 +133,7 @@ describe('background processor', () => {
       QueueUrl: 'http://example.com/queue',
       action: async (message) => {
         sideEffect.processedMessages.push(message.test)
+        return { logger }
       }
     })
     expect(sideEffect.deletedMessages.length).toEqual(testData.length)
@@ -213,7 +219,7 @@ describe('background processor', () => {
     const { processJob } = await import('./backgroundProcessor.js')
     const response = await processJob(s3Client, message)
 
-    expect(response).toBe(undefined)
+    expect(response.logger).toEqual(expect.anything())
     expect(mockSendFailed).toBeCalled()
   })
 
@@ -233,7 +239,7 @@ describe('background processor', () => {
     const { processJob } = await import('./backgroundProcessor.js')
     const response = await processJob(s3Client, message)
 
-    expect(response).toBe(undefined)
+    expect(response.logger).toEqual(expect.anything())
     expect(mockSendFailed).toBeCalled()
   })
 
@@ -264,7 +270,7 @@ describe('background processor', () => {
 
     const response = await processJob(s3Client, message)
 
-    expect(response).toBe(undefined)
+    expect(response.logger).toEqual(expect.anything())
     expect(mockSendFailed).toBeCalled()
   })
 
@@ -289,7 +295,7 @@ describe('background processor', () => {
 
     const response = await processJob(s3Client, message)
 
-    expect(response).toBe(undefined)
+    expect(response.logger).toEqual(expect.anything())
     expect(mockSendSuccess).toBeCalled()
   })
 
@@ -314,7 +320,7 @@ describe('background processor', () => {
 
     const response = await processJob(s3Client, message)
 
-    expect(response).toBe(undefined)
+    expect(response.logger).toEqual(expect.anything())
     expect(mockSendSuccess).not.toBeCalled()
   })
 
@@ -342,9 +348,8 @@ describe('background processor', () => {
 
     const { processJob } = await import('./backgroundProcessor.js')
 
-    const response = await processJob(s3Client, message)
+    await processJob(s3Client, message)
 
-    expect(response).toBe(undefined)
     expect(mockSendSuccess).not.toBeCalled()
   })
 
@@ -384,9 +389,8 @@ describe('background processor', () => {
 
     const { processJob } = await import('./backgroundProcessor.js')
 
-    const response = await processJob(s3Client, message)
+    await processJob(s3Client, message)
 
-    expect(response).toBe(undefined)
     expect(mockSendFailed).toBeCalled()
   })
 
@@ -426,9 +430,8 @@ describe('background processor', () => {
 
     const { processJob } = await import('./backgroundProcessor.js')
 
-    const response = await processJob(s3Client, message)
+    await processJob(s3Client, message)
 
-    expect(response).toBe(undefined)
     expect(mockSendFailed).toBeCalled()
   })
 
@@ -654,9 +657,8 @@ describe('background processor', () => {
     }
 
     const { processJob } = await import('./backgroundProcessor.js')
-    const response = await processJob(s3Client, createMessage)
+    await processJob(s3Client, createMessage)
 
-    expect(response).toBe(undefined)
     expect(mockSendFailed).toHaveBeenCalledWith({ email: 'test@email.com', name: 'test@email.com', referenceNumber: 'upload-failed' })
   })
 
@@ -715,9 +717,8 @@ describe('background processor', () => {
 
     const { processJob } = await import('./backgroundProcessor.js')
 
-    const response = await processJob(s3Client, unexpectedErrorMessage)
+    await processJob(s3Client, unexpectedErrorMessage)
 
-    expect(response).toBe(undefined)
     expect(mockSendFailed).toHaveBeenCalledWith({
       email: 'test@email.com',
       name: 'test@email.com',

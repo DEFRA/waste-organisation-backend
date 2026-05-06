@@ -1,6 +1,9 @@
 import fs from 'node:fs/promises'
 import { parseExcelFile } from '../spreadsheetImport.js'
 import { updateErrors } from './excel.js'
+import { createLogger } from '../../common/helpers/logging/logger.js'
+
+const logger = createLogger()
 
 describe('excel proccessor', () => {
   beforeAll(() => {
@@ -9,7 +12,7 @@ describe('excel proccessor', () => {
 
   test('errors should be added to the correct cells', { timeout: 50000 }, async () => {
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-    const { workbook } = await parseExcelFile(buffer)
+    const { workbook } = await parseExcelFile(buffer, 'org-id', logger)
     const worksheetName = '7. Waste movement level'
     const worksheet = workbook.getWorksheet(worksheetName)
 
