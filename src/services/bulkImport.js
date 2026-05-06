@@ -73,5 +73,5 @@ const bulkRequest = async (method, bulkUploadId, movements, traceId, conf, logge
   return apiCall((r) => wreck[method](url, r), c.basicAuth, movements, bulkUploadId, traceId, logger)
 }
 
-export const bulkImport = (id, movements, traceId, conf, logger) => bulkRequest('post', id, movements, traceId, conf, logger)
-export const bulkUpdate = (id, movements, traceId, conf, logger) => bulkRequest('put', id, movements, traceId, conf, logger)
+export const bulkImport = (id, movements, traceId, logger, conf) => bulkRequest('post', id, movements, traceId, conf, logger)
+export const bulkUpdate = (id, movements, traceId, logger, conf) => bulkRequest('put', id, movements, traceId, conf, logger)
