@@ -56,6 +56,7 @@ const joinWasteItems = (movements, items, defraCustomerOrganisationId, transform
   const errors = { movements: [], items: [] }
   const wasteTrackingIdCol = 2
   const itemRefCol = 2
+  const movementRefCol = 3
   const rowNumbers = {}
   for (let i = 0; i < movements.length; i++) {
     const r = movements[i]['yourUniqueReference']
@@ -77,7 +78,7 @@ const joinWasteItems = (movements, items, defraCustomerOrganisationId, transform
     }
   }
   if (movements.length === 0) {
-    errors.movements.push(cellError(1, firstRowOfDataInSpreadsheet, 'No movements recognised', movementWorksheetName))
+    errors.movements.push(cellError(movementRefCol, firstRowOfDataInSpreadsheet, 'No movements recognised', movementWorksheetName))
   }
   if (Object.keys(is).length > 0) {
     for (const i of Object.values(is).flatMap((x) => x)) {
@@ -170,7 +171,7 @@ export const parseExcelFile = (() => {
       return { hasErrors: true }
     }
     if (workbook.getWorksheet(movementWorksheetName) == null || workbook.getWorksheet(itemWorksheetName) == null) {
-      logger.error('Excel Workbook lacks the correct worksheets: ${workbook.worksheets.map(ws => ws.name).join(', ')}')
+      logger.error(`Excel Workbook lacks the correct worksheets: ${workbook.worksheets.map((ws) => ws.name).join(', ')}`)
       return { hasErrors: true }
     }
     const movements = worksheetToArray({
@@ -261,6 +262,8 @@ const errorToCoords = (() => {
     return cellError(colNum, rowNumbers[ref].itemRows[itemIdx], msg, itemWorksheetName, errorValue)
   }
 
+  const movementRefCol = 3
+
   return (movementData, rowNumbers, error) => {
     const errKeyPath = error.key.split('.')
     if (errKeyPath[0].match(/^[0-9]+$/)) {
@@ -274,7 +277,7 @@ const errorToCoords = (() => {
         return err
       }
     }
-    return cellError(1, firstRowOfDataInSpreadsheet, error.message, movementWorksheetName)
+    return cellError(movementRefCol, firstRowOfDataInSpreadsheet, error.message, movementWorksheetName)
   }
 })()
 
