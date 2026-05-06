@@ -32,7 +32,7 @@ describe.skip('bulk import api calls data - requires service dependencies to be 
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
     const { rowNumbers, movements } = await parseExcelFile(buffer, uuidv4().toString(), console)
     expect(movements.length).toBe(1)
-    // const res = await bulkImport(uuidv4().toString(), movements, uuidv4().toString(), conf, console)
+    // const res = await bulkImport(uuidv4().toString(), movements, uuidv4().toString(), console, conf)
     const res = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
     const coords = wasteTrackingIdsToCoords(movements, rowNumbers, res.movements)
     expect(coords).toEqual([])
