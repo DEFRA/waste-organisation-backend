@@ -1,4 +1,3 @@
-import { createLogger } from '../common/helpers/logging/logger.js'
 import {
   correctDateTimezone,
   parseBoolean,
@@ -26,7 +25,7 @@ import {
 } from './spreadsheetImport/excel.js'
 import { compose, coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems, validateUniqueReference } from './spreadsheetImport/transforms.js'
 
-const logger = createLogger()
+const firstRowOfDataInSpreadsheet = 9
 
 const updateData = (cols) => {
   const updateIn = (data, path, v, func) => {
@@ -76,6 +75,9 @@ const joinWasteItems = (movements, items, defraCustomerOrganisationId, transform
     if (r) {
       delete is[r]
     }
+  }
+  if (movements.length === 0) {
+    errors.movements.push(cellError(1, firstRowOfDataInSpreadsheet, 'No movements recognised', movementWorksheetName))
   }
   if (Object.keys(is).length > 0) {
     for (const i of Object.values(is).flatMap((x) => x)) {
@@ -162,9 +164,13 @@ export const parseExcelFile = (() => {
   const itemColName = updateData(itemMapping)
   const transform = compose(coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems)
 
-  return async (buffer, defraCustomerOrganisationId, validateFn) => {
+  return async (buffer, defraCustomerOrganisationId, logger, validateFn) => {
     const workbook = await readExcelBuffer(buffer)
     if (workbook == null) {
+      return { hasErrors: true }
+    }
+    if (workbook.getWorksheet(movementWorksheetName) == null || workbook.getWorksheet(itemWorksheetName) == null) {
+      logger.error('Excel Workbook lacks the correct worksheets: ${workbook.worksheets.map(ws => ws.name).join(', ')}')
       return { hasErrors: true }
     }
     const movements = worksheetToArray({
@@ -254,8 +260,6 @@ const errorToCoords = (() => {
     const errorValue = itemMapping[colNum][0].reduce((x, y) => (x ? x[y] : null), wis ? wis[itemIdx] : null)
     return cellError(colNum, rowNumbers[ref].itemRows[itemIdx], msg, itemWorksheetName, errorValue)
   }
-
-  const firstRowOfDataInSpreadsheet = 9
 
   return (movementData, rowNumbers, error) => {
     const errKeyPath = error.key.split('.')

@@ -20,7 +20,7 @@ import { bulkImport, bulkUpdate } from './services/bulkImport.js'
 import { TRANSIENT_STATUS_CODES } from './services/httpStatusCodes.js'
 import { validateWasteTrackingIdExists, validateWasteTrackingIdMissing } from './services/spreadsheetImport/transforms.js'
 
-const logger = createLogger()
+const defaultLogger = createLogger()
 
 export const constructS3Client = () => {
   return new S3Client({
@@ -52,7 +52,7 @@ const constructSqsClient = () => {
   })
 }
 
-export const deleteMessage = async (client, QueueUrl, receiptHandle) => {
+export const deleteMessage = async (client, QueueUrl, receiptHandle, logger) => {
   const params = {
     QueueUrl,
     ReceiptHandle: receiptHandle
@@ -80,7 +80,7 @@ const storeProcessedFile = async (s3Client, s3Bucket, s3Key, file) => {
   )
 }
 
-const sendInitialFailedEmail = async ({ s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName, referenceNumber, filename }) => {
+const sendInitialFailedEmail = async ({ s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName, referenceNumber, filename, logger }) => {
   if (workbook) {
     const file = await workbookToByteArray(workbook)
     await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
@@ -96,20 +96,21 @@ const processSpreadsheet = async (
   { s3Bucket, s3Key, organisationId, referenceNumber, uploadType, filename },
   decryptedEmail,
   decryptedName,
-  traceId
+  traceId,
+  logger
 ) => {
   const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
   logger.info(`ReferenceNumber: ${referenceNumber} -- Fetching bytes: ${buffer.length}`)
   const isUpdate = uploadType === 'update'
   const validatorFn = isUpdate ? validateWasteTrackingIdExists : validateWasteTrackingIdMissing
-  const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, organisationId, validatorFn)
+  const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, organisationId, logger, validatorFn)
   if (hasErrors) {
     logger.warn(`ReferenceNumber: ${referenceNumber} -- Errors before sending to import API ${JSON.stringify(errors)}`)
-    await sendInitialFailedEmail({ s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName, referenceNumber, filename })
+    await sendInitialFailedEmail({ s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName, referenceNumber, filename, logger })
     return
   }
 
-  const apiResponse = isUpdate ? await bulkUpdate(referenceNumber, movements, traceId) : await bulkImport(referenceNumber, movements, traceId)
+  const apiResponse = isUpdate ? await bulkUpdate(referenceNumber, movements, traceId, logger) : await bulkImport(referenceNumber, movements, traceId, logger)
 
   if (apiResponse.failed) {
     await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName, referenceNumber, filename })
@@ -137,6 +138,7 @@ const processSpreadsheet = async (
     }
     const file = await workbookToByteArray(workbook)
     await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
+    logger.info(`ReferenceNumber: ${referenceNumber} organisationId: ${organisationId} - ${movements.length} waste movement records created successfully`)
     await sendEmail.sendSuccess({ email: decryptedEmail, name: decryptedName, file, referenceNumber, filename })
     return
   }
@@ -156,12 +158,12 @@ export const processJob = async (s3Client, message) => {
 
   if (hasError) {
     await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName, referenceNumber: emailReferenceNumber, filename, logger: processJobLogger })
-    return
+    return { logger: processJobLogger }
   }
 
   if (!s3Key || !s3Bucket) {
     processJobLogger.info(`Message missing s3 coords: ${JSON.stringify(message)}`)
-    return
+    return { logger: processJobLogger }
   }
   try {
     await processSpreadsheet(
@@ -169,7 +171,8 @@ export const processJob = async (s3Client, message) => {
       { s3Bucket, s3Key, organisationId, referenceNumber: emailReferenceNumber, uploadType, filename },
       decryptedEmail,
       decryptedName,
-      traceId
+      traceId,
+      processJobLogger
     )
   } catch (e) {
     const statusCode = e.output?.statusCode
@@ -179,6 +182,7 @@ export const processJob = async (s3Client, message) => {
     processJobLogger.error(`ReferenceNumber: ${emailReferenceNumber} -- Unexpected error processing spreadsheet: ${e.stack}`)
     await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName, referenceNumber: emailReferenceNumber, filename, logger: processJobLogger })
   }
+  return { logger: processJobLogger }
 }
 
 export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {
@@ -194,31 +198,31 @@ export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {
     const data = await sqsClient.send(command)
 
     if (data.Messages && data.Messages.length > 0) {
-      logger.info(`Received ${data.Messages.length} message(s)`)
+      defaultLogger.info(`Received ${data.Messages.length} message(s)`)
 
       // Process messages in parallel
       await Promise.all(
         data.Messages.map(async (message) => {
           try {
-            await action(message)
+            const result = await action(message)
             // Delete message after successful processing
-            await deleteMessage(sqsClient, QueueUrl, message.ReceiptHandle)
+            await deleteMessage(sqsClient, QueueUrl, message.ReceiptHandle, result?.logger || defaultLogger)
           } catch (err) {
             // Message will become visible again after VisibilityTimeout
-            logger.error(`Error processing message: ${err.stack}`)
+            defaultLogger.error(`Error processing message: ${err.stack}`)
           }
         })
       )
     } else {
-      logger.debug('No messages in queue')
+      defaultLogger.debug('No messages in queue')
     }
   } catch (err) {
-    logger.error(`Error polling queue: ${err}`)
+    defaultLogger.error(`Error polling queue: ${err}`)
   }
 }
 
 export const startWorker = async () => {
-  logger.info('Worker started. Polling for jobs...')
+  defaultLogger.info('Worker started. Polling for jobs...')
   const QueueUrl = config.get('aws.backgroundProcessQueue')
   const s3Client = constructS3Client()
   const sqsClient = constructSqsClient()
