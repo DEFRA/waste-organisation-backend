@@ -22,7 +22,7 @@ describe.skip('bulk import api calls data - requires service dependencies to be 
     const { movements } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44', console)
     // const movements = []
     console.log('movements: ', JSON.stringify(movements, null, 4))
-    const res = await bulkImport('abc1234', movements, 'traceId', conf, console)
+    const res = await bulkImport('abc1234', movements, 'traceId', console, conf)
     expect(res.errors).toBe(undefined)
     expect(true).toBe(false)
   })
@@ -32,7 +32,7 @@ describe.skip('bulk import api calls data - requires service dependencies to be 
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
     const { rowNumbers, movements } = await parseExcelFile(buffer, uuidv4().toString(), console)
     expect(movements.length).toBe(1)
-    // const res = await bulkImport(uuidv4().toString(), movements, conf, console)
+    // const res = await bulkImport(uuidv4().toString(), movements, uuidv4().toString(), console, conf)
     const res = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
     const coords = wasteTrackingIdsToCoords(movements, rowNumbers, res.movements)
     expect(coords).toEqual([])
@@ -84,7 +84,7 @@ describe('mock bulk import data', () => {
     const { movements } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44', logger)
 
     const traceId = faker.string.uuid()
-    const res = await bulkImport('abc1234', movements, traceId, conf, logger)
+    const res = await bulkImport('abc1234', movements, traceId, logger, conf)
     expect(res.errors).toBe(undefined)
   })
 
@@ -101,7 +101,7 @@ describe('mock bulk import data', () => {
 
     const traceId = faker.string.uuid()
 
-    const res = await bulkUpdate('abc1234', movements, traceId, conf, logger)
+    const res = await bulkUpdate('abc1234', movements, traceId, logger, conf)
 
     expect(res.movements).toEqual([{ wasteTrackingId: 'ABC123' }])
 
@@ -130,7 +130,7 @@ describe('mock bulk import data', () => {
     const { bulkImport } = await import('./bulkImport.js')
     const traceId = faker.string.uuid()
 
-    const res = await bulkImport('abc1234', testMovements, traceId, conf, logger)
+    const res = await bulkImport('abc1234', testMovements, traceId, logger, conf)
     expect(res.errors).toEqual([{ message: 1 }, { message: 2 }, { message: 3 }])
   })
 
@@ -143,7 +143,7 @@ describe('mock bulk import data', () => {
     const { bulkImport } = await import('./bulkImport.js')
     const traceId = faker.string.uuid()
 
-    const res = await bulkImport('abc1234', testMovements, traceId, conf, logger)
+    const res = await bulkImport('abc1234', testMovements, traceId, logger, conf)
     expect(res).toEqual({ failed: true })
   })
 
@@ -156,7 +156,7 @@ describe('mock bulk import data', () => {
     const { bulkImport } = await import('./bulkImport.js')
     const traceId = faker.string.uuid()
 
-    const res = await bulkImport('abc1234', testMovements, traceId, conf, logger)
+    const res = await bulkImport('abc1234', testMovements, traceId, logger, conf)
     expect(res).toEqual({ failed: true })
   })
 
@@ -169,7 +169,7 @@ describe('mock bulk import data', () => {
     const { bulkImport } = await import('./bulkImport.js')
     const traceId = faker.string.uuid()
 
-    const res = await bulkImport('abc1234', testMovements, traceId, conf, logger)
+    const res = await bulkImport('abc1234', testMovements, traceId, logger, conf)
     expect(res).toEqual({ failed: true })
   })
 
@@ -191,7 +191,7 @@ describe('mock bulk import data', () => {
     const { bulkImport } = await import('./bulkImport.js')
     const traceId = faker.string.uuid()
 
-    const res = await bulkImport('abc1234', testMovements, traceId, conf, logger)
+    const res = await bulkImport('abc1234', testMovements, traceId, logger, conf)
     expect(res.errors).toEqual([{ message: '"BulkReceiveMovementRequest" must contain at least 1 items' }])
   })
 
@@ -204,7 +204,7 @@ describe('mock bulk import data', () => {
     const { bulkImport } = await import('./bulkImport.js')
     const traceId = faker.string.uuid()
 
-    await expect(bulkImport('abc1234', testMovements, traceId, conf, logger)).rejects.toEqual({ output: { statusCode } })
+    await expect(bulkImport('abc1234', testMovements, traceId, logger, conf)).rejects.toEqual({ output: { statusCode } })
   })
 
   test('should return failed for non-transient error (500)', { timeout: 100000 }, async () => {
@@ -216,7 +216,7 @@ describe('mock bulk import data', () => {
     const { bulkImport } = await import('./bulkImport.js')
     const traceId = faker.string.uuid()
 
-    const res = await bulkImport('abc1234', testMovements, traceId, conf, logger)
+    const res = await bulkImport('abc1234', testMovements, traceId, logger, conf)
     expect(res).toEqual({ failed: true })
   })
 
@@ -228,7 +228,7 @@ describe('mock bulk import data', () => {
     const { bulkImport } = await import('./bulkImport.js')
 
     const traceId = faker.string.uuid()
-    const res = await bulkImport('abc1234', testMovements, traceId, conf, logger)
+    const res = await bulkImport('abc1234', testMovements, traceId, logger, conf)
     expect(res).toEqual({ failed: true })
   })
 })
