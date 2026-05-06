@@ -280,7 +280,7 @@ describe('transformBulkApiErrors', () => {
     expect(result).toEqual({
       '7. Waste movement level': [
         {
-          coords: [1, 9],
+          coords: [3, 9],
           message: '[0].submittingOrganisation the submitting organisation does not match the Organisation that created the original waste item record',
           sheet: '7. Waste movement level'
         }
@@ -835,6 +835,7 @@ describe('excel proccessor', () => {
     ]
     vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue({
       xlsx: { writeBuffer: async () => buffer, writeFile: async () => null },
+      worksheets: [{ name: 'renamed - Waste movement level' }, { name: 'renamed - Waste item level' }],
       getWorksheet: (wsName) => {
         const w = {
           'renamed - Waste movement level': mockWorksheet(movementData),
@@ -868,7 +869,7 @@ describe('excel proccessor', () => {
     expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
       '7. Waste movement level': [
         {
-          coords: [1, 9],
+          coords: [3, 9],
           message: 'No movements recognised',
           sheet: '7. Waste movement level'
         }
