@@ -220,26 +220,63 @@ describe('payment API', () => {
     wreckPostMock.mockImplementation(async () => {
       throw new Error('fish')
     })
-    const { statusCode, payload } = await server.inject({
-      method: 'POST',
-      headers: {
-        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
-      },
-      url: pathTo(paths.initiatePayment, { organisationId }),
-      payload: {
-        payment: {
-          amount: 2134,
-          description: 'SERVICE_CHARGE_DESCRIPTION',
-          return_url: `http://example.com/paymentDetails`,
-          status: 'PENDING',
-          metadata: {
-            organisationId,
-            organisationName: 'organisation name'
-          }
-        }
-      }
-    })
+    const { payload, statusCode } = await initiatePayment(server, organisationId, 'organisation name')
     expect(payload).toBe('{"message":"error","errors":[{"message":"GovPay returned status undefined"}]}')
     expect(statusCode).toBe(200)
   })
+
+  test('update payment with `success` enables org', async () => {
+    const organisationId = 'abc123'
+    const organisation = { organisationId, name: 'Weyland-Yutani Corporation', isDisabled: true }
+    const r = await updateOrganisation(server, 'user123', organisationId, organisation)
+    expect(JSON.parse(r.payload).organisation.isDisabled).toBe(true)
+    const r1 = await initiatePayment(server, organisationId, 'organisation name')
+    expect(r1.statusCode).toBe(200)
+  })
 })
+
+const updateOrganisation = async (server, userId, organisationId, organisation) => {
+  return await server.inject({
+    method: 'PUT',
+    url: pathTo(paths.putOrganisation, { userId, organisationId }),
+    headers: {
+      'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+    },
+    payload: {
+      organisation
+    }
+  })
+}
+
+const initiatePayment = async (server, organisationId, organisationName, servicePeriodStart, servicePeriodEnd) => {
+  return await server.inject({
+    method: 'POST',
+    headers: {
+      'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+    },
+    url: pathTo(paths.initiatePayment, { organisationId }),
+    payload: {
+      payment: {
+        amount: 2134,
+        description: 'SERVICE_CHARGE_DESCRIPTION',
+        return_url: `http://example.com/paymentDetails`,
+        metadata: { organisationId, organisationName, servicePeriodStart, servicePeriodEnd }
+      }
+    }
+  })
+}
+
+const updatePayment = async (server, organisationId, paymentId) => {
+  return await server.inject({
+    method: 'PUT',
+    url: pathTo(paths.payment, { organisationId: 123, paymentId: 456 }),
+    headers: {
+      'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+    },
+    payload: {
+      payment: {
+        status: 'FAILED'
+      }
+    }
+  })
+}

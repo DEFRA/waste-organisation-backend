@@ -39,7 +39,6 @@ const createPaymentReference = () => `WASTE-${randomUUID().replaceAll('-', '').s
 
 export const initiatePayment = (organisationId, paymentId, amount, description, returnUrl, metadata) => {
   metadata.organisationId = organisationId
-  console.log('metadata: ', JSON.stringify(metadata, null, 4))
   return {
     organisationId,
     paymentId,
