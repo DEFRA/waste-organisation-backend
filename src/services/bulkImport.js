@@ -68,12 +68,9 @@ const urlFor = (bulkUploadId, conf, logger) => {
 }
 
 const bulkRequest = async (method, bulkUploadId, movements, traceId, conf, logger) => {
-  if (logger == null) {
-    console.log(`Logger is null`)
-  }
   const c = conf ?? config.get('bulkUpload')
-  const url = urlFor(bulkUploadId, c, logger || console)
-  return apiCall((r) => wreck[method](url, r), c.basicAuth, movements, bulkUploadId, traceId, logger || console)
+  const url = urlFor(bulkUploadId, c, logger)
+  return apiCall((r) => wreck[method](url, r), c.basicAuth, movements, bulkUploadId, traceId, logger)
 }
 
 export const bulkImport = (id, movements, traceId, conf, logger) => bulkRequest('post', id, movements, traceId, conf, logger)
