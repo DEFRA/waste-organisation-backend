@@ -75,6 +75,7 @@ export const payments = [
             return initiatePayment(organisationId, payload.payment_id, amount, description, returnUrl, metadata)
           }
         )
+        console.log('fish: ', JSON.stringify(payment, null, 4))
         return h.response({ message: 'success', payment })
       } else {
         const message = payload?.description ?? payload?.message ?? payload?.detail ?? `GovPay returned status ${statusCode}`

@@ -15,7 +15,12 @@ export const paymentSchema = joi.object({
   status: joi.string(),
   reference: joi.string(),
   returnUrl: joi.string(),
-  metadata: joi.object({ organisationId: joi.string().required(), organisationName: joi.string() }),
+  metadata: joi.object({
+    organisationId: joi.string().required(),
+    organisationName: joi.string(),
+    servicePeriodStart: joi.string(),
+    servicePeriodEnd: joi.string()
+  }),
   amount: joi.number().integer(),
   govPayLinks: joi.object({
     self: linkData,
@@ -34,7 +39,19 @@ const createPaymentReference = () => `WASTE-${randomUUID().replaceAll('-', '').s
 
 export const initiatePayment = (organisationId, paymentId, amount, description, returnUrl, metadata) => {
   metadata.organisationId = organisationId
-  return { organisationId, paymentId, amount, description, returnUrl, metadata, reference: createPaymentReference(), status: 'payment_in_progress' }
+  console.log('metadata: ', JSON.stringify(metadata, null, 4))
+  return {
+    organisationId,
+    paymentId,
+    amount,
+    description,
+    returnUrl,
+    metadata,
+    reference: createPaymentReference(),
+    status: 'payment_in_progress',
+    servicePeriodStart: new Date(metadata.servicePeriodStart),
+    servicePeriodEnd: new Date(metadata.servicePeriodEnd)
+  }
 }
 
 // TODO think about mapping statuses

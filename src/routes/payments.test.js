@@ -132,7 +132,9 @@ describe('payment API', () => {
       },
       metadata: {
         organisationId,
-        organisationName: 'organisation name'
+        organisationName: 'organisation name',
+        servicePeriodStart: '2026-05-01T00:00:00Z',
+        servicePeriodEnd: '2027-05-01T00:00:00Z'
       }
     }
   })
@@ -153,10 +155,11 @@ describe('payment API', () => {
           amount: 2134,
           description: 'SERVICE_CHARGE_DESCRIPTION',
           return_url: `http://example.com/paymentDetails`,
-          status: 'PENDING',
           metadata: {
             organisationId,
-            organisationName: 'organisation name'
+            organisationName: 'organisation name',
+            servicePeriodStart: '2026-05-01T00:00:00Z',
+            servicePeriodEnd: '2027-05-01T00:00:00Z'
           }
         }
       }
@@ -169,9 +172,16 @@ describe('payment API', () => {
         organisationId: 'abc123',
         amount: 2134,
         description: 'SERVICE_CHARGE_DESCRIPTION',
-        metadata: { organisationId: 'abc123', organisationName: 'organisation name' },
+        metadata: {
+          organisationId: 'abc123',
+          organisationName: 'organisation name',
+          servicePeriodStart: '2026-05-01T00:00:00Z',
+          servicePeriodEnd: '2027-05-01T00:00:00Z'
+        },
         reference: expect.anything(),
         returnUrl: null,
+        servicePeriodStart: '2026-05-01T00:00:00.000Z',
+        servicePeriodEnd: '2027-05-01T00:00:00.000Z',
         status: 'payment_in_progress',
         version: 1
       }
