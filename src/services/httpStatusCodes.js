@@ -1,4 +1,5 @@
 export const SUCCESS = 200
+export const CREATED = 201
 export const HTTP_BAD_REQUEST = 400
 export const HTTP_REQUEST_TIMEOUT = 408
 export const HTTP_TOO_MANY_REQUESTS = 429

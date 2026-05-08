@@ -8,9 +8,11 @@ import { apiKeyAuthStrategy } from '../plugins/auth.js'
 import { addVersionField, swaggerResponse } from './swagger-common.js'
 import { createGovPayPayment } from '../services/govPay/index.js'
 import boom from '@hapi/boom'
+import { randomUUID } from 'node:crypto'
 // swagger import { getPaymentsResponseSchema, putPaymentResponseSchema } from './schemas/payment.js'
 // DONE authentication - pre-shared key?
 
+const createPaymentReference = () => `WASTE-${randomUUID().replaceAll('-', '').toUpperCase()}`
 export const payments = [
   {
     method: 'GET',
@@ -66,19 +68,21 @@ export const payments = [
       if (metadata?.organisationId !== organisationId) {
         throw boom.forbidden(`wrong organisationId in metadata: ${metadata?.organisationId} !== ${organisationId}`)
       }
-      const { payload, status, statusCode } = await createGovPayPayment({ amount, description, returnUrl, metadata }, console)
+
+      const reference = createPaymentReference()
+      const { payload, status, statusCode } = await createGovPayPayment({ reference, amount, description, returnUrl, metadata }, console)
       if (status === 'success') {
         const payment = await updateWithOptimisticLock(
           request.db.collection(paymentCollection),
           { paymentId: payload.payment_id, organisationId: request.params.organisationId },
           (_dbPayment) => {
-            return initiatePayment(organisationId, payload.payment_id, amount, description, returnUrl, metadata)
+            return initiatePayment(organisationId, payload.payment_id, amount, description, returnUrl, metadata, payload._links)
           }
         )
         return h.response({ message: 'success', payment })
       } else {
         const message = payload?.description ?? payload?.message ?? payload?.detail ?? `GovPay returned status ${statusCode}`
-        request.logger.error(`Error contacting GovPay ${status}, ${payload}`)
+        request.logger.error(`Error contacting GovPay: ${status}, ${statusCode}, ${JSON.stringify(payload, null, 4)}`)
         const r = {
           message: 'error',
           errors: [{ message }]
