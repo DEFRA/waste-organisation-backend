@@ -1,0 +1,117 @@
+services:
+  selenium-chrome:
+    image: selenium/standalone-chrome:123.0
+    environment:
+      - SE_NODE_ENABLE_MANAGED_DOWNLOADS=true
+    ports:
+      - 4444:4444
+    networks:
+      - cdp-tenant
+
+  mongodb:
+    volumes: !override
+      - mongodb-data:/data/db:z
+      - ./compose:/compose/:z
+    command: --quiet
+    healthcheck:
+      start_period: 15s
+
+  localstack:
+    volumes: !override
+      - ./compose/start-localstack.sh:/etc/localstack/init/ready.d/start-localstack.sh:z
+    healthcheck:
+      retries: 10
+      start_period: 15s
+
+  cdp-defra-id-stub:
+    image: defradigital/cdp-defra-id-stub:latest
+    ports:
+      - '3200:3200'
+    depends_on:
+      redis:
+        condition: service_started
+    environment:
+      PORT: 3200
+      NODE_ENV: development
+      REDIS_HOST: redis
+      SESSION_CACHE_ENGINE: redis
+      USE_SINGLE_INSTANCE_CACHE: true
+      APP_BASE_URL: http://cdp-defra-id-stub:3200
+    networks:
+      - cdp-tenant
+
+  cdp-uploader:
+    image: defradigital/cdp-uploader:latest
+    depends_on:
+      localstack:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - 'compose/aws.env'
+    environment:
+      VIRTUAL_HOST: ~^uploader\..*\.sslip\.io
+      VIRTUAL_PATH: /
+      VIRTUAL_PORT: 7337
+      PORT: 7337
+      NODE_ENV: development
+      APP_BASE_URL: 'http://cdp-uploader:7337'
+      REDIS_HOST: redis
+      USE_SINGLE_INSTANCE_CACHE: true
+      MOCK_VIRUS_SCAN_ENABLED: true
+      MOCK_VIRUS_RESULT_DELAY: 3
+      SQS_ENDPOINT: http://localstack:4566
+      S3_ENDPOINT: http://localstack:4566
+    ports:
+      - '7337:7337'
+    networks:
+      - cdp-tenant
+
+  waste-organisation-backend:
+    env_file:
+      - '.env'
+    environment:
+      ENVIRONMENT: !reset null
+      BULK_UPLOAD_COPY_SPREADSHEET_TO_DISK: !reset null
+    volumes: !reset []
+
+  waste-organisation-frontend:
+    image: defradigital/waste-organisation-frontend:latest
+    depends_on:
+      localstack:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      cdp-defra-id-stub:
+        condition: service_started
+      waste-organisation-backend:
+        condition: service_started
+      cdp-uploader:
+        condition: service_started
+    env_file:
+      - 'compose/aws.env'
+    environment:
+      PORT: 3000
+      NODE_ENV: development
+      LOG_LEVEL: debug
+      REDIS_HOST: redis
+      USE_SINGLE_INSTANCE_CACHE: true
+      SESSION_CACHE_ENGINE: redis
+      APP_BASE_URL: 'http://waste-organisation-frontend:3000'
+      AUTH_DEFRA_ID_OIDC_CONFIGURATION_URL: 'http://cdp-defra-id-stub:3200/cdp-defra-id-stub/.well-known/openid-configuration'
+      BACKEND_API: http://waste-organisation-backend:3001
+      FILE_UPLOAD_SERVICE_URL: http://cdp-uploader:7337
+      FILE_UPLOAD_BASE_URL: 'http://waste-organisation-frontend:3000'
+      BACKEND_API_PRESHARED_KEY: test
+      GOVPAY_API_KEY: ${GOVPAY_API_KEY}
+      GOVPAY_API_URL: ${GOVPAY_API_URL:-https://publicapi.payments.service.gov.uk/v1}
+      FEATURE_FLAG_ACCOUNT_PAGE: true
+      FEATURE_FLAG_SERVICE_CHARGE: true
+      FEATURE_FLAG_SEARCH_PAGE: true
+      FEATURE_FLAG_TEST_ERRORS: true
+      FEATURE_FLAG_NEW_ACCOUNT_PAGE: true
+      FEATURE_FLAG_REBRAND: false
+    ports:
+      - '3000:3000'
+    networks:
+      - cdp-tenant

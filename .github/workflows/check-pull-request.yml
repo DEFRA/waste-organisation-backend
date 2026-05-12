@@ -68,8 +68,8 @@ jobs:
           GOV_NOTIFY_KEY=${GOV_NOTIFY_KEY}
           GOVPAY_API_KEY=${GOVPAY_API_KEY}
           EOF
-          docker compose -f compose-github.yml up -d --wait
-          docker compose -f compose-github.yml ps
+          docker compose -f compose.yml -f compose-github.override.yml up -d --wait
+          docker compose -f compose.yml -f compose-github.override.yml ps
 
       - name: Checkout UAT Repository as Integration Test Suite
         uses: actions/checkout@v4
@@ -137,4 +137,4 @@ jobs:
           GOV_NOTIFY_KEY=${GOV_NOTIFY_KEY}
           GOVPAY_API_KEY=${GOVPAY_API_KEY}
           EOF
-          docker compose -f compose-github.yml down
+          docker compose -f compose.yml -f compose-github.override.yml down
