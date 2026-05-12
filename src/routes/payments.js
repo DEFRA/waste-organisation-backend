@@ -1,8 +1,9 @@
 // import Boom from '@hapi/boom'
 import { paths } from '../config/paths.js'
-import { paymentSchema, initiatePayment } from '../domain/payment.js'
-import { mergeAndValidate } from '../domain/index.js'
+import { paymentSchema, initiatePayment, updateFromGovPayEvent, isPaid, hasStatusChanged } from '../domain/payment.js'
 import { paymentCollection } from '../repositories/payment.js'
+import { orgCollection } from '../repositories/organisation.js'
+import { enableOrg, disableOrg } from '../domain/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
 import { addVersionField, swaggerResponse } from './swagger-common.js'
@@ -32,29 +33,33 @@ export const payments = [
     options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ payment: addVersionField(paymentSchema) }), sample: 0 } },
     handler: async (request, h) => {
       try {
-        const payment = await updateWithOptimisticLock(
-          request.db.collection(paymentCollection),
-          { paymentId: request.params.paymentId, organisationId: request.params.organisationId },
-          (dbPayment) => {
-            const paymentId = request.params.paymentId
-            const organisationId = request.params.organisationId
-            return mergeAndValidate(
-              dbPayment,
-              {
-                paymentId,
-                organisationId,
-                ...request?.payload?.payment
-              },
-              paymentSchema
-            )
+        const paymentId = request.params.paymentId
+        const organisationId = request.params.organisationId
+        let shouldUpdateOrg = false
+        const payment = await updateWithOptimisticLock(request.db.collection(paymentCollection), { paymentId, organisationId }, (dbPayment) => {
+          if (dbPayment.status) {
+            const p = updateFromGovPayEvent(dbPayment, request.payload.payment)
+            shouldUpdateOrg = hasStatusChanged(dbPayment, p)
+            return p
+          } else {
+            throw boom.notFound()
           }
-        )
+        })
+        console.log('shouldUpdateOrg: ', JSON.stringify(shouldUpdateOrg, null, 4))
+        console.log('Payment: ', JSON.stringify(payment, null, 4))
+        if (shouldUpdateOrg) {
+          const f = isPaid(payment) ? enableOrg : (o) => disableOrg(o, 'TODO Payment failed')
+          const y = await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId }, (org) => {
+            const x = f(org)
+            console.log('org >> ', isPaid(payment), JSON.stringify(x, null, 4))
+            return x
+          })
+          console.log('y: ', JSON.stringify(y, null, 4))
+        }
         return h.response({ message: 'success', payment })
       } catch (e) {
-        return h.response({
-          message: 'error',
-          errors: e.isJoi ? e.details : [`${e}`]
-        })
+        console.log('e: ', JSON.stringify(e, null, 4))
+        throw e
       }
     }
   },

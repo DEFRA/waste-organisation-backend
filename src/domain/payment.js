@@ -1,6 +1,6 @@
 import joi from 'joi'
 import { randomUUID } from 'node:crypto'
-// import * as common from './index.js'
+import * as common from './index.js'
 
 const linkData = joi.object({
   href: joi.string(),
@@ -39,7 +39,7 @@ const createPaymentReference = () => `WASTE-${randomUUID().replaceAll('-', '').s
 
 export const initiatePayment = (organisationId, paymentId, amount, description, returnUrl, metadata, govPayLinks) => {
   metadata.organisationId = organisationId
-  return {
+  const payment = {
     organisationId,
     paymentId,
     amount,
@@ -52,6 +52,7 @@ export const initiatePayment = (organisationId, paymentId, amount, description, 
     servicePeriodEnd: new Date(metadata.servicePeriodEnd),
     govPayLinks
   }
+  return common.validate(payment, paymentSchema)
 }
 
 // TODO think about mapping statuses
@@ -71,11 +72,11 @@ export const govPayStatusToStatus = (() => {
     pending: 'refund_in_progress',
     submitted: 'refund_in_progress',
     success: 'refund_succeeded',
-    failed: 'refund_failed'
+    failed: 'payment_succeeded'
   }
-  return (payload) => {
-    const ps = payload?.state?.status
-    const rs = payload?.refund_summary?.status
+  return (govPay) => {
+    const ps = govPay?.state?.status
+    const rs = govPay?.refund_summary?.status
     if (rs) {
       return refundMapping[rs]
     } else {
@@ -83,3 +84,14 @@ export const govPayStatusToStatus = (() => {
     }
   }
 })()
+
+export const updateFromGovPayEvent = (payment, govPay) => {
+  const status = govPayStatusToStatus(govPay)
+  return common.validate({ ...payment, ...(status ? { status } : {}) }, paymentSchema)
+}
+
+export const isPaid = (payment) => payment.status === 'payment_succeeded'
+
+export const isNotPaid = (payment) => payment.status !== 'payment_succeeded'
+
+export const hasStatusChanged = (oldPayment, newPayment) => oldPayment.status !== newPayment.status

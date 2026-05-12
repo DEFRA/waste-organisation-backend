@@ -80,13 +80,9 @@ export const createOrg = (organisationId) => ({
 })
 
 export const disableOrg = (org, reason) => {
-  org.isDisabled = true
-  org.disabledReason = reason
-  return org
+  return { ...org, isDisabled: true, disabledReason: reason }
 }
 
 export const enableOrg = (org) => {
-  org.isDisabled = false
-  org.disabledReason = null
-  return org
+  return { ...org, isDisabled: false, disabledReason: null }
 }
