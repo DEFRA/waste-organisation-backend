@@ -29,7 +29,7 @@ services:
     build:
       context: .
       target: development
-    image:null
+    image: !reset null
 
   waste-organisation-frontend:
     image: defradigital/waste-organisation-frontend:latest
