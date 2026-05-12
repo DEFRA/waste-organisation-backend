@@ -13,7 +13,14 @@ import { randomUUID } from 'node:crypto'
 // swagger import { getPaymentsResponseSchema, putPaymentResponseSchema } from './schemas/payment.js'
 // DONE authentication - pre-shared key?
 
-const createPaymentReference = () => `WASTE-${randomUUID().replaceAll('-', '').toUpperCase()}`
+const uuidToBase36 = (uuid) => {
+  const hex = uuid.replace(/-/g, '')
+  const decimal = BigInt('0x' + hex)
+  return decimal.toString(36)
+}
+
+const createPaymentReference = ({ servicePeriodStart, servicePeriodEnd }) => `WASTE-${servicePeriodStart}-${servicePeriodEnd}-${uuidToBase36(randomUUID())}`
+
 export const payments = [
   {
     method: 'GET',
@@ -36,7 +43,7 @@ export const payments = [
       const organisationId = request.params.organisationId
       let shouldUpdateOrg = false
       const payment = await updateWithOptimisticLock(request.db.collection(paymentCollection), { paymentId, organisationId }, (dbPayment) => {
-        if (dbPayment.status) {
+        if (dbPayment.organisationId) {
           const p = updateFromGovPayEvent(dbPayment, request.payload.payment)
           shouldUpdateOrg = hasStatusChanged(dbPayment, p)
           return p
@@ -65,14 +72,14 @@ export const payments = [
         throw boom.forbidden(`wrong organisationId in metadata: ${metadata?.organisationId} !== ${organisationId}`)
       }
 
-      const reference = createPaymentReference()
+      const reference = createPaymentReference(metadata)
       const { payload, status, statusCode } = await createGovPayPayment({ reference, amount, description, returnUrl, metadata }, request.logger)
       if (status === 'success') {
         const payment = await updateWithOptimisticLock(
           request.db.collection(paymentCollection),
           { paymentId: payload.payment_id, organisationId: request.params.organisationId },
           (_dbPayment) => {
-            return initiatePayment(organisationId, payload.payment_id, amount, description, returnUrl, metadata, payload._links)
+            return initiatePayment(organisationId, payload.payment_id, amount, description, returnUrl, metadata, reference, payload._links)
           }
         )
         return h.response({ message: 'success', payment })

@@ -35,9 +35,7 @@ export const paymentSchema = joi.object({
   createdDate: joi.date()
 })
 
-const createPaymentReference = () => `WASTE-${randomUUID().replaceAll('-', '').slice(0, 8).toUpperCase()}`
-
-export const initiatePayment = (organisationId, paymentId, amount, description, returnUrl, metadata, govPayLinks) => {
+export const initiatePayment = (organisationId, paymentId, amount, description, returnUrl, metadata, reference, govPayLinks) => {
   metadata.organisationId = organisationId
   const payment = {
     organisationId,
@@ -46,7 +44,7 @@ export const initiatePayment = (organisationId, paymentId, amount, description, 
     description,
     returnUrl,
     metadata,
-    reference: createPaymentReference(),
+    reference,
     status: 'payment_in_progress',
     servicePeriodStart: new Date(metadata.servicePeriodStart),
     servicePeriodEnd: new Date(metadata.servicePeriodEnd),
