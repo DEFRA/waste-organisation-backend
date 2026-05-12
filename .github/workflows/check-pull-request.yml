@@ -58,6 +58,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Checkout waste-organisation-frontend repository
+        uses: actions/checkout@v4
+        with:
+          repository: DEFRA/waste-organisation-frontend
+          path: waste-organisation-frontend
+
       - name: Start Docker Compose Services
         id: start-docker-compose-services
         env:
@@ -68,8 +74,8 @@ jobs:
           GOV_NOTIFY_KEY=${GOV_NOTIFY_KEY}
           GOVPAY_API_KEY=${GOVPAY_API_KEY}
           EOF
-          docker compose -f compose.yml -f compose-github.override.yml up -d --wait
-          docker compose -f compose.yml -f compose-github.override.yml ps
+          docker compose -f waste-organisation-frontend/compose.yml -f compose-github.override.be.yml up -d --wait
+          docker compose -f waste-organisation-frontend/compose.yml -f compose-github.override.be.yml ps
 
       - name: Checkout UAT Repository as Integration Test Suite
         uses: actions/checkout@v4
@@ -137,4 +143,4 @@ jobs:
           GOV_NOTIFY_KEY=${GOV_NOTIFY_KEY}
           GOVPAY_API_KEY=${GOVPAY_API_KEY}
           EOF
-          docker compose -f compose.yml -f compose-github.override.yml down
+          docker compose -f waste-organisation-frontend/compose.yml -f compose-github.override.be.yml down
