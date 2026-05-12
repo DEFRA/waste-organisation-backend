@@ -1,5 +1,4 @@
 import joi from 'joi'
-import { randomUUID } from 'node:crypto'
 import * as common from './index.js'
 
 const linkData = joi.object({

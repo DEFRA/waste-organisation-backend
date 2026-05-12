@@ -43,7 +43,7 @@ export const payments = [
       const organisationId = request.params.organisationId
       let shouldUpdateOrg = false
       const payment = await updateWithOptimisticLock(request.db.collection(paymentCollection), { paymentId, organisationId }, (dbPayment) => {
-        if (dbPayment.organisationId) {
+        if (dbPayment.status) {
           const p = updateFromGovPayEvent(dbPayment, request.payload.payment)
           shouldUpdateOrg = hasStatusChanged(dbPayment, p)
           return p
@@ -53,7 +53,7 @@ export const payments = [
       })
       if (shouldUpdateOrg) {
         const f = isPaid(payment) ? enableOrg : (o) => disableOrg(o, 'TODO Payment failed')
-        const y = await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId }, (org) => {
+        await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId }, (org) => {
           const x = f(org)
           return x
         })
