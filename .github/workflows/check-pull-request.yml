@@ -70,7 +70,7 @@ jobs:
           GOV_NOTIFY_KEY: ${{ secrets.GOV_NOTIFY_KEY }}
           GOVPAY_API_KEY: ${{ secrets.GOVPAY_API_KEY }}
         run: |
-          cat > .env <<EOF
+          cat > waste-organisation-frontend/.env <<EOF
           GOV_NOTIFY_KEY=${GOV_NOTIFY_KEY}
           GOVPAY_API_KEY=${GOVPAY_API_KEY}
           EOF
@@ -139,7 +139,7 @@ jobs:
           ORGANISATION_BACKEND_PASSWORD: ${{ secrets.ORGANISATION_BACKEND_PASSWORD }}
           ENVIRONMENT: local
         run: |
-          cat > .env <<EOF
+          cat > waste-organisation-frontend/.env <<EOF
           GOV_NOTIFY_KEY=${GOV_NOTIFY_KEY}
           GOVPAY_API_KEY=${GOVPAY_API_KEY}
           EOF
