@@ -77,11 +77,7 @@ export const govPayStatusToStatus = (() => {
   return (govPay) => {
     const ps = govPay?.state?.status
     const rs = govPay?.refund_summary?.status
-    if (rs) {
-      return refundMapping[rs]
-    } else {
-      return paymentMapping[ps]
-    }
+    return refundMapping[rs] || paymentMapping[ps]
   }
 })()
 

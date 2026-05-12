@@ -45,7 +45,7 @@ describe('payment API', () => {
       payment_provider: 'stripe',
       created_date: '2022-03-25T13:11:29.019Z',
       refund_summary: {
-        status: 'pending',
+        status: 'available',
         amount_available: 14500,
         amount_submitted: 0
       },

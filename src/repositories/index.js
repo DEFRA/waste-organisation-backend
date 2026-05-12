@@ -8,7 +8,6 @@ export const updateWithOptimisticLock = async (collection, query, updateFunction
     const version = doc ? doc.version : { $exists: false }
     const updatedDoc = updateFunction(doc || query)
     if (updatedDoc) {
-      console.log('version: ', query, doc?.version, ' updated > ', updatedDoc?.version)
       delete updatedDoc['version']
       const result = await collection.findOneAndUpdate(
         { ...query, version },
