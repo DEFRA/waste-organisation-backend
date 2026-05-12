@@ -29,12 +29,7 @@ services:
     image: !reset null
     build:
       context: ../
-      dockerfile: ../Dockerfile
       target: development
-    volumes:
-      - ../src:/home/node/src:z
-      - ../package.json:/home/node/package.json:z
-      - ../package-lock.json:/home/node/package-lock.json:z
 
   waste-organisation-frontend:
     image: defradigital/waste-organisation-frontend:latest
