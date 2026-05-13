@@ -15,7 +15,8 @@ export const orgSchemaWithoutApiCodes = joi.object({
   name: joi.string(),
   isWasteReceiver: joi.boolean(),
   isDisabled: joi.boolean(),
-  disabledReason: joi.string()
+  disabledReason: joi.string(),
+  disableAfter: joi.date()
 })
 
 export const orgSchema = orgSchemaWithoutApiCodes.append({
@@ -86,3 +87,5 @@ export const disableOrg = (org, reason) => {
 export const enableOrg = (org) => {
   return { ...org, isDisabled: false, disabledReason: null }
 }
+
+export const isEnabled = (org, at) => org == null || (!org.isDisabled && (!org.disableAfter || (at || new Date()) < org.disableAfter))
