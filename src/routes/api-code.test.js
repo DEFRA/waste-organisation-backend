@@ -246,9 +246,9 @@ describe('api code domain tests', () => {
   test('should throw if no api code found', () => {
     try {
       updateApiCode({}, 'test', 'name')
-      expect(true).toBe(false)
+      expect(true).toBe(false) // nosonar
     } catch {
-      expect(true).toEqual(true)
+      expect(true).toEqual(true) // nosonar
     }
   })
 })

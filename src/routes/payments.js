@@ -14,9 +14,9 @@ import { randomUUID } from 'node:crypto'
 // DONE authentication - pre-shared key?
 
 const uuidToBase36 = (uuid) => {
-  const hex = uuid.replace(/-/g, '')
+  const hex = uuid.replaceAll('-', '')
   const decimal = BigInt('0x' + hex)
-  return decimal.toString(36)
+  return decimal.toString(36) // nosonar
 }
 
 const createPaymentReference = ({ servicePeriodStart, servicePeriodEnd }) => `WASTE-${servicePeriodStart}-${servicePeriodEnd}-${uuidToBase36(randomUUID())}`
@@ -79,7 +79,16 @@ export const payments = [
           request.db.collection(paymentCollection),
           { paymentId: payload.payment_id, organisationId: request.params.organisationId },
           (_dbPayment) => {
-            return initiatePayment(organisationId, payload.payment_id, amount, description, returnUrl, metadata, reference, payload._links)
+            return initiatePayment({
+              organisationId,
+              paymentId: payload.payment_id,
+              amount,
+              description,
+              returnUrl,
+              metadata,
+              reference,
+              govPayLinks: payload._links
+            })
           }
         )
         return h.response({ message: 'success', payment })

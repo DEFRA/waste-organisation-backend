@@ -34,7 +34,7 @@ export const paymentSchema = joi.object({
   createdDate: joi.date()
 })
 
-export const initiatePayment = (organisationId, paymentId, amount, description, returnUrl, metadata, reference, govPayLinks) => {
+export const initiatePayment = ({ organisationId, paymentId, amount, description, returnUrl, metadata, reference, govPayLinks }) => {
   metadata.organisationId = organisationId
   const payment = {
     organisationId,
@@ -52,7 +52,6 @@ export const initiatePayment = (organisationId, paymentId, amount, description, 
   return common.validate(payment, paymentSchema)
 }
 
-// TODO think about mapping statuses
 export const govPayStatusToStatus = (() => {
   const paymentMapping = {
     created: 'payment_in_progress',
@@ -65,7 +64,6 @@ export const govPayStatusToStatus = (() => {
     error: 'payment_failed'
   }
   const refundMapping = {
-    // TODO if a refund fails, it it still paid for?
     pending: 'refund_in_progress',
     submitted: 'refund_in_progress',
     success: 'refund_succeeded',
