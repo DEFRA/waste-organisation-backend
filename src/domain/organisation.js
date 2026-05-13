@@ -9,7 +9,7 @@ export const apiCodeSchema = joi.object({
   isDisabled: joi.boolean()
 })
 
-export const orgSchemaWithouApiCodes = joi.object({
+export const orgSchemaWithoutApiCodes = joi.object({
   organisationId: joi.string().required(),
   users: joi.array().items(joi.string()), // NOTE removed this: .required()
   name: joi.string(),
@@ -18,7 +18,7 @@ export const orgSchemaWithouApiCodes = joi.object({
   disabledReason: joi.string()
 })
 
-export const orgSchema = orgSchemaWithouApiCodes.append({
+export const orgSchema = orgSchemaWithoutApiCodes.append({
   apiCodes: joi.array().items(apiCodeSchema)
 })
 

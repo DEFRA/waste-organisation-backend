@@ -1,5 +1,5 @@
 import { paths } from '../config/paths.js'
-import { mergeAndValidate, createApiCode, orgSchemaWithouApiCodes } from '../domain/organisation.js'
+import { mergeAndValidate, createApiCode, orgSchemaWithoutApiCodes } from '../domain/organisation.js'
 import { orgCollection } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
@@ -12,7 +12,7 @@ export const organisations = [
     options: {
       auth: apiKeyAuthStrategy,
       tags: ['api'],
-      response: { schema: swaggerResponse({ organisation: addVersionField(orgSchemaWithouApiCodes) }), sample: 0 }
+      response: { schema: swaggerResponse({ organisation: addVersionField(orgSchemaWithoutApiCodes) }), sample: 0 }
     },
     handler: async (request, h) => {
       try {
