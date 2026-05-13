@@ -39,9 +39,11 @@ export const organisations = [
             }
           }
         )
+        console.log('organisation: ', JSON.stringify(organisation, null, 4))
         delete organisation.apiCodes
         return h.response({ message: 'success', organisation })
       } catch (e) {
+        console.log('organisation error: ', JSON.stringify(e, null, 4))
         return h.response({
           message: 'error',
           errors: e.isJoi ? e.details : [`${e}`]

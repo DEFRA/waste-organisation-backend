@@ -119,6 +119,13 @@ export const config = convict({
       nullable: true,
       sensitive: true,
       default: null
+    },
+    serviceChargeFreePeriodEnd: {
+      doc: 'The date the free period ends and the service change kicks in.',
+      format: Date,
+      nullable: true,
+      sensitive: true,
+      default: new Date('2026-10-01T00:00:00.000Z')
     }
   },
   aws: {

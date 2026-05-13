@@ -1,4 +1,4 @@
-import { mergeAndValidate, disableOrg, enableOrg, isEnabled } from './organisation.js'
+import { mergeAndValidate, disableOrg, enableOrg, isEnabled, updateDisableAfter } from './organisation.js'
 
 const testData = [
   {
@@ -67,5 +67,21 @@ describe('org is enabled', () => {
   })
   test('null org is disaled', () => {
     expect(isEnabled(null)).toBe(true)
+  })
+})
+
+describe('update disable after', () => {
+  test('set when null', () => {
+    expect(updateDisableAfter({}, new Date('2026-01-01T00:00:00Z'))).toEqual({ disableAfter: new Date('2026-01-01T00:00:00Z') })
+  })
+  test('update to newer time', () => {
+    expect(updateDisableAfter({ disableAfter: new Date('2026-01-01T00:00:00Z') }, new Date('2027-01-01T00:00:00Z'))).toEqual({
+      disableAfter: new Date('2027-01-01T00:00:00Z')
+    })
+  })
+  test('ignore older time', () => {
+    expect(updateDisableAfter({ disableAfter: new Date('2027-01-01T00:00:00Z') }, new Date('2024-01-01T00:00:00Z'))).toEqual({
+      disableAfter: new Date('2027-01-01T00:00:00Z')
+    })
   })
 })

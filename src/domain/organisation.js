@@ -2,6 +2,15 @@ import joi from 'joi'
 import * as common from './index.js'
 import { v4 as uuidv4 } from 'uuid'
 import Boom from '@hapi/boom'
+import { config } from '../config.js'
+
+const defaultOrgValues = (org) => {
+  const disableAfter = org.disableAfter ?? config.get('govPay.serviceChargeFreePeriodEnd')
+  return {
+    ...org,
+    disableAfter
+  }
+}
 
 export const apiCodeSchema = joi.object({
   name: joi.string().required(),
@@ -41,7 +50,7 @@ export const mergeAndValidate = (dbOrg, requestOrg, organisationId, userId) => {
   delete requestOrg.users
   delete requestOrg.organisationId
   const org = userId ? ensureUserInOrg(dbOrg, organisationId, userId) : dbOrg
-  return common.mergeAndValidate(org, requestOrg, orgSchema)
+  return common.mergeAndValidate(defaultOrgValues(org), requestOrg, orgSchema)
 }
 
 export const createApiCode = (org, name) => {
@@ -89,3 +98,8 @@ export const enableOrg = (org) => {
 }
 
 export const isEnabled = (org, at) => org == null || (!org.isDisabled && (!org.disableAfter || (at || new Date()) < org.disableAfter))
+
+export const updateDisableAfter = (org, servicePeriodEnd) => {
+  const disableAfter = org.disableAfter == null || org.disableAfter < servicePeriodEnd ? servicePeriodEnd : org.disableAfter
+  return { ...org, disableAfter }
+}

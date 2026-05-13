@@ -32,6 +32,7 @@ describe('organisation API', () => {
         name: 'Bob',
         organisationId: '456',
         users: ['123'],
+        disableAfter: new Date('2026-10-01T00:00:00.000Z'),
         version: 1
       }
     })
@@ -64,6 +65,7 @@ describe('organisation API', () => {
         name: 'Mr Dabolina',
         organisationId: '456',
         users: ['123', '789'],
+        disableAfter: new Date('2026-10-01T00:00:00.000Z'),
         version: 3
       }
     })

@@ -1,6 +1,7 @@
 import { initialiseServer, WASTE_CLIENT_AUTH_TEST_TOKEN, stopServer } from '../common/helpers/initialse-test-server.js'
 import { paths, pathTo } from '../config/paths.js'
 import { orgCollection } from '../repositories/organisation.js'
+import { isEnabled, disableOrg } from '../domain/organisation.js'
 
 describe('payment API', () => {
   let server
@@ -212,9 +213,9 @@ describe('payment API', () => {
     wreckPostMock.mockImplementation(async () => {
       return fakeGovPayResponse(organisationId)
     })
-    const organisation = { organisationId, name: 'Weyland-Yutani Corporation', isDisabled: true }
+    const organisation = disableOrg({ organisationId, name: 'Weyland-Yutani Corporation' }, 'for testing')
     const r = await updateOrganisation(server, 'user123', organisationId, organisation)
-    expect(JSON.parse(r.payload).organisation.isDisabled).toBe(true)
+    expect(isEnabled(JSON.parse(r.payload).organisation)).toBe(false)
     const r1 = await initiatePayment(server, organisationId, 'organisation name', '2026-05-01T00:00:00.000Z', '2027-05-01T00:00:00.000Z')
     expect(r1.statusCode).toBe(200)
     const { paymentId } = JSON.parse(r1.payload).payment
