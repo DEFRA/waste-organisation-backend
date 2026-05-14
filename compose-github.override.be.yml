@@ -1,0 +1,46 @@
+# GitHub Actions / CI overlay: merge with compose.yml
+#   docker compose -f compose.yml -f compose-github.override.yml up -d --wait
+services:
+  selenium-chrome:
+    image: selenium/standalone-chrome:123.0
+    environment:
+      - SE_NODE_ENABLE_MANAGED_DOWNLOADS=true
+    ports:
+      - 4444:4444
+    networks:
+      - cdp-tenant
+
+  cdp-defra-id-stub:
+    ports: !override
+      - '3200:3200'
+    environment:
+      APP_BASE_URL: http://cdp-defra-id-stub:3200
+
+  cdp-uploader:
+    network_mode: !reset null
+    ports:
+      - '7337:7337'
+    networks:
+      - cdp-tenant
+    environment:
+      APP_BASE_URL: 'http://cdp-uploader:7337'
+  
+  waste-organisation-backend:
+    image: !reset null
+    build:
+      context: ../
+      target: development
+
+  waste-organisation-frontend:
+    image: defradigital/waste-organisation-frontend:latest
+    network_mode: !reset null
+    ports:
+      - '3000:3000'
+    networks:
+      - cdp-tenant
+    environment:
+      LOG_LEVEL: debug
+      APP_BASE_URL: 'http://waste-organisation-frontend:3000'
+      AUTH_DEFRA_ID_OIDC_CONFIGURATION_URL: 'http://cdp-defra-id-stub:3200/cdp-defra-id-stub/.well-known/openid-configuration'
+      FILE_UPLOAD_SERVICE_URL: http://cdp-uploader:7337
+      FILE_UPLOAD_BASE_URL: 'http://waste-organisation-frontend:3000'
