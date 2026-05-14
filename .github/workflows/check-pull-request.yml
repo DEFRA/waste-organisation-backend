@@ -119,7 +119,7 @@ jobs:
           retention-days: 30
 
       - name: Comment Test Report Link on PR
-        if: always() && steps.upload-report.outcome == 'success' && github.event_name == 'pull_request'
+        if: always() && steps.upload-report.outcome == 'success' && github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
         uses: actions/github-script@v7
         with:
           script: |
