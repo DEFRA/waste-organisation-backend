@@ -1,6 +1,7 @@
 // prettier-ignore
 export const paths = {
   getOrganisations:     '/user/{userId}/organisations',
+  getOrganisation:      '/user/{userId}/organisation/{organisationId}',
   putOrganisation:      '/user/{userId}/organisation/{organisationId}',
   getSpreadsheets:      '/spreadsheet/{organisationId}',
   getOneSpreadsheet:    '/spreadsheet/{organisationId}/{uploadId}',

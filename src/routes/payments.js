@@ -10,8 +10,6 @@ import { addVersionField, swaggerResponse } from './swagger-common.js'
 import { createGovPayPayment } from '../services/govPay/index.js'
 import boom from '@hapi/boom'
 import { randomUUID } from 'node:crypto'
-// swagger import { getPaymentsResponseSchema, putPaymentResponseSchema } from './schemas/payment.js'
-// DONE authentication - pre-shared key?
 
 const uuidToBase36 = (uuid) => {
   const hex = uuid.replaceAll('-', '')
