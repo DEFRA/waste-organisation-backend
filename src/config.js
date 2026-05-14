@@ -6,6 +6,26 @@ import { convictValidateMongoUri } from './config/validate-mongo-uri.js'
 convict.addFormat(convictValidateMongoUri)
 convict.addFormats(convictFormatWithValidator)
 
+convict.addFormat({
+  name: 'date',
+  validate: (val) => {
+    if (!(val instanceof Date)) {
+      throw new Error('must be a Date object')
+    }
+  },
+  coerce: (val) => {
+    console.log('val >> ', val)
+    if (typeof val === 'string') {
+      const parsed = new Date(val)
+      if (isNaN(parsed.getTime())) {
+        throw new Error('must be a valid date string')
+      }
+      return parsed
+    }
+    return val
+  }
+})
+
 const productionEnvironments = ['perf-test', 'ext-test', 'prod']
 const isProduction = productionEnvironments.includes(process.env.ENVIRONMENT)
 const isTest = process.env.NODE_ENV === 'test'
@@ -122,10 +142,10 @@ export const config = convict({
     },
     serviceChargeFreePeriodEnd: {
       doc: 'The date the free period ends and the service change kicks in.',
-      format: Date,
+      format: 'date',
       nullable: true,
-      sensitive: true,
-      default: new Date('2026-10-01T00:00:00.000Z')
+      default: '2026-10-01T00:00:00.000Z',
+      env: 'GOVPAY_SERVICE_FREE_PERIOD_END'
     }
   },
   aws: {
