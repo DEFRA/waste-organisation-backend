@@ -1,5 +1,10 @@
 import { mergeAndValidate, disableOrg, enableOrg, isEnabled, updateDisableAfter } from './organisation.js'
 
+const ORANISATION_ID = 'organisationid123'
+const ORANISATION_NAME = 'Bob'
+
+const testOrganisation = { organisationId: ORANISATION_ID, name: ORANISATION_NAME }
+
 const testData = [
   {
     org: {
@@ -31,11 +36,13 @@ describe('organisation domain', () => {
   })
 
   test('enable/disable', () => {
-    const org = { org: { name: 'Bob' } }
+    const org = testOrganisation
     const disabledOrg = disableOrg(org, 'testing')
     expect(disabledOrg.isDisabled).toBe(true)
+    expect(disabledOrg.disabledReason).toBe('testing')
     const enabledOrg = enableOrg(org)
     expect(enabledOrg.isDisabled).toBe(false)
+    expect(enabledOrg.disabledReason).toBe(null)
     expect(disableOrg(enabledOrg).isDisabled).toBe(true)
   })
 })
@@ -72,15 +79,20 @@ describe('org is enabled', () => {
 
 describe('update disable after', () => {
   test('set when null', () => {
-    expect(updateDisableAfter({}, new Date('2026-01-01T00:00:00Z'))).toEqual({ disableAfter: new Date('2026-01-01T00:00:00Z') })
+    expect(updateDisableAfter(testOrganisation, new Date('2026-01-01T00:00:00Z'))).toEqual({
+      ...testOrganisation,
+      disableAfter: new Date('2026-01-01T00:00:00Z')
+    })
   })
   test('update to newer time', () => {
-    expect(updateDisableAfter({ disableAfter: new Date('2026-01-01T00:00:00Z') }, new Date('2027-01-01T00:00:00Z'))).toEqual({
+    expect(updateDisableAfter({ ...testOrganisation, disableAfter: new Date('2026-01-01T00:00:00Z') }, new Date('2027-01-01T00:00:00Z'))).toEqual({
+      ...testOrganisation,
       disableAfter: new Date('2027-01-01T00:00:00Z')
     })
   })
   test('ignore older time', () => {
-    expect(updateDisableAfter({ disableAfter: new Date('2027-01-01T00:00:00Z') }, new Date('2024-01-01T00:00:00Z'))).toEqual({
+    expect(updateDisableAfter({ ...testOrganisation, disableAfter: new Date('2027-01-01T00:00:00Z') }, new Date('2024-01-01T00:00:00Z'))).toEqual({
+      ...testOrganisation,
       disableAfter: new Date('2027-01-01T00:00:00Z')
     })
   })
