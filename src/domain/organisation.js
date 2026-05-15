@@ -5,6 +5,7 @@ import Boom from '@hapi/boom'
 import { config } from '../config.js'
 
 const defaultOrgValues = (org) => {
+  // TODO maybe not store this in the db??
   const disableAfter = org.disableAfter ?? config.get('govPay.serviceChargeFreePeriodEnd')
   return {
     ...org,
@@ -102,4 +103,20 @@ export const isEnabled = (org, at) => org == null || (!org.isDisabled && (!org.d
 export const updateDisableAfter = (org, servicePeriodEnd) => {
   const disableAfter = org.disableAfter == null || org.disableAfter < servicePeriodEnd ? servicePeriodEnd : org.disableAfter
   return { ...org, disableAfter }
+}
+
+export const calculateNextPaymentPeriod = (org, at) => {
+  const startDate = config.get('govPay.serviceChargeFreePeriodEnd')
+  startDate.setFullYear(at.getFullYear() - 1)
+  const maxPayentYear = config.get('govPay.serviceChargeFreePeriodEnd')
+  maxPayentYear.setFullYear(at.getFullYear())
+  const endOfFreePeriod = config.get('govPay.serviceChargeFreePeriodEnd')
+  const paymentPeriods = [null, null, null, null]
+    .map((_) => {
+      const p = new Date(startDate)
+      startDate.setFullYear(p.getFullYear() + 1)
+      return { from: p, to: new Date(startDate) }
+    })
+    .filter(({ to, from }) => to > at && from <= maxPayentYear && to > endOfFreePeriod && (org.disableAfter == null || from <= org.disableAfter))
+  return { ...org, paymentPeriods }
 }

@@ -1,4 +1,5 @@
-import { mergeAndValidate, disableOrg, enableOrg, isEnabled, updateDisableAfter } from './organisation.js'
+import { mergeAndValidate, disableOrg, enableOrg, isEnabled, updateDisableAfter, calculateNextPaymentPeriod } from './organisation.js'
+import { config } from '../config.js'
 
 const testData = [
   {
@@ -83,5 +84,46 @@ describe('update disable after', () => {
     expect(updateDisableAfter({ disableAfter: new Date('2027-01-01T00:00:00Z') }, new Date('2024-01-01T00:00:00Z'))).toEqual({
       disableAfter: new Date('2027-01-01T00:00:00Z')
     })
+  })
+})
+
+describe('calculate payment period', () => {
+  const configDate = config.get('govPay.serviceChargeFreePeriodEnd')
+  beforeAll(() => {
+    config.set('govPay.serviceChargeFreePeriodEnd', new Date('2026-10-01T00:00:00.000Z'))
+  })
+  afterAll(() => {
+    config.set('govPay.serviceChargeFreePeriodEnd', configDate)
+  })
+
+  test('no initial data', () => {
+    expect(calculateNextPaymentPeriod({}, new Date('2026-05-15T14:33:07.718Z')).paymentPeriods).toEqual([
+      {
+        from: new Date('2026-10-01T00:00:00.000Z'),
+        to: new Date('2027-10-01T00:00:00.000Z')
+      }
+    ])
+  })
+
+  test('paid for current year', () => {
+    expect(
+      calculateNextPaymentPeriod(updateDisableAfter({}, new Date('2026-10-01T00:00:00.000Z')), new Date('2026-05-15T14:33:07.718Z')).paymentPeriods
+    ).toEqual([
+      {
+        from: new Date('2026-10-01T00:00:00.000Z'),
+        to: new Date('2027-10-01T00:00:00.000Z')
+      }
+    ])
+  })
+
+  test('paid for last year', () => {
+    expect(
+      calculateNextPaymentPeriod(updateDisableAfter({}, new Date('2026-10-01T00:00:00.000Z')), new Date('2026-11-15T14:33:07.718Z')).paymentPeriods
+    ).toEqual([
+      {
+        from: new Date('2026-10-01T00:00:00.000Z'),
+        to: new Date('2027-10-01T00:00:00.000Z')
+      }
+    ])
   })
 })
