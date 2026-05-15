@@ -50,7 +50,7 @@ export const payments = [
         }
       })
       if (shouldUpdateOrg) {
-        const f = isPaid(payment) ? enableOrg : (o) => disableOrg(o, 'TODO Payment failed')
+        const f = isPaid(payment) ? (o) => enableOrg(updateDisableAfter(o, payment.servicePeriodEnd)) : (o) => disableOrg(o, 'TODO Payment failed')
         await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId }, f)
       }
       return h.response({ message: 'success', payment })

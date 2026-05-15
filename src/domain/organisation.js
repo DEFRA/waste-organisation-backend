@@ -25,7 +25,7 @@ export const orgSchemaWithoutApiCodes = joi.object({
   name: joi.string(),
   isWasteReceiver: joi.boolean(),
   isDisabled: joi.boolean(),
-  disabledReason: joi.string(),
+  disabledReason: joi.string().optional().allow(null),
   disableAfter: joi.date()
 })
 
@@ -91,18 +91,18 @@ export const createOrg = (organisationId) => ({
 })
 
 export const disableOrg = (org, reason) => {
-  return { ...org, isDisabled: true, disabledReason: reason }
+  return common.validate({ ...org, isDisabled: true, disabledReason: reason }, orgSchema)
 }
 
 export const enableOrg = (org) => {
-  return { ...org, isDisabled: false, disabledReason: null }
+  return common.validate({ ...org, isDisabled: false, disabledReason: null }, orgSchema)
 }
 
 export const isEnabled = (org, at) => org == null || (!org.isDisabled && (!org.disableAfter || (at || new Date()) < org.disableAfter))
 
 export const updateDisableAfter = (org, servicePeriodEnd) => {
   const disableAfter = org.disableAfter == null || org.disableAfter < servicePeriodEnd ? servicePeriodEnd : org.disableAfter
-  return { ...org, disableAfter }
+  return common.validate({ ...org, disableAfter }, orgSchema)
 }
 
 export const calculateNextPaymentPeriod = (org, at) => {
