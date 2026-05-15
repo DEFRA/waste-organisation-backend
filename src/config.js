@@ -14,7 +14,6 @@ convict.addFormat({
     }
   },
   coerce: (val) => {
-    console.log('val >> ', val)
     if (typeof val === 'string') {
       const parsed = new Date(val)
       if (isNaN(parsed.getTime())) {
