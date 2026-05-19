@@ -118,6 +118,7 @@ export const calculateNextPaymentPeriod = (() => {
     p.setFullYear(at.getFullYear())
     p.setDate(day)
     p.setMonth(month - 1)
+    console.log(`paymentWindow >> `, p, at)
     return p
   }
 
@@ -132,7 +133,12 @@ export const calculateNextPaymentPeriod = (() => {
         return { from: p, to: new Date(startDate) }
       })
       .filter(({ to }) => to > endOfFreePeriod)
-      .filter(({ from }) => org.disableAfter == null || (from >= org.disableAfter && at > paymentWindowStart))
+      .filter(({ from, to }) => {
+        const noInitialData = org.disableAfter == null
+        const periodPaidFor = from >= org.disableAfter
+        const inRange = at > paymentWindowStart && at < to
+        return inRange && (noInitialData || periodPaidFor)
+      })
       .slice(0, 1)
     return { ...org, paymentPeriods }
   }
