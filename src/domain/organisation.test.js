@@ -164,4 +164,8 @@ describe('calculate payment period', () => {
       { from: october25, to: october26 }
     ])
   })
+
+  test('config validator throws on invalid data', () => {
+    expect(() => config.set('govPay.serviceChargeFreePeriodEnd', 'boeucoeru')).toThrow(/must be a valid date string/)
+  })
 })
