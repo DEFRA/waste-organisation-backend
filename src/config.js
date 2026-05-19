@@ -6,6 +6,8 @@ import { convictValidateMongoUri } from './config/validate-mongo-uri.js'
 convict.addFormat(convictValidateMongoUri)
 convict.addFormats(convictFormatWithValidator)
 
+const isString = (val) => typeof val === 'string' || val instanceof String
+
 convict.addFormat({
   name: 'date',
   validate: (val) => {
@@ -14,7 +16,7 @@ convict.addFormat({
     }
   },
   coerce: (val) => {
-    if (typeof val === 'string') {
+    if (isString(val)) {
       const parsed = new Date(val)
       if (isNaN(parsed.getTime())) {
         throw new Error('must be a valid date string')
@@ -144,6 +146,19 @@ export const config = convict({
       format: 'date',
       nullable: true,
       default: '2026-10-01T00:00:00.000Z',
+      env: 'GOVPAY_SERVICE_FREE_PERIOD_END'
+    },
+    serviceChargePaymentWindowStart: {
+      doc: 'The date the payment window opens in "dd-mm" format.',
+      format: String,
+      validate: (val) => {
+        if (isString(val) && val.match(/^([0123]?[0-9])-(1[012]|0?[1-9])$/)) {
+          return val
+        }
+        throw new Error('payment window should be in format `DD-MM`')
+      },
+      nullable: true,
+      default: '07-01',
       env: 'GOVPAY_SERVICE_FREE_PERIOD_END'
     }
   },

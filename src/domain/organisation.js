@@ -105,18 +105,35 @@ export const updateDisableAfter = (org, servicePeriodEnd) => {
   return common.validate({ ...org, disableAfter }, orgSchema)
 }
 
-export const calculateNextPaymentPeriod = (org, at) => {
-  const startDate = config.get('govPay.serviceChargeFreePeriodEnd')
-  startDate.setFullYear(at.getFullYear() - 1)
-  const maxPayentYear = config.get('govPay.serviceChargeFreePeriodEnd')
-  maxPayentYear.setFullYear(at.getFullYear())
-  const endOfFreePeriod = config.get('govPay.serviceChargeFreePeriodEnd')
-  const paymentPeriods = [null, null, null, null]
-    .map((_) => {
-      const p = new Date(startDate)
-      startDate.setFullYear(p.getFullYear() + 1)
-      return { from: p, to: new Date(startDate) }
-    })
-    .filter(({ to, from }) => to > at && from <= maxPayentYear && to > endOfFreePeriod && (org.disableAfter == null || from <= org.disableAfter))
-  return { ...org, paymentPeriods }
-}
+export const calculateNextPaymentPeriod = (() => {
+  const getStartDate = (at) => {
+    const s = config.get('govPay.serviceChargeFreePeriodEnd')
+    s.setFullYear(at.getFullYear() - 1)
+    return s
+  }
+
+  const getPaymentWindowStart = (at, paymentPeriodStart) => {
+    const [_, day, month] = config.get('govPay.serviceChargePaymentWindowStart').match(/([0-9]+)-([0-9]+)/)
+    const p = new Date(paymentPeriodStart)
+    p.setFullYear(at.getFullYear())
+    p.setDate(day)
+    p.setMonth(month - 1)
+    return p
+  }
+
+  return (org, at) => {
+    const startDate = getStartDate(at)
+    const paymentWindowStart = getPaymentWindowStart(at, startDate)
+    const endOfFreePeriod = config.get('govPay.serviceChargeFreePeriodEnd')
+    const paymentPeriods = [null, null, null, null, null]
+      .map((_) => {
+        const p = new Date(startDate)
+        startDate.setFullYear(p.getFullYear() + 1)
+        return { from: p, to: new Date(startDate) }
+      })
+      .filter(({ to }) => to > endOfFreePeriod)
+      .filter(({ from }) => org.disableAfter == null || (from >= org.disableAfter && at > paymentWindowStart))
+      .slice(0, 1)
+    return { ...org, paymentPeriods }
+  }
+})()

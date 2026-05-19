@@ -101,41 +101,57 @@ describe('update disable after', () => {
 
 describe('calculate payment period', () => {
   const configDate = config.get('govPay.serviceChargeFreePeriodEnd')
-  beforeAll(() => {
-    config.set('govPay.serviceChargeFreePeriodEnd', new Date('2026-10-01T00:00:00.000Z'))
+  const configStart = config.get('govPay.serviceChargePaymentWindowStart')
+
+  const lastOctober = new Date('2025-10-01T00:00:00.000Z')
+  const october = new Date('2026-10-01T00:00:00.000Z')
+  const nextOctober = new Date('2027-10-01T00:00:00.000Z')
+  const may = new Date('2026-05-15T14:33:07.718Z')
+  const march = new Date('2026-03-15T14:33:07.718Z')
+  const november = new Date('2026-11-15T14:33:07.718Z')
+  const nextMay = new Date('2027-05-15T14:33:07.718Z')
+
+  beforeEach(() => {
+    config.set('govPay.serviceChargeFreePeriodEnd', new Date('1991-10-01T00:00:00.000Z'))
+    config.set('govPay.serviceChargePaymentWindowStart', '1-4') // first of April
   })
   afterAll(() => {
     config.set('govPay.serviceChargeFreePeriodEnd', configDate)
+    config.set('govPay.serviceChargePaymentWindowStart', configStart)
   })
 
-  test('no initial data', () => {
-    expect(calculateNextPaymentPeriod({}, new Date('2026-05-15T14:33:07.718Z')).paymentPeriods).toEqual([
-      {
-        from: new Date('2026-10-01T00:00:00.000Z'),
-        to: new Date('2027-10-01T00:00:00.000Z')
-      }
-    ])
+  test('no initial data, during free period', () => {
+    config.set('govPay.serviceChargeFreePeriodEnd', october)
+    expect(calculateNextPaymentPeriod(testOrganisation, may).paymentPeriods).toEqual([{ from: october, to: nextOctober }])
   })
 
-  test('paid for current year', () => {
-    expect(
-      calculateNextPaymentPeriod(updateDisableAfter({}, new Date('2026-10-01T00:00:00.000Z')), new Date('2026-05-15T14:33:07.718Z')).paymentPeriods
-    ).toEqual([
-      {
-        from: new Date('2026-10-01T00:00:00.000Z'),
-        to: new Date('2027-10-01T00:00:00.000Z')
-      }
-    ])
+  test('no initial data, payment window open', () => {
+    expect(calculateNextPaymentPeriod(testOrganisation, may).paymentPeriods).toEqual([{ from: lastOctober, to: october }])
   })
 
-  test('paid for last year', () => {
-    expect(
-      calculateNextPaymentPeriod(updateDisableAfter({}, new Date('2026-10-01T00:00:00.000Z')), new Date('2026-11-15T14:33:07.718Z')).paymentPeriods
-    ).toEqual([
-      {
-        from: new Date('2026-10-01T00:00:00.000Z'),
-        to: new Date('2027-10-01T00:00:00.000Z')
-      }
+  test('no initial data, payment window closed', () => {
+    expect(calculateNextPaymentPeriod(testOrganisation, november).paymentPeriods).toEqual([{ from: lastOctober, to: october }])
+  })
+
+  test('paid for last year, payment window open', () => {
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october), nextMay).paymentPeriods).toEqual([{ from: october, to: nextOctober }])
+  })
+
+  test('paid for current year, payment window open', () => {
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october), may).paymentPeriods).toEqual([{ from: october, to: nextOctober }])
+  })
+
+  test('paid for current year, payment window closed', () => {
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october), march).paymentPeriods).toEqual([])
+  })
+
+  test('paid for last year, payment window closed', () => {
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october), november).paymentPeriods).toEqual([{ from: october, to: nextOctober }])
+  })
+
+  test('paid for some time way in the past, payment window open', () => {
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, new Date('1991-10-01T00:00:00.000Z')), november).paymentPeriods).toEqual([
+      { from: lastOctober, to: october }
     ])
   })
 })
