@@ -4,9 +4,11 @@ import { v4 as uuidv4 } from 'uuid'
 import Boom from '@hapi/boom'
 import { config } from '../config.js'
 
+const freePeriodEnd = () => config.get('govPay.serviceChargeFreePeriodEnd')
+
 const defaultOrgValues = (org) => {
   // TODO maybe not store this in the db??
-  const disableAfter = org.disableAfter ?? config.get('govPay.serviceChargeFreePeriodEnd')
+  const disableAfter = org.disableAfter ?? freePeriodEnd()
   return {
     ...org,
     disableAfter
@@ -107,7 +109,7 @@ export const updateDisableAfter = (org, servicePeriodEnd) => {
 
 export const calculateNextPaymentPeriod = (() => {
   const getStartDate = (at) => {
-    const s = config.get('govPay.serviceChargeFreePeriodEnd')
+    const s = freePeriodEnd()
     s.setFullYear(at.getFullYear() - 1)
     return s
   }
@@ -125,7 +127,7 @@ export const calculateNextPaymentPeriod = (() => {
   return (org, at) => {
     const startDate = getStartDate(at)
     const paymentWindowStart = getPaymentWindowStart(at, startDate)
-    const endOfFreePeriod = config.get('govPay.serviceChargeFreePeriodEnd')
+    const endOfFreePeriod = freePeriodEnd()
     const paymentPeriods = [null, null, null, null, null]
       .map((_) => {
         const p = new Date(startDate)
