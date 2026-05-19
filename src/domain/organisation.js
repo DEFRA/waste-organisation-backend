@@ -115,7 +115,7 @@ export const calculateNextPaymentPeriod = (() => {
   }
 
   const getPaymentWindowStart = (at, paymentPeriodStart) => {
-    const [_, day, month] = config.get('govPay.serviceChargePaymentWindowStart').match(/([0-9]+)-([0-9]+)/)
+    const [_, day, month] = config.get('govPay.serviceChargePaymentWindowStart').match(/([0-9]+)-([0-9]+)/) // nosonar
     const p = new Date(paymentPeriodStart)
     p.setFullYear(at.getFullYear())
     p.setDate(day)
