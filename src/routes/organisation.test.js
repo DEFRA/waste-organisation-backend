@@ -111,7 +111,12 @@ describe('organisation API', () => {
               name: 'API Code 1'
             }
           ],
-
+          paymentPeriods: [
+            {
+              from: new Date('2026-10-01T00:00:00.000Z'),
+              to: new Date('2027-10-01T00:00:00.000Z')
+            }
+          ],
           users: ['123'],
           disableAfter: new Date('2026-10-01T00:00:00.000Z'),
           version: expect.anything()

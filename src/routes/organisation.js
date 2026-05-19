@@ -1,5 +1,5 @@
 import { paths } from '../config/paths.js'
-import { mergeAndValidate, createApiCode, orgSchemaWithoutApiCodes } from '../domain/organisation.js'
+import { mergeAndValidate, createApiCode, orgSchemaWithoutApiCodes, calculateNextPaymentPeriod } from '../domain/organisation.js'
 import { orgCollection, findOrganisationById } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
@@ -19,7 +19,10 @@ export const organisations = [
       const organisation = await findOrganisationById(request.db, request.params.organisationId)
       if (organisation) {
         if (organisation.users.includes(request.params.userId)) {
-          return h.response({ message: 'success', organisation })
+          return h.response({
+            message: 'success',
+            organisation: calculateNextPaymentPeriod(organisation, request?.info?.received ? new Date(request?.info?.received) : new Date())
+          })
         } else {
           throw boom.forbidden()
         }
