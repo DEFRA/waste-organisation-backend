@@ -1,10 +1,17 @@
-import { mergeAndValidate, disableOrg, enableOrg, isEnabled, updateDisableAfter, calculateNextPaymentPeriod } from './organisation.js'
+import {
+  mergeAndValidate,
+  disableOrg,
+  enableOrg,
+  isEnabled,
+  updateDisableAfter,
+  calculateNextPaymentPeriod,
+  updateOrganisationPaymentStatus
+} from './organisation.js'
 import { config } from '../config.js'
+import { faker } from '@faker-js/faker'
 
 const ORANISATION_ID = 'organisationid123'
 const ORANISATION_NAME = 'Bob'
-
-const testOrganisation = { organisationId: ORANISATION_ID, name: ORANISATION_NAME }
 
 const testData = [
   {
@@ -37,7 +44,7 @@ describe('organisation domain', () => {
   })
 
   test('enable/disable', () => {
-    const org = testOrganisation
+    const org = createOrganisation()
     const disabledOrg = disableOrg(org, 'testing')
     expect(disabledOrg.isDisabled).toBe(true)
     expect(disabledOrg.disabledReason).toBe('testing')
@@ -80,20 +87,25 @@ describe('org is enabled', () => {
 
 describe('update disable after', () => {
   test('set when null', () => {
-    expect(updateDisableAfter(testOrganisation, new Date('2026-01-01T00:00:00Z'))).toEqual({
-      ...testOrganisation,
-      disableAfter: new Date('2026-01-01T00:00:00Z')
+    const organisation = createOrganisation()
+    const nextDate = addYears(new Date(), 2)
+
+    expect(updateDisableAfter(organisation, nextDate)).toEqual({
+      ...organisation,
+      disableAfter: nextDate
     })
   })
   test('update to newer time', () => {
-    expect(updateDisableAfter({ ...testOrganisation, disableAfter: new Date('2026-01-01T00:00:00Z') }, new Date('2027-01-01T00:00:00Z'))).toEqual({
-      ...testOrganisation,
+    const organisation = createOrganisation()
+    expect(updateDisableAfter({ ...organisation, disableAfter: new Date('2026-01-01T00:00:00Z') }, new Date('2027-01-01T00:00:00Z'))).toEqual({
+      ...organisation,
       disableAfter: new Date('2027-01-01T00:00:00Z')
     })
   })
   test('ignore older time', () => {
-    expect(updateDisableAfter({ ...testOrganisation, disableAfter: new Date('2027-01-01T00:00:00Z') }, new Date('2024-01-01T00:00:00Z'))).toEqual({
-      ...testOrganisation,
+    const organisation = createOrganisation()
+    expect(updateDisableAfter({ ...organisation, disableAfter: new Date('2027-01-01T00:00:00Z') }, new Date('2024-01-01T00:00:00Z'))).toEqual({
+      ...organisation,
       disableAfter: new Date('2027-01-01T00:00:00Z')
     })
   })
@@ -110,6 +122,7 @@ describe('calculate payment period', () => {
   const march26 = new Date('2026-03-15T14:33:07.718Z')
   const november26 = new Date('2026-11-15T14:33:07.718Z')
   const may27 = new Date('2027-05-15T14:33:07.718Z')
+  const testOrganisation = { organisationId: ORANISATION_ID, name: ORANISATION_NAME }
 
   beforeEach(() => {
     config.set('govPay.serviceChargeFreePeriodEnd', new Date('1991-10-01T00:00:00.000Z'))
@@ -169,3 +182,107 @@ describe('calculate payment period', () => {
     expect(() => config.set('govPay.serviceChargeFreePeriodEnd', 'boeucoeru')).toThrow(/must be a valid date string/)
   })
 })
+
+describe('updateOrganisationPaymentStatus', () => {
+  it('should not update the organisation if payment is in progress', () => {
+    const payment = createPayment('payment_in_progress')
+    const initialOrganisation = createOrganisation()
+    const updatedOrganisation = updateOrganisationPaymentStatus(initialOrganisation, payment)
+    expect(updatedOrganisation).toEqual(initialOrganisation)
+    expect(isEnabled(updatedOrganisation)).toBe(false)
+  })
+
+  it('should enable organisation if payment successfull', () => {
+    const payment = createPayment('payment_succeeded')
+    const initialOrganisation = createOrganisation()
+    const updatedOrganisation = updateOrganisationPaymentStatus(initialOrganisation, payment)
+    expect(updatedOrganisation).toEqual({ ...initialOrganisation, disabledReason: null, isDisabled: false, disableAfter: payment.servicePeriodEnd })
+    expect(isEnabled(updatedOrganisation)).toBe(true)
+  })
+
+  it('should disable organisation if payment failed', () => {
+    const payment = createPayment('payment_failed')
+    const initialOrganisation = createOrganisation()
+    const updatedOrganisation = updateOrganisationPaymentStatus(initialOrganisation, payment)
+    expect(updatedOrganisation).toEqual({ ...initialOrganisation, disabledReason: 'Payment failed' })
+    expect(isEnabled(updatedOrganisation)).toBe(false)
+  })
+
+  it('should set disabledAfter to last successfull payment', () => {
+    const initialOrganisation = createOrganisation()
+    const date = new Date()
+    const payments = [
+      createPayment('payment_succeeded', addYears(date, 1)),
+      createPayment('payment_succeeded', addYears(date, 1)),
+      createPayment('payment_succeeded', addYears(date, 1))
+    ]
+    const updatedOrganisation = createPaymentEvents(initialOrganisation, payments)
+    expect(updatedOrganisation.disableAfter).toEqual(payments[2].servicePeriodEnd)
+    expect(isEnabled(updatedOrganisation)).toBe(true)
+  })
+
+  it('should set disabledAfter to last successfull payment when last payments failed', () => {
+    const initialOrganisation = createOrganisation()
+    const date = new Date()
+    const payments = [
+      createPayment('payment_succeeded', addYears(date, 1)),
+      createPayment('payment_succeeded', addYears(date, 1)),
+      createPayment('payment_failed', addYears(date, 1))
+    ]
+    const updatedOrganisation = createPaymentEvents(initialOrganisation, payments)
+    expect(updatedOrganisation.disableAfter).toEqual(payments[1].servicePeriodEnd)
+    expect(isEnabled(updatedOrganisation)).toBe(true)
+  })
+
+  it('should set disabledAfter to last successfull payment when last payments pending', () => {
+    const initialOrganisation = createOrganisation()
+    const date = new Date()
+    const payments = [
+      createPayment('payment_succeeded', addYears(date, 1)),
+      createPayment('payment_succeeded', addYears(date, 2)),
+      createPayment('payment_in_progress', addYears(date, 3))
+    ]
+    const updatedOrganisation = createPaymentEvents(initialOrganisation, payments)
+    expect(updatedOrganisation.disableAfter).toEqual(payments[1].servicePeriodEnd)
+    expect(isEnabled(updatedOrganisation)).toBe(true)
+  })
+
+  it.each(['payment_in_progress', 'payment_succeeded', 'payment_failed'])(
+    'should not update the disabled status of a disabled organisation',
+    (paymentStatus) => {
+      const payment = createPayment(paymentStatus)
+      const org = createOrganisation(true)
+      const organisation = updateOrganisationPaymentStatus(org, payment)
+      expect(isEnabled(organisation)).toBe(false)
+    }
+  )
+})
+
+const createOrganisation = (isDisabled = false) => ({
+  organisationId: ORANISATION_ID,
+  name: ORANISATION_NAME,
+  disableAfter: faker.date.past(),
+  isDisabled
+})
+
+const createPayment = (status, servicePeriodEnd) => {
+  console.log('servicePeriodEnd before if', servicePeriodEnd)
+  if (!servicePeriodEnd) {
+    servicePeriodEnd = addYears(new Date(), 1)
+  }
+
+  return {
+    organisationId: 'ORGID',
+    paymentId: 'qfs1896l6uo7i4p1rdm2cu5did',
+    amount: 2600,
+    servicePeriodEnd,
+    servicePeriodStart: new Date(),
+    status
+  }
+}
+
+const addYears = (date, years = 1) => new Date(date.setFullYear(date.getFullYear() + years))
+
+const createPaymentEvents = (initialOrganisation, events) => {
+  return events.reduce((event, currentOrganisation) => updateOrganisationPaymentStatus(event, currentOrganisation), initialOrganisation)
+}

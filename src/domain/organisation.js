@@ -93,7 +93,7 @@ export const createOrg = (organisationId) => ({
 })
 
 export const disableOrg = (org, reason) => {
-  return common.validate({ ...org, isDisabled: true, disabledReason: reason }, orgSchema)
+  return common.validate({ ...org, disabledReason: reason, isDisabled: true }, orgSchema)
 }
 
 export const enableOrg = (org) => {
@@ -101,6 +101,18 @@ export const enableOrg = (org) => {
 }
 
 export const isEnabled = (org, at) => org == null || (!org.isDisabled && (!org.disableAfter || (at || new Date()) < org.disableAfter))
+
+export const updateOrganisationPaymentStatus = (org, payment) => {
+  if (payment.status === 'payment_in_progress') {
+    return common.validate(org, orgSchema)
+  }
+
+  if (payment.status === 'payment_succeeded') {
+    return common.validate(updateDisableAfter({ ...org, disabledReason: null }, payment.servicePeriodEnd), orgSchema)
+  }
+
+  return common.validate({ ...org, disabledReason: 'Payment failed' }, orgSchema)
+}
 
 export const updateDisableAfter = (org, servicePeriodEnd) => {
   const disableAfter = org.disableAfter == null || org.disableAfter < servicePeriodEnd ? servicePeriodEnd : org.disableAfter
