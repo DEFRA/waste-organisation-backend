@@ -2,6 +2,8 @@ import { initialiseServer, WASTE_CLIENT_AUTH_TEST_TOKEN, stopServer } from '../c
 import { paths, pathTo } from '../config/paths.js'
 import { orgCollection } from '../repositories/organisation.js'
 import { isEnabled, disableOrg } from '../domain/organisation.js'
+// import { faker } from '@faker-js/faker'
+//import { payments } from './payments.js'
 
 describe('payment API', () => {
   let server
@@ -20,6 +22,37 @@ describe('payment API', () => {
   afterAll(async () => {
     stopServer(server)
   })
+
+  // test('get payment should respond with payment', async () => {
+  //   const collectionMock = vi.fn()
+  //   const findOneMock = vi.fn()
+  //   const mockResponse = vi.fn()
+  //   const mockPayment = {
+  //     status: 'pending'
+  //   }
+
+  //   const request = {
+  //     params: {
+  //       paymentId: faker.string.uuid(),
+  //       organisationId: faker.string.uuid()
+  //     },
+  //     db: {
+  //       collection: collectionMock.mockReturnValue({
+  //         findOne: findOneMock.mockReturnValue({
+  //           _id: faker.string.uuid(),
+  //           ...mockPayment
+  //         })
+  //       })
+  //     }
+  //   }
+
+  //   await payments[0].handler(request, { response: mockResponse })
+
+  //   expect(mockResponse).toBeCalledWith({
+  //     message: 'success',
+  //     payment: mockPayment
+  //   })
+  // })
 
   test('Should error if payment not found', async () => {
     const organisationId = 'abc123'
