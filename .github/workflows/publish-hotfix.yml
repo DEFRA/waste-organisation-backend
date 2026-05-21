@@ -2,9 +2,10 @@ name: Publish Hot Fix
 
 on:
   workflow_dispatch:
+rmissions:
+id-token: write
 
-permissions:
-  id-token: write
+
   contents: write
   pull-requests: write
 

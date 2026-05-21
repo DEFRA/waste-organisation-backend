@@ -4,9 +4,10 @@ on:
   push:
     branches:
       - main
+rmissions:
+id-token: write
 
-permissions:
-  id-token: write
+
   contents: write
   pull-requests: write
 

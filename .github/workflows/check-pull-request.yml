@@ -11,9 +11,10 @@ on:
       - synchronize
       - ready_for_review
 
+permissions:
+  contents: read
+
 jobs:
-  permissions:
-    contents: read
   pr-validator:
     name: Run Pull Request Checks
     runs-on: ubuntu-latest
