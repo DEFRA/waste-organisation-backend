@@ -15,6 +15,8 @@ env:
   AWS_ACCOUNT_ID: "094954420758"
 
 jobs:
+  permissions:
+    contents: read
   build:
     if: github.run_number != 1
     name: CDP-build-workflow
