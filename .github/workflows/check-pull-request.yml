@@ -12,8 +12,6 @@ on:
       - ready_for_review
 
 jobs:
-  permissions:
-    contents: read
   pr-validator:
     name: Run Pull Request Checks
     runs-on: ubuntu-latest
