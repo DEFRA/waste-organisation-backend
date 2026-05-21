@@ -2,10 +2,9 @@ name: Publish Hot Fix
 
 on:
   workflow_dispatch:
-rmissions:
-id-token: write
 
-
+permissions:
+  id-token: write
   contents: write
   pull-requests: write
 
@@ -14,8 +13,6 @@ env:
   AWS_ACCOUNT_ID: "094954420758"
 
 jobs:
-  permissions:
-    contents: read
   build:
     name: CDP-build-hotfix-workflow
     runs-on: ubuntu-latest
