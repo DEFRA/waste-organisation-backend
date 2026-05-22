@@ -115,7 +115,7 @@ describe('organisation API', () => {
             {
               from: new Date('2026-10-01T00:00:00.000Z'),
               to: new Date('2027-10-01T00:00:00.000Z'),
-              priceInPence: 100
+              priceInPence: 2600
             }
           ],
           users: ['123'],
