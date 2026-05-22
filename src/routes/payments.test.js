@@ -31,7 +31,7 @@ describe('payment API', () => {
       paymentId,
       status: 'pending'
     }
-    await server.db.collection(paymentCollection).insertOne(mockPayment)
+    await server.db.collection(paymentCollection).insertOne({ ...mockPayment })
     const { statusCode, payload } = await server.inject({
       method: 'GET',
       headers: {
@@ -39,8 +39,6 @@ describe('payment API', () => {
       },
       url: pathTo(paths.payment, { organisationId, paymentId })
     })
-
-    delete mockPayment._id
     expect(JSON.parse(payload)).toEqual({
       message: 'success',
       payment: mockPayment
