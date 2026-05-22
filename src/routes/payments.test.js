@@ -2,8 +2,8 @@ import { initialiseServer, WASTE_CLIENT_AUTH_TEST_TOKEN, stopServer } from '../c
 import { paths, pathTo } from '../config/paths.js'
 import { orgCollection } from '../repositories/organisation.js'
 import { isEnabled, disableOrg } from '../domain/organisation.js'
-// import { faker } from '@faker-js/faker'
-//import { payments } from './payments.js'
+import { paymentCollection } from '../repositories/payment.js'
+import { faker } from '@faker-js/faker'
 
 describe('payment API', () => {
   let server
@@ -23,36 +23,30 @@ describe('payment API', () => {
     stopServer(server)
   })
 
-  // test('get payment should respond with payment', async () => {
-  //   const collectionMock = vi.fn()
-  //   const findOneMock = vi.fn()
-  //   const mockResponse = vi.fn()
-  //   const mockPayment = {
-  //     status: 'pending'
-  //   }
+  test('get payment should respond with payment', async () => {
+    const organisationId = faker.string.uuid()
+    const paymentId = faker.string.uuid()
+    const mockPayment = {
+      organisationId,
+      paymentId,
+      status: 'pending'
+    }
+    await server.db.collection(paymentCollection).insertOne(mockPayment)
+    const { statusCode, payload } = await server.inject({
+      method: 'GET',
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
+      url: pathTo(paths.payment, { organisationId, paymentId })
+    })
 
-  //   const request = {
-  //     params: {
-  //       paymentId: faker.string.uuid(),
-  //       organisationId: faker.string.uuid()
-  //     },
-  //     db: {
-  //       collection: collectionMock.mockReturnValue({
-  //         findOne: findOneMock.mockReturnValue({
-  //           _id: faker.string.uuid(),
-  //           ...mockPayment
-  //         })
-  //       })
-  //     }
-  //   }
-
-  //   await payments[0].handler(request, { response: mockResponse })
-
-  //   expect(mockResponse).toBeCalledWith({
-  //     message: 'success',
-  //     payment: mockPayment
-  //   })
-  // })
+    delete mockPayment._id
+    expect(JSON.parse(payload)).toEqual({
+      message: 'success',
+      payment: mockPayment
+    })
+    expect(statusCode).toEqual(200)
+  })
 
   test('Should error if payment not found', async () => {
     const organisationId = 'abc123'
