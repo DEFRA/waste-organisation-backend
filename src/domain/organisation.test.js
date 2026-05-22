@@ -114,6 +114,7 @@ describe('update disable after', () => {
 describe('calculate payment period', () => {
   const configDate = config.get('govPay.serviceChargeFreePeriodEnd')
   const configStart = config.get('govPay.serviceChargePaymentWindowStart')
+  const configPrice = config.get('govPay.serviceChargeAmountPence')
 
   const october25 = new Date('2025-10-01T00:00:00.000Z')
   const october26 = new Date('2026-10-01T00:00:00.000Z')
@@ -127,35 +128,41 @@ describe('calculate payment period', () => {
   beforeEach(() => {
     config.set('govPay.serviceChargeFreePeriodEnd', new Date('1991-10-01T00:00:00.000Z'))
     config.set('govPay.serviceChargePaymentWindowStart', '1-4') // first of April
+    config.set('govPay.serviceChargeAmountPence', 100) // first of April
   })
   afterAll(() => {
     config.set('govPay.serviceChargeFreePeriodEnd', configDate)
     config.set('govPay.serviceChargePaymentWindowStart', configStart)
+    config.set('govPay.serviceChargeAmountPence', configPrice)
   })
 
   test('no initial data, during free period', () => {
     config.set('govPay.serviceChargeFreePeriodEnd', october26)
-    expect(calculateNextPaymentPeriod(testOrganisation, may26).paymentPeriods).toEqual([{ from: october26, to: october27 }])
+    expect(calculateNextPaymentPeriod(testOrganisation, may26).paymentPeriods).toEqual([{ from: october26, to: october27, priceInPence: 100 }])
   })
 
   test('no initial data, payment window open', () => {
-    expect(calculateNextPaymentPeriod(testOrganisation, may26).paymentPeriods).toEqual([{ from: october25, to: october26 }])
+    expect(calculateNextPaymentPeriod(testOrganisation, may26).paymentPeriods).toEqual([{ from: october25, to: october26, priceInPence: 100 }])
   })
 
   test('no initial data, payment window closed', () => {
-    expect(calculateNextPaymentPeriod(testOrganisation, may26).paymentPeriods).toEqual([{ from: october25, to: october26 }])
+    expect(calculateNextPaymentPeriod(testOrganisation, may26).paymentPeriods).toEqual([{ from: october25, to: october26, priceInPence: 100 }])
   })
 
   test('no initial data, payment window closed', () => {
-    expect(calculateNextPaymentPeriod(testOrganisation, november26).paymentPeriods).toEqual([{ from: october26, to: october27 }])
+    expect(calculateNextPaymentPeriod(testOrganisation, november26).paymentPeriods).toEqual([{ from: october26, to: october27, priceInPence: 100 }])
   })
 
   test('paid for last year, payment window open', () => {
-    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october26), may27).paymentPeriods).toEqual([{ from: october26, to: october27 }])
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october26), may27).paymentPeriods).toEqual([
+      { from: october26, to: october27, priceInPence: 100 }
+    ])
   })
 
   test('paid for current year, payment window open', () => {
-    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october26), may26).paymentPeriods).toEqual([{ from: october26, to: october27 }])
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october26), may26).paymentPeriods).toEqual([
+      { from: october26, to: october27, priceInPence: 100 }
+    ])
   })
 
   test('paid for current year, payment window closed', () => {
@@ -163,18 +170,20 @@ describe('calculate payment period', () => {
   })
 
   test('paid for last year, payment window closed', () => {
-    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october26), november26).paymentPeriods).toEqual([{ from: october26, to: october27 }])
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october26), november26).paymentPeriods).toEqual([
+      { from: october26, to: october27, priceInPence: 100 }
+    ])
   })
 
   test('paid for some time way in the past, payment window closed', () => {
     expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, new Date('1991-10-01T00:00:00.000Z')), november26).paymentPeriods).toEqual([
-      { from: october26, to: october27 }
+      { from: october26, to: october27, priceInPence: 100 }
     ])
   })
 
   test('paid for some time way in the past, payment window open', () => {
     expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, new Date('1991-10-01T00:00:00.000Z')), may26).paymentPeriods).toEqual([
-      { from: october25, to: october26 }
+      { from: october25, to: october26, priceInPence: 100 }
     ])
   })
 

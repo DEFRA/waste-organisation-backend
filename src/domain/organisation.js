@@ -144,7 +144,7 @@ export const calculateNextPaymentPeriod = (() => {
       .map((_) => {
         const p = new Date(startDate)
         startDate.setFullYear(p.getFullYear() + 1)
-        return { from: p, to: new Date(startDate) }
+        return { from: p, to: new Date(startDate), priceInPence: config.get('govPay.serviceChargeAmountPence') }
       })
       .filter(({ to }) => to > endOfFreePeriod)
       .filter(({ from, to }) => {
