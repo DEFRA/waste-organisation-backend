@@ -1,7 +1,7 @@
 import { initialiseServer, WASTE_CLIENT_AUTH_TEST_TOKEN, stopServer } from '../common/helpers/initialse-test-server.js'
 import { paths, pathTo } from '../config/paths.js'
 import { orgCollection } from '../repositories/organisation.js'
-import { isEnabled, disableOrg } from '../domain/organisation.js'
+import { isEnabled, updateDisableAfter } from '../domain/organisation.js'
 import { paymentCollection } from '../repositories/payment.js'
 import { faker } from '@faker-js/faker'
 
@@ -238,7 +238,7 @@ describe('payment API', () => {
     wreckPostMock.mockImplementation(async () => {
       return fakeGovPayResponse(organisationId)
     })
-    const organisation = disableOrg({ organisationId, name: 'Weyland-Yutani Corporation' }, 'for testing')
+    const organisation = updateDisableAfter({ organisationId, name: 'Weyland-Yutani Corporation' }, new Date('2026-05-01T00:00:00.000Z'))
     const r = await updateOrganisation(server, 'user123', organisationId, organisation)
     expect(isEnabled(JSON.parse(r.payload).organisation)).toBe(false)
     const r1 = await initiatePayment(server, organisationId, 'organisation name', '2026-05-01T00:00:00.000Z', '2027-05-01T00:00:00.000Z')
@@ -252,7 +252,9 @@ describe('payment API', () => {
 
     expect(r2.statusCode).toBe(200)
     const org = await server.db.collection(orgCollection).findOne({ organisationId: { $eq: organisationId } }, { projection: { _id: 0 } })
-    expect(org.isDisabled).toBe(false)
+    expect(org.disableAfter).toEqual(new Date('2027-05-01T00:00:00.000Z'))
+    expect(isEnabled(org, new Date('2026-11-11T00:00:00.000Z'))).toBe(true)
+    expect(isEnabled(org, new Date('2027-11-11T00:00:00.000Z'))).toBe(false)
   })
 })
 

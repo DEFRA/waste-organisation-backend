@@ -1,9 +1,9 @@
 // import Boom from '@hapi/boom'
 import { paths } from '../config/paths.js'
-import { paymentSchema, initiatePayment, updateFromGovPayEvent, isPaid, hasStatusChanged } from '../domain/payment.js'
+import { paymentSchema, initiatePayment, updateFromGovPayEvent, hasStatusChanged } from '../domain/payment.js'
 import { paymentCollection } from '../repositories/payment.js'
 import { orgCollection } from '../repositories/organisation.js'
-import { enableOrg, disableOrg, updateDisableAfter } from '../domain/organisation.js'
+import { updateOrganisationPaymentStatus, updateDisableAfter } from '../domain/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
 import { addVersionField, swaggerResponse } from './swagger-common.js'
@@ -50,8 +50,7 @@ export const payments = [
         }
       })
       if (shouldUpdateOrg) {
-        const f = isPaid(payment) ? (o) => enableOrg(updateDisableAfter(o, payment.servicePeriodEnd)) : (o) => disableOrg(o, 'TODO Payment failed')
-        await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId }, f)
+        await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId }, (org) => updateOrganisationPaymentStatus(org, payment))
       }
       return h.response({ message: 'success', payment })
     }
