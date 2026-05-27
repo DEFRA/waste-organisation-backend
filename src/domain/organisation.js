@@ -132,7 +132,6 @@ export const calculateNextPaymentPeriod = (() => {
     p.setFullYear(at.getFullYear())
     p.setDate(day)
     p.setMonth(month - 1)
-    console.log(`paymentWindow >> `, p, at)
     return p
   }
 
