@@ -42,7 +42,7 @@
     "@hapi/hapi": "21.4.9",
     "@hapi/inert": "7.1.0",
     "@hapi/vision": "7.0.3",
-    "aws-embedded-metrics": "4.2.0",
+    "aws-embedded-metrics": "4.2.1",
     "aws4": "1.13.2",
     "convict": "6.2.5",
     "convict-format-with-validator": "6.2.0",
