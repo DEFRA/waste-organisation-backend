@@ -1,7 +1,7 @@
 import Excel from 'exceljs'
 import { createLogger } from '../../common/helpers/logging/logger.js'
 import { config } from '../../config.js'
-import cryto from 'node:crypto'
+import crypto from 'node:crypto'
 
 const logger = createLogger()
 
