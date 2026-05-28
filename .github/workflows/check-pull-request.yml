@@ -81,8 +81,8 @@ jobs:
           GOV_NOTIFY_KEY=${GOV_NOTIFY_KEY}
           GOVPAY_API_KEY=${GOVPAY_API_KEY}
           EOF
-          docker compose -f waste-organisation-frontend/compose.yml -f waste-organisation-frontend/compose-github.override.yml up -d --wait
-          docker compose -f waste-organisation-frontend/compose.yml -f waste-organisation-frontend/compose-github.override.yml ps
+          docker compose -f waste-organisation-frontend/compose.yml -f waste-organisation-frontend/compose-local-api.yml -f waste-organisation-frontend/compose-github.override.yml up -d --wait
+          docker compose -f waste-organisation-frontend/compose.yml -f waste-organisation-frontend/compose-local-api.yml -f waste-organisation-frontend/compose-github.override.yml ps
 
       - name: Checkout UAT Repository as Integration Test Suite
         uses: actions/checkout@v4
@@ -150,4 +150,4 @@ jobs:
           GOV_NOTIFY_KEY=${GOV_NOTIFY_KEY}
           GOVPAY_API_KEY=${GOVPAY_API_KEY}
           EOF
-          docker compose -f waste-organisation-frontend/compose.yml -f waste-organisation-frontend/compose-github.override.yml down
+          docker compose -f waste-organisation-frontend/compose.yml -f waste-organisation-frontend/compose-local-api.yml -f waste-organisation-frontend/compose-github.override.yml down
