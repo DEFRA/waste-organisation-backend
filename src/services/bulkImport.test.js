@@ -3,7 +3,6 @@ import { expect, vi } from 'vitest'
 import fs from 'node:fs/promises'
 import { parseExcelFile, transformBulkApiErrors, updateErrors, wasteTrackingIdsToCoords, updateCellContent } from './spreadsheetImport.js'
 import { TRANSIENT_STATUS_CODES } from './httpStatusCodes.js'
-import { v4 as uuidv4 } from 'uuid'
 import { faker } from '@faker-js/faker'
 
 const logger = createLogger()
@@ -30,9 +29,9 @@ describe.skip('bulk import api calls data - requires service dependencies to be 
   test.skip('should update waste tracking IDs', { timeout: 50000 }, async () => {
     // const { bulkImport } = await import('./bulkImport.js')
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-    const { rowNumbers, movements } = await parseExcelFile(buffer, uuidv4().toString(), console)
+    const { rowNumbers, movements } = await parseExcelFile(buffer, faker.string.uuid(), console)
     expect(movements.length).toBe(1)
-    // const res = await bulkImport(uuidv4().toString(), movements, uuidv4().toString(), console, conf)
+    // const res = await bulkImport(uuidv4().toString(), faker.string.uuid().toString(), console, conf)
     const res = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
     const coords = wasteTrackingIdsToCoords(movements, rowNumbers, res.movements)
     expect(coords).toEqual([])
@@ -55,7 +54,7 @@ describe('mock bulk import data', () => {
   test('should update waste tracking IDs', { timeout: 50000 }, async () => {
     // const { bulkImport } = await import('./bulkImport.js')
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-    const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, uuidv4().toString(), logger)
+    const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, faker.string.uuid(), logger)
     expect(movements.length).toBe(1)
     expect(errors).toEqual({ items: [], movements: [] })
     expect(hasErrors).toEqual(false)
