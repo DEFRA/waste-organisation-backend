@@ -19,7 +19,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Test code and Create Test Coverage Reports
         uses: actions/setup-node@v4
@@ -61,10 +61,10 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Checkout waste-organisation-frontend repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: DEFRA/waste-organisation-frontend
           path: waste-organisation-frontend
@@ -83,7 +83,7 @@ jobs:
           docker compose -f waste-organisation-frontend/compose.yml -f compose-github.override.be.yml ps
 
       - name: Checkout UAT Repository as Integration Test Suite
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: DEFRA/digital-waste-tracking-fe-uat
           path: integration-tests
