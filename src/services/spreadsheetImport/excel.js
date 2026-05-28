@@ -1,7 +1,7 @@
 import Excel from 'exceljs'
 import { createLogger } from '../../common/helpers/logging/logger.js'
 import { config } from '../../config.js'
-import { v4 as uuidv4 } from 'uuid'
+import cryto from 'node:crypto'
 
 const logger = createLogger()
 
@@ -160,7 +160,7 @@ export const updateCellContent = (() => {
 export const workbookToByteArray = async (workbook) => {
   /* v8 ignore start */
   if (config.get('bulkUpload.copySpreadsheetToDisk')) {
-    const f = '/tmp/output-' + uuidv4() + '.xlsx' // nosonar
+    const f = '/tmp/output-' + crypto.randomUUID() + '.xlsx' // nosonar
     logger.info(`file: ${f}`)
     await workbook.xlsx.writeFile(f)
   }
