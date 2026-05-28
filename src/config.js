@@ -159,7 +159,7 @@ export const config = convict({
       },
       nullable: true,
       default: '07-01',
-      env: 'GOVPAY_SERVICE_FREE_PERIOD_END'
+      env: 'GOVPAY_SERVICE_PAYMENT_WINDOW_START'
     }
   },
   aws: {
