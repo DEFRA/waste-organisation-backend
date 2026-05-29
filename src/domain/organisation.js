@@ -3,6 +3,11 @@ import * as common from './index.js'
 import { v4 as uuidv4 } from 'uuid'
 import Boom from '@hapi/boom'
 import { config } from '../config.js'
+import { isPaid, isFailed, isRefunded } from './payment.js'
+
+const validate = (org) => {
+  return common.validate({ ...org }, orgSchema)
+}
 
 const freePeriodEnd = () => config.get('govPay.serviceChargeFreePeriodEnd')
 
@@ -93,30 +98,36 @@ export const createOrg = (organisationId) => ({
 })
 
 export const disableOrg = (org, reason) => {
-  return common.validate({ ...org, disabledReason: reason, isDisabled: true }, orgSchema)
+  return validate({ ...org, disabledReason: reason, isDisabled: true })
 }
 
 export const enableOrg = (org) => {
-  return common.validate({ ...org, isDisabled: false, disabledReason: null }, orgSchema)
+  return validate({ ...org, isDisabled: false, disabledReason: null })
 }
 
 export const isEnabled = (org, at) => org == null || (!org.isDisabled && (!org.disableAfter || (at || new Date()) < org.disableAfter))
 
 export const updateOrganisationPaymentStatus = (org, payment) => {
-  if (payment.status === 'payment_in_progress') {
-    return common.validate(org, orgSchema)
+  if (isPaid(payment)) {
+    return validate(updateDisableAfter({ ...org, disabledReason: null }, payment.servicePeriodEnd))
   }
-
-  if (payment.status === 'payment_succeeded') {
-    return common.validate(updateDisableAfter({ ...org, disabledReason: null }, payment.servicePeriodEnd), orgSchema)
+  if (isRefunded(payment)) {
+    return validate(moveDisableAfterBackwards({ ...org, disabledReason: null }, payment.servicePeriodStart))
   }
-
-  return common.validate({ ...org, disabledReason: 'Payment failed' }, orgSchema)
+  if (isFailed(payment)) {
+    return validate({ ...org, disabledReason: 'Payment failed' })
+  }
+  return validate(org)
 }
 
 export const updateDisableAfter = (org, servicePeriodEnd) => {
   const disableAfter = org.disableAfter == null || org.disableAfter < servicePeriodEnd ? servicePeriodEnd : org.disableAfter
-  return common.validate({ ...org, disableAfter }, orgSchema)
+  return validate({ ...org, disableAfter })
+}
+
+export const moveDisableAfterBackwards = (org, servicePeriodEnd) => {
+  const disableAfter = org.disableAfter == null || org.disableAfter > servicePeriodEnd ? servicePeriodEnd : org.disableAfter
+  return validate({ ...org, disableAfter })
 }
 
 export const calculateNextPaymentPeriod = (() => {

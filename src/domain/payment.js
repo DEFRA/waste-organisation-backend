@@ -67,12 +67,19 @@ export const govPayStatusToStatus = (() => {
     pending: 'refund_in_progress',
     submitted: 'refund_in_progress',
     success: 'refund_succeeded',
-    failed: 'payment_succeeded'
+    failed: 'payment_succeeded',
+    full: 'refund_succeeded'
+    // available: 'refund_succeeded' // partial??
+    // unavailable: '' // payment failed or can't be refunded again?
   }
   return (govPay) => {
     const ps = govPay?.state?.status
     const rs = govPay?.refund_summary?.status
-    return refundMapping[rs] || paymentMapping[ps]
+    if (rs === 'available' && govPay?.amount !== govPay?.refund_summary?.amount_available) {
+      return 'refund_succeeded'
+    } else {
+      return refundMapping[rs] || paymentMapping[ps]
+    }
   }
 })()
 
@@ -83,6 +90,8 @@ export const updateFromGovPayEvent = (payment, govPay) => {
 
 export const isPaid = (payment) => payment.status === 'payment_succeeded'
 
-export const isNotPaid = (payment) => payment.status !== 'payment_succeeded'
+export const isRefunded = (payment) => payment.status === 'refund_succeeded'
+
+export const isFailed = (payment) => payment.status === 'payment_failed'
 
 export const hasStatusChanged = (oldPayment, newPayment) => oldPayment.status !== newPayment.status

@@ -256,6 +256,33 @@ describe('payment API', () => {
     expect(isEnabled(org, new Date('2026-11-11T00:00:00.000Z'))).toBe(true)
     expect(isEnabled(org, new Date('2027-11-11T00:00:00.000Z'))).toBe(false)
   })
+
+  test('refund payment disables org', async () => {
+    const organisationId = 'abc123'
+    wreckPostMock.mockImplementation(async () => {
+      return fakeGovPayResponse(organisationId)
+    })
+    const r1 = await initiatePayment(server, organisationId, 'organisation name', '2026-05-01T00:00:00.000Z', '2027-05-01T00:00:00.000Z')
+    expect(r1.statusCode).toBe(200)
+    const { paymentId } = JSON.parse(r1.payload).payment
+
+    const payment = fakeGovPayResponse(organisationId).payload
+    payment.state.status = 'success'
+    payment.state.finished = true
+    const r2 = await updatePayment(server, organisationId, paymentId, { payment })
+    expect(r2.statusCode).toBe(200)
+    const org2 = await server.db.collection(orgCollection).findOne({ organisationId: { $eq: organisationId } }, { projection: { _id: 0 } })
+    expect(org2.disableAfter).toEqual(new Date('2027-05-01T00:00:00.000Z'))
+
+    payment.refund_summary.amount_available = 0
+    payment.refund_summary.amount_submitted = payment.amount
+
+    const r3 = await updatePayment(server, organisationId, paymentId, { payment })
+    expect(r3.statusCode).toBe(200)
+    // expect(JSON.parse(r3.payload)).toEqual({})
+    const org3 = await server.db.collection(orgCollection).findOne({ organisationId: { $eq: organisationId } }, { projection: { _id: 0 } })
+    expect(org3.disableAfter).toEqual(new Date('2026-05-01T00:00:00.000Z'))
+  })
 })
 
 const updateOrganisation = async (server, userId, organisationId, organisation) => {
