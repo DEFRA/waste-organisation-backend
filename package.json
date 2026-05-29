@@ -84,7 +84,9 @@
       "uuid": "14.0.0"
     },
     "fast-xml-parser": "5.7.3",
-    "hapi-swagger": { "joi": "18.2.1" }
+    "hapi-swagger": {
+      "joi": "18.2.1"
+    }
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "4.59.0"
