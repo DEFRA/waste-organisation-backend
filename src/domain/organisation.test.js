@@ -56,11 +56,22 @@ describe('organisation domain', () => {
 })
 
 describe('org is enabled', () => {
-  test('boolean flag missing', () => {
-    expect(isEnabled({})).toBe(true)
+  const configDate = config.get('govPay.serviceChargeFreePeriodEnd')
+  beforeEach(() => {
+    config.set('govPay.serviceChargeFreePeriodEnd', new Date('2000-10-01T00:00:00.000Z'))
   })
-  test('boolean flag enabled', () => {
-    expect(isEnabled({ isDisabled: false })).toBe(true)
+  afterAll(() => {
+    config.set('govPay.serviceChargeFreePeriodEnd', configDate)
+  })
+
+  test('boolean flag missing, in free period', () => {
+    expect(isEnabled({}, new Date('1999-01-01T00:00:00.000Z'))).toBe(true)
+  })
+  test('boolean flag missing, after free period', () => {
+    expect(isEnabled({}, new Date('2001-01-01T00:00:00.000Z'))).toBe(false)
+  })
+  test('boolean flag enabled, in free period', () => {
+    expect(isEnabled({ isDisabled: false }, new Date('1999-01-01T00:00:00.000Z'))).toBe(true)
   })
   test('boolean flag disabled', () => {
     expect(isEnabled({ isDisabled: true })).toBe(false)

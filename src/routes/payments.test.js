@@ -276,7 +276,6 @@ describe('payment API', () => {
 
     payment.refund_summary.amount_available = 0
     payment.refund_summary.amount_submitted = payment.amount
-
     const r3 = await updatePayment(server, organisationId, paymentId, { payment })
     expect(r3.statusCode).toBe(200)
     // expect(JSON.parse(r3.payload)).toEqual({})

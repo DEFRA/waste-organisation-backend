@@ -105,7 +105,7 @@ export const enableOrg = (org) => {
   return validate({ ...org, isDisabled: false, disabledReason: null })
 }
 
-export const isEnabled = (org, at) => org == null || (!org.isDisabled && (!org.disableAfter || (at || new Date()) < org.disableAfter))
+export const isEnabled = (org, at) => org == null || (!org.isDisabled && (at || new Date()) < (org.disableAfter || freePeriodEnd()))
 
 export const updateOrganisationPaymentStatus = (org, payment) => {
   if (isPaid(payment)) {
