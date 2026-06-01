@@ -1,6 +1,6 @@
 import joi from 'joi'
 import * as common from './index.js'
-import { v4 as uuidv4 } from 'uuid'
+import crypto from 'node:crypto'
 import Boom from '@hapi/boom'
 import { config } from '../config.js'
 import { isPaid, isFailed, isRefunded } from './payment.js'
@@ -64,7 +64,7 @@ export const mergeAndValidate = (dbOrg, requestOrg, organisationId, userId) => {
 export const createApiCode = (org, name) => {
   const apiCodes = org.apiCodes || []
   apiCodes.push({
-    code: uuidv4().toString(),
+    code: crypto.randomUUID(),
     name: name || `API Code ${apiCodes.length + 1}`,
     isDisabled: false
   })
