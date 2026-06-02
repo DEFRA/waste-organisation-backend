@@ -6,6 +6,27 @@ import { convictValidateMongoUri } from './config/validate-mongo-uri.js'
 convict.addFormat(convictValidateMongoUri)
 convict.addFormats(convictFormatWithValidator)
 
+const isString = (val) => typeof val === 'string' || val instanceof String
+
+convict.addFormat({
+  name: 'date',
+  validate: (val) => {
+    if (!(val instanceof Date)) {
+      throw new Error('must be a Date object')
+    }
+  },
+  coerce: (val) => {
+    if (isString(val)) {
+      const parsed = new Date(val)
+      if (isNaN(parsed.getTime())) {
+        throw new Error('must be a valid date string')
+      }
+      return parsed
+    }
+    return val
+  }
+})
+
 const productionEnvironments = ['perf-test', 'ext-test', 'prod']
 const isProduction = productionEnvironments.includes(process.env.ENVIRONMENT)
 const isTest = process.env.NODE_ENV === 'test'
@@ -88,6 +109,57 @@ export const config = convict({
       nullable: true,
       default: 'e6f9eb36-c2cc-4838-b7ae-1e79847afdd6',
       env: 'GOV_NOTIFY_FAILED_WITH_FILE_TEMPLATE'
+    }
+  },
+  govPay: {
+    apiUrl: {
+      doc: 'The base URL for the GovPay Public API.',
+      format: String,
+      nullable: false,
+      default: 'https://publicapi.payments.service.gov.uk/v1',
+      env: 'GOVPAY_API_URL'
+    },
+    apiKey: {
+      doc: 'GovPay API key for creating payments.',
+      format: String,
+      nullable: false,
+      env: 'GOVPAY_API_KEY',
+      default: 'test123',
+      sensitive: true
+    },
+    serviceChargeAmountPence: {
+      doc: 'Service charge amount in pence.',
+      format: Number,
+      nullable: false,
+      default: 2600,
+      env: 'GOVPAY_SERVICE_CHARGE_AMOUNT_PENCE'
+    },
+    webhookSigningSecret: {
+      doc: 'The signing secret unique to the GOV.UK Pay webhook',
+      format: String,
+      nullable: true,
+      sensitive: true,
+      default: null
+    },
+    serviceChargeFreePeriodEnd: {
+      doc: 'The date the free period ends and the service change kicks in.',
+      format: 'date',
+      nullable: true,
+      default: '2026-10-01T00:00:00.000Z',
+      env: 'GOVPAY_SERVICE_FREE_PERIOD_END'
+    },
+    serviceChargePaymentWindowStart: {
+      doc: 'The date the payment window opens in "dd-mm" format.',
+      format: String,
+      validate: (val) => {
+        if (isString(val) && val.match(/^([0123]?[0-9])-(1[012]|0?[1-9])$/)) {
+          return val
+        }
+        throw new Error('payment window should be in format `DD-MM`')
+      },
+      nullable: true,
+      default: '07-01',
+      env: 'GOVPAY_SERVICE_PAYMENT_WINDOW_START'
     }
   },
   aws: {

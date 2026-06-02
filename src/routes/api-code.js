@@ -1,7 +1,7 @@
 import Boom from '@hapi/boom'
 import joi from 'joi'
 import { paths } from '../config/paths.js'
-import { createApiCode, updateApiCode, apiCodeSchema } from '../domain/organisation.js'
+import { createApiCode, updateApiCode, apiCodeSchema, isEnabled } from '../domain/organisation.js'
 import { findOrganisationByApiCode, findOrganisationById, orgCollection } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
@@ -37,7 +37,7 @@ export const apiCodeRoutes = [
     handler: async (request, h) => {
       const apiCode = request.params.apiCode
       const org = await findOrganisationByApiCode(request.db, apiCode)
-      if (org?.apiCodes.find(({ code }) => code === apiCode).isDisabled === false) {
+      if (isEnabled(org) && org?.apiCodes.find(({ code }) => code === apiCode).isDisabled === false) {
         return h.response({ defraCustomerOrganisationId: org.organisationId })
       } else {
         throw Boom.notFound()

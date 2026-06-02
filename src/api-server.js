@@ -40,10 +40,10 @@ export const plugins = {
 }
 
 function getSwaggerPlugins() {
-  return [
-    Inert,
-    Vision,
-    {
+  return {
+    swaggerInert: Inert,
+    swagerVision: Vision,
+    swaggerPlugin: {
       plugin: HapiSwagger,
       options: {
         info: {
@@ -63,7 +63,7 @@ function getSwaggerPlugins() {
         security: [{ ApiKey: [] }]
       }
     }
-  ]
+  }
 }
 
 export async function createServer(pluginOverrides) {
@@ -96,12 +96,7 @@ export async function createServer(pluginOverrides) {
 
   // Hapi Plugins:
 
-  const allPlugins = Object.values({ ...plugins, ...pluginOverrides })
-
-  if (config.get('isSwaggerEnabled')) {
-    allPlugins.push(...getSwaggerPlugins())
-  }
-
+  const allPlugins = Object.values({ ...plugins, ...pluginOverrides, ...(config.get('isSwaggerEnabled') ? getSwaggerPlugins() : {}) })
   await server.register(allPlugins)
   return server
 }

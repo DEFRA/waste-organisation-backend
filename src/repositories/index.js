@@ -5,13 +5,12 @@ const logger = createLogger()
 export const updateWithOptimisticLock = async (collection, query, updateFunction, maxRetries = 5) => {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const doc = await collection.findOne(query)
+    const version = doc ? doc.version : { $exists: false }
     const updatedDoc = updateFunction(doc || query)
     if (updatedDoc) {
+      delete updatedDoc['version']
       const result = await collection.findOneAndUpdate(
-        {
-          ...query,
-          version: doc ? doc.version : { $exists: false }
-        },
+        { ...query, version },
         {
           $set: { ...updatedDoc },
           $inc: { version: 1 }
