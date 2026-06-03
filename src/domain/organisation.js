@@ -112,7 +112,12 @@ export const updateOrganisationPaymentStatus = (org, payment) => {
     return validate(updateDisableAfter({ ...org, disabledReason: null }, payment.servicePeriodEnd))
   }
   if (isRefunded(payment)) {
-    return validate(moveDisableAfterBackwards({ ...org, disabledReason: null }, payment.servicePeriodStart))
+    // Note: only allow refunding the current year - refunds of previous years shouldn't disable the org
+    if (org.disableAfter <= payment.servicePeriodEnd) {
+      return validate(moveDisableAfterBackwards({ ...org, disabledReason: null }, payment.servicePeriodStart))
+    } else {
+      return validate(org)
+    }
   }
   if (isFailed(payment)) {
     return validate({ ...org, disabledReason: 'Payment failed' })
