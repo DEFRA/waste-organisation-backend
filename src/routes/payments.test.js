@@ -278,7 +278,7 @@ describe('payment API', () => {
       payload: {}
     })
     expect(statusCode).toEqual(200)
-    expect(JSON.parse(payload).payment.status).toEqual('redund_succeeded')
+    expect(JSON.parse(payload).payment.status).toEqual('refund_succeeded')
   })
 })
 
