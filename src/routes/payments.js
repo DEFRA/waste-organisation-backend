@@ -7,7 +7,7 @@ import { updateOrganisationPaymentStatus, updateDisableAfter } from '../domain/o
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
 import { addVersionField, swaggerResponse } from './swagger-common.js'
-import { createGovPayPayment } from '../services/govPay/index.js'
+import { createGovPayPayment, getPaymentStatus } from '../services/govPay/index.js'
 import boom from '@hapi/boom'
 import { randomUUID } from 'node:crypto'
 
@@ -18,6 +18,23 @@ const uuidToBase36 = (uuid) => {
 }
 
 const createPaymentReference = ({ servicePeriodStart, servicePeriodEnd }) => `WASTE-${servicePeriodStart}-${servicePeriodEnd}-${uuidToBase36(randomUUID())}`
+
+const updatePaymentStatus = async (paymentId, organisationId, govPayment, db) => {
+  let shouldUpdateOrg = false
+  const payment = await updateWithOptimisticLock(db.collection(paymentCollection), { paymentId, organisationId }, (dbPayment) => {
+    if (dbPayment.status) {
+      const p = updateFromGovPayEvent(dbPayment, govPayment)
+      shouldUpdateOrg = hasStatusChanged(dbPayment, p)
+      return p
+    } else {
+      throw boom.notFound()
+    }
+  })
+  if (shouldUpdateOrg) {
+    await updateWithOptimisticLock(db.collection(orgCollection), { organisationId }, (org) => updateOrganisationPaymentStatus(org, payment))
+  }
+  return payment
+}
 
 export const payments = [
   {
@@ -37,21 +54,19 @@ export const payments = [
     path: paths.payment,
     options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ payment: addVersionField(paymentSchema) }), sample: 0 } },
     handler: async (request, h) => {
-      const paymentId = request.params.paymentId
-      const organisationId = request.params.organisationId
-      let shouldUpdateOrg = false
-      const payment = await updateWithOptimisticLock(request.db.collection(paymentCollection), { paymentId, organisationId }, (dbPayment) => {
-        if (dbPayment.status) {
-          const p = updateFromGovPayEvent(dbPayment, request.payload.payment)
-          shouldUpdateOrg = hasStatusChanged(dbPayment, p)
-          return p
-        } else {
-          throw boom.notFound()
-        }
-      })
-      if (shouldUpdateOrg) {
-        await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId }, (org) => updateOrganisationPaymentStatus(org, payment))
-      }
+      const { paymentId, organisationId } = request.params
+      const payment = await updatePaymentStatus(paymentId, organisationId, request.payload.payment, request.db)
+      return h.response({ message: 'success', payment })
+    }
+  },
+  {
+    method: 'POST',
+    path: paths.payment,
+    options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ payment: addVersionField(paymentSchema) }), sample: 0 } },
+    handler: async (request, h) => {
+      const { paymentId, organisationId } = request.params
+      const govPayment = await getPaymentStatus(paymentId, request.logger)
+      const payment = await updatePaymentStatus(paymentId, organisationId, govPayment.payload, request.db)
       return h.response({ message: 'success', payment })
     }
   },
