@@ -47,13 +47,13 @@ describe('backgroundProcessor integration', () => {
   let processJob
   let bulkImportModule
   let notifyModule
+  let processor
 
   beforeEach(async () => {
     vi.clearAllMocks()
     bulkImportModule = await import('./services/bulkImport.js')
     notifyModule = await import('./services/notify/index.js')
-    const processor = await import('./backgroundProcessor.js')
-    processJob = processor.processJob
+    processor = await import('./backgroundProcessor.js')
   })
 
   it('happy path create - sends success email with waste tracking IDs', { timeout: 30000 }, async () => {
@@ -63,7 +63,8 @@ describe('backgroundProcessor integration', () => {
     notifyModule.sendEmail.sendSuccess.mockResolvedValue()
 
     const s3Client = buildS3Client('valid-spreadsheet.xlsx')
-    await processJob(s3Client, buildMessage())
+    processJob = processor.dispatchProcessJob(s3Client)
+    await processJob(buildMessage())
 
     expect(bulkImportModule.bulkImport).toHaveBeenCalled()
     const [uploadId, movements] = bulkImportModule.bulkImport.mock.calls[0]
@@ -85,7 +86,8 @@ describe('backgroundProcessor integration', () => {
     notifyModule.sendEmail.sendValidationFailed.mockResolvedValue()
 
     const s3Client = buildS3Client('example-spreadsheet.xlsx')
-    await processJob(s3Client, buildMessage())
+    processJob = processor.dispatchProcessJob(s3Client)
+    await processJob(buildMessage())
 
     expect(bulkImportModule.bulkImport).not.toHaveBeenCalled()
     expect(notifyModule.sendEmail.sendValidationFailed).toHaveBeenCalledTimes(1)
@@ -115,7 +117,8 @@ describe('backgroundProcessor integration', () => {
     notifyModule.sendEmail.sendValidationFailed.mockResolvedValue()
 
     const s3Client = buildS3Client('valid-spreadsheet.xlsx')
-    await processJob(s3Client, buildMessage())
+    processJob = processor.dispatchProcessJob(s3Client)
+    await processJob(buildMessage())
 
     expect(notifyModule.sendEmail.sendValidationFailed).toHaveBeenCalledTimes(1)
     const emailArg = notifyModule.sendEmail.sendValidationFailed.mock.calls[0][0]
@@ -136,7 +139,8 @@ describe('backgroundProcessor integration', () => {
     notifyModule.sendEmail.sendFailed.mockResolvedValue()
 
     const s3Client = buildS3Client('valid-spreadsheet.xlsx')
-    await processJob(s3Client, buildMessage())
+    processJob = processor.dispatchProcessJob(s3Client)
+    await processJob(buildMessage())
 
     expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledTimes(1)
     expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledWith(expect.objectContaining({ email: TEST_EMAIL, name: TEST_NAME }))
@@ -150,7 +154,8 @@ describe('backgroundProcessor integration', () => {
 
     const s3Client = buildS3Client('valid-spreadsheet.xlsx')
 
-    await expect(processJob(s3Client, buildMessage())).rejects.toEqual(transientError)
+    processJob = processor.dispatchProcessJob(s3Client)
+    await expect(processJob(buildMessage())).rejects.toEqual(transientError)
     expect(notifyModule.sendEmail.sendFailed).not.toHaveBeenCalled()
     expect(notifyModule.sendEmail.sendSuccess).not.toHaveBeenCalled()
   })
@@ -159,7 +164,8 @@ describe('backgroundProcessor integration', () => {
     notifyModule.sendEmail.sendFailed.mockResolvedValue()
 
     const s3Client = { send: vi.fn() }
-    await processJob(s3Client, buildMessage({ hasError: true }))
+    processJob = processor.dispatchProcessJob(s3Client)
+    await processJob(buildMessage({ hasError: true }))
 
     expect(s3Client.send).not.toHaveBeenCalled()
     expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledTimes(1)
@@ -170,7 +176,8 @@ describe('backgroundProcessor integration', () => {
     notifyModule.sendEmail.sendFailed.mockResolvedValue()
 
     const s3Client = { send: vi.fn() }
-    await processJob(s3Client, buildMessage({ hasError: true, referenceNumber: 'ref-number-123' }))
+    processJob = processor.dispatchProcessJob(s3Client)
+    await processJob(buildMessage({ hasError: true, referenceNumber: 'ref-number-123' }))
 
     expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledTimes(1)
     expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledWith(expect.objectContaining({ referenceNumber: 'ref-number-123' }))
@@ -183,7 +190,8 @@ describe('backgroundProcessor integration', () => {
     notifyModule.sendEmail.sendSuccess.mockResolvedValue()
 
     const s3Client = buildS3Client('valid-spreadsheet.xlsx')
-    await processJob(s3Client, buildMessage({ referenceNumber: 'ref-number-456' }))
+    processJob = processor.dispatchProcessJob(s3Client)
+    await processJob(buildMessage({ referenceNumber: 'ref-number-456' }))
 
     expect(notifyModule.sendEmail.sendSuccess).toHaveBeenCalledTimes(1)
     expect(notifyModule.sendEmail.sendSuccess).toHaveBeenCalledWith(expect.objectContaining({ referenceNumber: 'ref-number-456' }))
@@ -191,7 +199,8 @@ describe('backgroundProcessor integration', () => {
 
   it('missing S3 coords - silently returns without sending email', { timeout: 30000 }, async () => {
     const s3Client = { send: vi.fn() }
-    await processJob(s3Client, buildMessage({ s3Bucket: undefined, s3Key: undefined }))
+    processJob = processor.dispatchProcessJob(s3Client)
+    await processJob(buildMessage({ s3Bucket: undefined, s3Key: undefined }))
 
     expect(s3Client.send).not.toHaveBeenCalled()
     expect(notifyModule.sendEmail.sendFailed).not.toHaveBeenCalled()
@@ -203,7 +212,8 @@ describe('backgroundProcessor integration', () => {
     notifyModule.sendEmail.sendFailed.mockResolvedValue()
 
     const s3Client = buildS3Client(Buffer.from('not excel'))
-    await processJob(s3Client, buildMessage())
+    processJob = processor.dispatchProcessJob(s3Client)
+    await processJob(buildMessage())
 
     expect(bulkImportModule.bulkImport).not.toHaveBeenCalled()
     expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledTimes(1)
@@ -225,7 +235,8 @@ describe('backgroundProcessor integration', () => {
     notifyModule.sendEmail.sendSuccess.mockResolvedValue()
 
     const s3Client = buildS3Client(Buffer.from(modifiedBuffer))
-    await processJob(s3Client, buildMessage({ uploadType: 'update' }))
+    processJob = processor.dispatchProcessJob(s3Client)
+    await processJob(buildMessage({ uploadType: 'update' }))
 
     expect(bulkImportModule.bulkUpdate).toHaveBeenCalled()
     expect(bulkImportModule.bulkImport).not.toHaveBeenCalled()

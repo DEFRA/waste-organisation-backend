@@ -4,6 +4,8 @@
 // import { spreadsheetCollection } from '../repositories/spreadsheet.js'
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs'
+import { MongoClient } from 'mongodb'
+
 import { config } from './config.js'
 import { createLogger } from './common/helpers/logging/logger.js'
 import {
@@ -19,6 +21,12 @@ import { sendEmail } from './services/notify/index.js'
 import { bulkImport, bulkUpdate } from './services/bulkImport.js'
 import { TRANSIENT_STATUS_CODES } from './services/httpStatusCodes.js'
 import { validateWasteTrackingIdExists, validateWasteTrackingIdMissing } from './services/spreadsheetImport/transforms.js'
+import { getPaymentStatus } from './services/govPay/index.js'
+import { updateOrganisationPaymentStatus } from './domain/organisation.js'
+import { updateFromGovPayEvent, hasStatusChanged } from './domain/payment.js'
+import { updateWithOptimisticLock } from './repositories/index.js'
+import { paymentCollection } from './repositories/payment.js'
+import { orgCollection } from './repositories/organisation.js'
 
 const defaultLogger = createLogger()
 
@@ -50,6 +58,14 @@ const constructSqsClient = () => {
     region: config.get('aws.region'),
     endpoint: config.get('aws.sqsEndpoint')
   })
+}
+
+export const constructMongoClient = async () => {
+  const options = config.get('mongo')
+  const client = await MongoClient.connect(options.mongoUrl, {
+    ...options.mongoOptions
+  })
+  return client.db(options.databaseName)
 }
 
 export const deleteMessage = async (client, QueueUrl, receiptHandle, logger) => {
@@ -145,10 +161,8 @@ const processSpreadsheet = async (
   logger.error(`ReferenceNumber: ${referenceNumber} -- Unhandled case. No errors or waste tracking ids generated for ${referenceNumber}`)
 }
 
-export const processJob = async (s3Client, message) => {
-  const { s3Bucket, s3Key, encryptedEmail, encryptedName, organisationId, uploadId, uploadType, hasError, referenceNumber, filename, traceId } = JSON.parse(
-    message.Body
-  )
+export const processSpreadsheetJob = async (s3Client, message) => {
+  const { s3Bucket, s3Key, encryptedEmail, encryptedName, organisationId, uploadId, uploadType, hasError, referenceNumber, filename, traceId } = message
   const processJobLogger = createLogger(traceId)
   processJobLogger.info(`Message: ${JSON.stringify(message)}`)
   const decryptedEmail = decrypt(encryptedEmail, config.get('encryptionKey'))
@@ -183,6 +197,43 @@ export const processJob = async (s3Client, message) => {
     await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName, referenceNumber: emailReferenceNumber, filename, logger: processJobLogger })
   }
   return { logger: processJobLogger }
+}
+
+const updatePaymentStatus = async (paymentId, organisationId, govPayment, db) => {
+  let shouldUpdateOrg = false
+  const payment = await updateWithOptimisticLock(db.collection(paymentCollection), { paymentId, organisationId }, (dbPayment) => {
+    if (dbPayment.status) {
+      const p = updateFromGovPayEvent(dbPayment, govPayment)
+      shouldUpdateOrg = hasStatusChanged(dbPayment, p)
+      return p
+    } else {
+      return null
+    }
+  })
+  console.log('payment: ', JSON.stringify(payment, null, 4))
+  console.log('govPayment: ', JSON.stringify(govPayment, null, 4))
+  if (shouldUpdateOrg) {
+    await updateWithOptimisticLock(db.collection(orgCollection), { organisationId }, (org) => updateOrganisationPaymentStatus(org, payment))
+  }
+  return payment
+}
+
+export const processPaymentJob = async (db, message) => {
+  const { paymentId, organisationId, traceId } = message
+  const processJobLogger = createLogger(traceId)
+  const govPayment = await getPaymentStatus(paymentId, processJobLogger)
+  const payment = await updatePaymentStatus(paymentId, organisationId, govPayment.payload, db)
+  return { logger: processJobLogger, payment }
+}
+
+export const dispatchProcessJob = (s3Client, mongoClient) => async (message) => {
+  const m = JSON.parse(message.Body)
+  if (m.uploadId) {
+    return await processSpreadsheetJob(s3Client, m)
+  }
+  if (m.paymentId) {
+    return await processPaymentJob(mongoClient, m)
+  }
 }
 
 export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {
@@ -226,12 +277,13 @@ export const startWorker = async () => {
   const QueueUrl = config.get('aws.backgroundProcessQueue')
   const s3Client = constructS3Client()
   const sqsClient = constructSqsClient()
+  const mongoClient = await constructMongoClient()
   // prettier-ignore
   while (true) {  // NOSONAR
     await pollQueue({
       sqsClient,
       QueueUrl,
-      action: async (message) => await processJob(s3Client, message)
+      action: dispatchProcessJob(s3Client, mongoClient)
     })
     await new Promise((resolve) => setTimeout(resolve, 1000))
   }
