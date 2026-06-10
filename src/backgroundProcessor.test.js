@@ -771,6 +771,5 @@ describe('background processor', () => {
     await db.collection(paymentCollection).insertOne({ paymentId: 'abc123', organisationId: 'org-id', status: 'payment_in_progress' })
     const result = await processPaymentJob(db, { paymentId: 'abc123', organisationId: 'org-id' })
     expect(isPaid(result.payment)).toEqual(true)
-    expect(true).toBe(false)
   })
 })

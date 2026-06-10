@@ -210,8 +210,6 @@ const updatePaymentStatus = async (paymentId, organisationId, govPayment, db) =>
       return null
     }
   })
-  console.log('payment: ', JSON.stringify(payment, null, 4))
-  console.log('govPayment: ', JSON.stringify(govPayment, null, 4))
   if (shouldUpdateOrg) {
     await updateWithOptimisticLock(db.collection(orgCollection), { organisationId }, (org) => updateOrganisationPaymentStatus(org, payment))
   }
