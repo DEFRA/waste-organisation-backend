@@ -31,11 +31,11 @@
   "license": "OGL-UK-3.0",
   "dependencies": {
     "@aws-sdk/client-s3": "3.1055.0",
-    "@aws-sdk/client-sqs": "3.1011.0",
+    "@aws-sdk/client-sqs": "3.1061.0",
     "@aws-sdk/s3-request-presigner": "3.1011.0",
     "@azure/identity": "4.13.1",
-    "@defra/cdp-auditing": "0.1.0",
-    "@defra/hapi-secure-context": "0.1.3",
+    "@defra/cdp-auditing": "0.6.1",
+    "@defra/hapi-secure-context": "0.4.0",
     "@defra/hapi-tracing": "1.30.0",
     "@elastic/ecs-pino-format": "1.5.0",
     "@hapi/boom": "10.0.1",
@@ -47,23 +47,23 @@
     "convict": "6.2.5",
     "convict-format-with-validator": "6.2.0",
     "exceljs": "4.4.0",
-    "global-agent": "3.0.0",
+    "global-agent": "4.1.3",
     "hapi-pino": "13.0.0",
     "hapi-pulse": "3.0.1",
     "hapi-swagger": "17.3.2",
-    "https-proxy-agent": "7.0.6",
+    "https-proxy-agent": "9.0.0",
     "joi": "18.2.1",
     "mongo-locks": "3.0.2",
     "mongodb": "6.17.0",
     "node-fetch": "3.3.2",
-    "notifications-node-client": "8.3.2",
+    "notifications-node-client": "8.4.0",
     "pino": "10.3.1",
     "pino-pretty": "13.1.3",
-    "undici": "7.24.4"
+    "undici": "8.4.1"
   },
   "devDependencies": {
     "@faker-js/faker": "10.3.0",
-    "@vitest/coverage-v8": "4.1.7",
+    "@vitest/coverage-v8": "4.1.8",
     "dotenv": "17.4.2",
     "eslint": "9.39.4",
     "husky": "9.1.7",
@@ -71,9 +71,9 @@
     "nodemon": "3.1.14",
     "npm-run-all": "4.1.5",
     "prettier": "3.8.3",
-    "vitest": "4.1.7",
+    "vitest": "4.1.8",
     "vitest-fetch-mock": "0.4.5",
-    "vitest-mongodb": "1.0.1"
+    "vitest-mongodb": "1.0.3"
   },
   "overrides": {
     "notifications-node-client": {
