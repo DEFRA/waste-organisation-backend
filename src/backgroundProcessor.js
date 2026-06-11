@@ -23,7 +23,7 @@ import { TRANSIENT_STATUS_CODES } from './services/httpStatusCodes.js'
 import { validateWasteTrackingIdExists, validateWasteTrackingIdMissing } from './services/spreadsheetImport/transforms.js'
 import { getPaymentStatus } from './services/govPay/index.js'
 import { updateOrganisationPaymentStatus } from './domain/organisation.js'
-import { updateFromGovPayEvent, hasStatusChanged } from './domain/payment.js'
+import { updateFromGovPayEvent, hasStatusChanged, isPending } from './domain/payment.js'
 import { updateWithOptimisticLock } from './repositories/index.js'
 import { paymentCollection } from './repositories/payment.js'
 import { orgCollection } from './repositories/organisation.js'
@@ -201,6 +201,7 @@ export const processSpreadsheetJob = async (s3Client, message) => {
 
 const updatePaymentStatus = async (paymentId, organisationId, govPayment, db) => {
   let shouldUpdateOrg = false
+  let organisation = null
   const payment = await updateWithOptimisticLock(db.collection(paymentCollection), { paymentId, organisationId }, (dbPayment) => {
     if (dbPayment.status) {
       const p = updateFromGovPayEvent(dbPayment, govPayment)
@@ -211,17 +212,17 @@ const updatePaymentStatus = async (paymentId, organisationId, govPayment, db) =>
     }
   })
   if (shouldUpdateOrg) {
-    await updateWithOptimisticLock(db.collection(orgCollection), { organisationId }, (org) => updateOrganisationPaymentStatus(org, payment))
+    organisation = await updateWithOptimisticLock(db.collection(orgCollection), { organisationId }, (org) => updateOrganisationPaymentStatus(org, payment))
   }
-  return payment
+  return { payment, organisation }
 }
 
 export const processPaymentJob = async (db, message) => {
   const { paymentId, organisationId, traceId } = message
   const processJobLogger = createLogger(traceId)
   const govPayment = await getPaymentStatus(paymentId, processJobLogger)
-  const payment = await updatePaymentStatus(paymentId, organisationId, govPayment.payload, db)
-  return { logger: processJobLogger, payment }
+  const { payment } = await updatePaymentStatus(paymentId, organisationId, govPayment.payload, db)
+  return { logger: processJobLogger, payment, skipDeleteMessage: isPending(payment) }
 }
 
 export const dispatchProcessJob = (s3Client, mongoClient) => async (message) => {
@@ -232,6 +233,7 @@ export const dispatchProcessJob = (s3Client, mongoClient) => async (message) => 
   if (m.paymentId) {
     return await processPaymentJob(mongoClient, m)
   }
+  return null
 }
 
 export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {
@@ -239,7 +241,7 @@ export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {
     QueueUrl,
     MaxNumberOfMessages: 1, // Process 1 messages at once
     WaitTimeSeconds: 20, // Long polling to reduce empty responses
-    VisibilityTimeout: 30 // Hide message for 30s while processing
+    VisibilityTimeout: 300 // Hide message for 300s while processing
   }
 
   try {
@@ -255,7 +257,12 @@ export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {
           try {
             const result = await action(message)
             // Delete message after successful processing
-            await deleteMessage(sqsClient, QueueUrl, message.ReceiptHandle, result?.logger || defaultLogger)
+            const lg = result?.logger || defaultLogger
+            if (result.skipDeleteMessage) {
+              lg.info(`Skipping deleting message ${message}`)
+            } else {
+              await deleteMessage(sqsClient, QueueUrl, message.ReceiptHandle, lg)
+            }
           } catch (err) {
             // Message will become visible again after VisibilityTimeout
             defaultLogger.error(`Error processing message: ${err.stack}`)
