@@ -21,7 +21,7 @@ export function setupProxy() {
     setGlobalDispatcher(new ProxyAgent(proxyUrl))
 
     // global-agent (axios/request/and others)
-    bootstrap()
+    bootstrap({ rejectUnauthorized: false })
     global.GLOBAL_AGENT.HTTP_PROXY = proxyUrl
   }
 }
