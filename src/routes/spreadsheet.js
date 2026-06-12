@@ -5,14 +5,10 @@ import { spreadsheetSchema } from '../domain/spreadsheet.js'
 import { mergeAndValidate } from '../domain/index.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { spreadsheetCollection, findAllSpreadsheets, findUploadIdsByFilename } from '../repositories/spreadsheet.js'
-import { SendMessageCommand } from '@aws-sdk/client-sqs'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
-import { createLogger } from '../common/helpers/logging/logger.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
 import { constructS3Client } from '../backgroundProcessor.js'
 import { addVersionField, swaggerResponse } from './swagger-common.js'
-
-const logger = createLogger()
 
 const getHandler = async (request, h) => {
   const spreadsheets = await findAllSpreadsheets(request.db, request.params.organisationId, request.params.uploadId)
@@ -36,7 +32,7 @@ export const getUploadsByFilenameResponseSchema = swaggerResponse({
 const getOptions = { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ spreadsheets: [spreadsheetResponseSchema] }), sample: 0 } }
 const putOptions = { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ spreadsheet: spreadsheetResponseSchema }), sample: 0 } }
 
-const sendJob = async (client, QueueUrl, jobData) => {
+const sendJob = async (client, QueueUrl, jobData, logger) => {
   const params = {
     QueueUrl,
     MessageBody: JSON.stringify(jobData),
@@ -59,9 +55,9 @@ const sendJob = async (client, QueueUrl, jobData) => {
   }
 }
 
-const scheduleProcessor = async (sqsClient, queueUrl, jobData) => {
+const scheduleProcessor = async (sqsClient, queueUrl, jobData, logger) => {
   // TODO check state of the data - maybe only do this if it's just become ready or something??
-  sendJob(sqsClient, queueUrl, jobData)
+  await sendJob(sqsClient, queueUrl, jobData, logger)
   return null
 }
 
@@ -77,7 +73,7 @@ const putHandler = async (request, h) => {
     await scheduleProcessor(request.sqsClient, request.backgroundProcessSqsQueueUrl, data)
     return h.response({ message: 'success', spreadsheet: data })
   } catch (e) {
-    logger.error(`Error storing spreadsheet info ${e}`)
+    request.logger.error(`Error storing spreadsheet info ${e}`)
     return h.response({
       message: 'error',
       errors: e.isJoi ? e.details : [`${e}`]
@@ -115,7 +111,7 @@ const getUploadsByFilenameHandler = async (request, h) => {
         upload.processedFileUrl = url
         return upload
       } catch (err) {
-        logger.warn(`Failed to generate presigned URL for ${s3Key}-processed: ${err.message}`)
+        request.logger.warn(`Failed to generate presigned URL for ${s3Key}-processed: ${err.message}`)
         return upload
       }
     })
