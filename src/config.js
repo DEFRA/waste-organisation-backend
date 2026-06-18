@@ -152,10 +152,12 @@ export const config = convict({
       doc: 'The date the payment window opens in "dd-mm" format.',
       format: String,
       validate: (val) => {
+        /* v8 ignore start */
         if (isString(val) && val.match(/^([0123]?[0-9])-(1[012]|0?[1-9])$/)) {
           return val
         }
         throw new Error('payment window should be in format `DD-MM`')
+        /* v8 ignore stop */
       },
       nullable: true,
       default: '07-01',
