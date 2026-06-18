@@ -212,8 +212,9 @@ const updatePaymentStatus = async (paymentId, organisationId, govPayment, db) =>
 }
 
 export const processPaymentJob = async (db, message) => {
-  const { paymentId, organisationId, traceId } = message
+  const { paymentId, organisationId, traceId, initiatedAt } = message
   const processJobLogger = createLogger(traceId)
+  processJobLogger.debug(`Looking for paymentId ${paymentId}, organisationId ${organisationId}, initiatedAt ${initiatedAt}`)
   const govPayment = await getPaymentStatus(paymentId, processJobLogger)
   const { payment } = await updatePaymentStatus(paymentId, organisationId, govPayment.payload, db)
   return { logger: processJobLogger, payment, skipDeleteMessage: isPending(payment) }

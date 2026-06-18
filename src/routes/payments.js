@@ -38,6 +38,7 @@ const updatePaymentStatus = async (paymentId, organisationId, govPayment, db) =>
 }
 
 const schedulePollingTask = async (request, jobData) => {
+  request.logger.debug(`Scheduling polling task: ${jobData}`)
   return await sendSqsMessage(jobData, 'poll_for_payment', request.backgroundProcessSqsQueueUrl, request.logger, request.sqsClient)
 }
 
@@ -110,7 +111,7 @@ export const payments = [
           }
         )
         await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId }, updateDisableAfter)
-        await schedulePollingTask(request, { paymentId: payload.paymentId, organisationId, traceId: request.getTraceId() })
+        await schedulePollingTask(request, { paymentId: payload.paymentId, organisationId, traceId: request.getTraceId(), initiatedAt: new Date() })
         return h.response({ message: 'success', payment })
       } else {
         const message = payload?.description ?? payload?.message ?? payload?.detail ?? `GovPay returned status ${statusCode}`
