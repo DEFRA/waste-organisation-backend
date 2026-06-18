@@ -221,8 +221,8 @@ export const processPaymentJob = async (db, message) => {
 }
 
 export const dispatchProcessJob = (s3Client, mongoClient) => async (message) => {
+  defaultLogger.debug(`Received message ReceiptHandle: ${message.ReceiptHandle} message: $(message.Body)`)
   const m = JSON.parse(message.Body)
-  defaultLogger.debug(`Received message ReceiptHandle: ${message.ReceiptHandle} message: $(JSON.stringify(m))`)
   if (m.uploadId) {
     return await processSpreadsheetJob(s3Client, m)
   }
