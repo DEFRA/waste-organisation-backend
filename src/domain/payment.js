@@ -64,7 +64,8 @@ export const govPayStatusToStatus = (() => {
     error: 'payment_failed'
   }
   const refundMapping = {
-    pending: 'refund_in_progress',
+    // Note: refund pending means payment is pending - see https://docs.payments.service.gov.uk/refunding_payments/#checking-the-status-of-a-refund-status
+    // pending: 'refund_in_progress',
     submitted: 'refund_in_progress',
     success: 'refund_succeeded',
     failed: 'payment_succeeded',
