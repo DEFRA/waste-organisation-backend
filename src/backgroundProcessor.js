@@ -239,7 +239,7 @@ const processMessage = async (message, sqsClient, action, QueueUrl) => {
     const result = await action(message)
     const lg = result?.logger || defaultLogger
     if (result?.skipDeleteMessage) {
-      lg.info(`Skipping deleting message ${message}`)
+      lg.info(`Skipping deleting message ${message.ReceiptHandle}`)
     } else {
       // Delete message after successful processing
       await deleteMessage(sqsClient, QueueUrl, message.ReceiptHandle, lg)
