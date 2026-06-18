@@ -4,7 +4,7 @@ const constructSqsClient = ({ region, endpoint }) => {
   return new SQSClient({ region, endpoint })
 }
 
-const sendMessage = async (messageData, jobtype, QueueUrl, logger, client) => {
+export const sendSqsMessage = async (messageData, jobtype, QueueUrl, logger, client) => {
   const params = {
     QueueUrl,
     MessageBody: JSON.stringify(messageData),
@@ -35,9 +35,6 @@ export const sqsPlugin = {
       const client = constructSqsClient(options)
       server.decorate('request', 'sqsClient', client)
       server.decorate('request', options.queueKey, options.queueUrl)
-      server.decorate('request', 'sendSqsMessage', async (messageData, jobType, queueUrl, logger, sqsClient) => {
-        return await sendMessage(messageData, jobType, queueUrl ?? options.queueUrl, logger ?? this.logger, sqsClient ?? client)
-      })
     }
   }
 }

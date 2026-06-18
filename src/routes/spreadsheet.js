@@ -9,6 +9,7 @@ import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
 import { constructS3Client } from '../backgroundProcessor.js'
 import { addVersionField, swaggerResponse } from './swagger-common.js'
+import { sendSqsMessage } from '../plugins/sqs.js'
 
 const getHandler = async (request, h) => {
   const spreadsheets = await findAllSpreadsheets(request.db, request.params.organisationId, request.params.uploadId)
@@ -32,33 +33,9 @@ export const getUploadsByFilenameResponseSchema = swaggerResponse({
 const getOptions = { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ spreadsheets: [spreadsheetResponseSchema] }), sample: 0 } }
 const putOptions = { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ spreadsheet: spreadsheetResponseSchema }), sample: 0 } }
 
-const sendJob = async (client, QueueUrl, jobData, logger) => {
-  const params = {
-    QueueUrl,
-    MessageBody: JSON.stringify(jobData),
-    MessageAttributes: {
-      JobType: {
-        DataType: 'String',
-        StringValue: 'process_excel_file'
-      }
-    }
-  }
-
-  try {
-    const command = new SendMessageCommand(params)
-    const result = await client.send(command)
-    logger.info(`Job sent to queue: ${result.MessageId}`)
-    return result.MessageId
-  } catch (err) {
-    logger.error(`Error sending job: ${err}`)
-    throw err
-  }
-}
-
-const scheduleProcessor = async (sqsClient, queueUrl, jobData, logger) => {
+const scheduleProcessor = async (request, jobData) => {
   // TODO check state of the data - maybe only do this if it's just become ready or something??
-  await sendJob(sqsClient, queueUrl, jobData, logger)
-  return null
+  return await sendSqsMessage(jobData, 'process_excel_file', request.backgroundProcessSqsQueueUrl, request.logger, request.sqsClient)
 }
 
 const putHandler = async (request, h) => {
@@ -70,13 +47,13 @@ const putHandler = async (request, h) => {
       return mergeAndValidate(dbSpreadsheet, s, spreadsheetSchema)
     })
     // TODO check data for criteria to schedule processing
-    await scheduleProcessor(request.sqsClient, request.backgroundProcessSqsQueueUrl, data)
+    await scheduleProcessor(request, data)
     return h.response({ message: 'success', spreadsheet: data })
   } catch (e) {
     request.logger.error(`Error storing spreadsheet info ${e}`)
     return h.response({
       message: 'error',
-      errors: e.isJoi ? e.details : [`${e}`]
+      errors: e.isJoi ? e.details : [`${e} ${e.stack}`]
     })
   }
 }

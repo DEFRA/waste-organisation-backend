@@ -18,6 +18,7 @@ describe('spreadsheet API', () => {
 
   afterAll(async () => {
     stopServer(server)
+    vi.clearAllMocks()
   })
 
   test('should PUT spreadsheet', async () => {
