@@ -85,7 +85,7 @@
     },
     "fast-xml-parser": "5.7.3",
     "hapi-swagger": {
-      "joi": "18.2.1"
+      "joi": "18.2.2"
     }
   },
   "optionalDependencies": {
