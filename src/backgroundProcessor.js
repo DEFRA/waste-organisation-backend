@@ -228,6 +228,7 @@ export const dispatchProcessJob = (s3Client, mongoClient) => async (message) => 
   if (m.paymentId) {
     return await processPaymentJob(mongoClient, m)
   }
+  defaultLogger.debug(`Could not dispatch for message: $(m)`)
   return null
 }
 
@@ -235,7 +236,7 @@ const processMessage = async (message, sqsClient, action, QueueUrl) => {
   try {
     const result = await action(message)
     const lg = result?.logger || defaultLogger
-    if (result.skipDeleteMessage) {
+    if (result?.skipDeleteMessage) {
       lg.info(`Skipping deleting message ${message}`)
     } else {
       // Delete message after successful processing
