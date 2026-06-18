@@ -244,25 +244,20 @@ export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {
 
     if (data.Messages && data.Messages.length > 0) {
       defaultLogger.info(`Received ${data.Messages.length} message(s)`)
-
-      // Process messages in parallel
-      await Promise.all(
-        data.Messages.map(async (message) => {
-          try {
-            const result = await action(message)
-            // Delete message after successful processing
-            const lg = result?.logger || defaultLogger
-            if (result.skipDeleteMessage) {
-              lg.info(`Skipping deleting message ${message}`)
-            } else {
-              await deleteMessage(sqsClient, QueueUrl, message.ReceiptHandle, lg)
-            }
-          } catch (err) {
-            // Message will become visible again after VisibilityTimeout
-            defaultLogger.error(`Error processing message: ${err.stack}`)
-          }
-        })
-      )
+      const message = data.Messages[0] // Assumes batch size is 1 - see MaxNumberOfMessages above
+      try {
+        const result = await action(message)
+        // Delete message after successful processing
+        const lg = result?.logger || defaultLogger
+        if (result.skipDeleteMessage) {
+          lg.info(`Skipping deleting message ${message}`)
+        } else {
+          await deleteMessage(sqsClient, QueueUrl, message.ReceiptHandle, lg)
+        }
+      } catch (err) {
+        // Message will become visible again after VisibilityTimeout
+        defaultLogger.error(`Error processing message: ${err.stack}`)
+      }
     } else {
       defaultLogger.debug('No messages in queue')
     }
