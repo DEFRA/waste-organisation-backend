@@ -62,7 +62,7 @@
     "undici": "8.4.1"
   },
   "devDependencies": {
-    "@faker-js/faker": "10.3.0",
+    "@faker-js/faker": "10.4.0",
     "@vitest/coverage-v8": "4.1.8",
     "dotenv": "17.4.2",
     "eslint": "9.39.4",
