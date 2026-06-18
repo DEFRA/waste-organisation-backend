@@ -66,8 +66,12 @@ export const payments = [
     handler: async (request, h) => {
       const { paymentId, organisationId } = request.params
       const govPayment = await getPaymentStatus(paymentId, request.logger)
-      const payment = await updatePaymentStatus(paymentId, organisationId, govPayment.payload, request.db)
-      return h.response({ message: 'success', payment })
+      if (govPayment.status === 'success') {
+        const payment = await updatePaymentStatus(paymentId, organisationId, govPayment.payload, request.db)
+        return h.response({ message: 'success', payment })
+      } else {
+        return h.response({ message: 'error', error: govPayment })
+      }
     }
   },
   {

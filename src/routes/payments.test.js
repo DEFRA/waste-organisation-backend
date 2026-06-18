@@ -22,6 +22,7 @@ describe('payment API', () => {
   })
 
   afterAll(async () => {
+    vi.clearAllMocks()
     stopServer(server)
   })
 
@@ -279,6 +280,34 @@ describe('payment API', () => {
     })
     expect(statusCode).toEqual(200)
     expect(JSON.parse(payload).payment.status).toEqual('refund_succeeded')
+  })
+
+  test('poll for status should handle errors in gov pay', async () => {
+    const organisationId = 'abc123'
+    const paymentId = 'qqq555'
+    wreckPostMock.mockImplementation(async () => {
+      return fakeGovPayResponse(organisationId, paymentId)
+    })
+    const payFor = payForFn(server, organisationId)
+    await payFor('2026-05-01T00:00:00.000Z', '2027-05-01T00:00:00.000Z', (payment) => {
+      payment.state.status = 'success'
+      payment.state.finished = true
+      return payment
+    })
+    wreckGetMock.mockImplementation(async () => {
+      console.log(`Log >>>: `)
+      throw new Error('fish')
+    })
+    const { statusCode, payload } = await server.inject({
+      method: 'POST',
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
+      url: pathTo(paths.payment, { organisationId, paymentId }),
+      payload: {}
+    })
+    expect(JSON.parse(payload).message).toBe('error')
+    expect(statusCode).toBe(200)
   })
 })
 
