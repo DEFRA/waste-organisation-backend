@@ -2,9 +2,15 @@ import { initialiseServer, WASTE_CLIENT_AUTH_TEST_TOKEN, stopServer } from '../c
 import { paths, pathTo } from '../config/paths.js'
 import { config } from '../config.js'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { sendSqsMessage } from '../plugins/sqs.js'
 
 vi.mock('@aws-sdk/s3-request-presigner', () => ({
   getSignedUrl: vi.fn().mockResolvedValue('https://mock-presigned-url.com/processed-file')
+}))
+
+vi.mock('../plugins/sqs.js', (module) => ({
+  sendSqsMessage: vi.fn().mockResolvedValue(null),
+  sqsPlugin: module.sqsPlugin
 }))
 
 const originalGet = config.get.bind(config)
@@ -73,6 +79,25 @@ describe('spreadsheet API', () => {
     expect(statusCode).toBe(200)
     expect(result.message).toBe('success')
     expect(result.uploads).toEqual(expect.arrayContaining([{ uploadId: 'upload-a' }, { uploadId: 'upload-b' }]))
+  })
+
+  test('should report error scheduling background job', async () => {
+    sendSqsMessage.mockRejectedValueOnce(new Error('some error'))
+
+    const { result } = await server.inject({
+      method: 'PUT',
+      url: pathTo(paths.putSpreadsheet, { uploadId: 123, organisationId: 456 }),
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
+      payload: {
+        spreadsheet: {
+          fileId: 'file-id'
+        }
+      }
+    })
+
+    expect(result.message).toEqual('error')
   })
 
   test('should return processedFileUrl when upload has s3 coordinates', async () => {

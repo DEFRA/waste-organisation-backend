@@ -53,7 +53,7 @@ const putHandler = async (request, h) => {
     request.logger.error(`Error storing spreadsheet info ${e}`)
     return h.response({
       message: 'error',
-      errors: e.isJoi ? e.details : [`${e} ${e.stack}`]
+      errors: e.isJoi ? e.details : [`${e}`]
     })
   }
 }
