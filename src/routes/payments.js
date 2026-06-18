@@ -38,7 +38,7 @@ const updatePaymentStatus = async (paymentId, organisationId, govPayment, db) =>
 }
 
 const schedulePollingTask = async (request, jobData) => {
-  request.logger.debug(`Scheduling polling task: ${jobData}`)
+  request.logger.debug(`Scheduling polling task: ${JSON.stringify(jobData)}`)
   return await sendSqsMessage(jobData, 'poll_for_payment', request.backgroundProcessSqsQueueUrl, request.logger, request.sqsClient)
 }
 

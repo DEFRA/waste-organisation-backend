@@ -228,7 +228,7 @@ export const dispatchProcessJob = (s3Client, mongoClient) => async (message) => 
   if (m.paymentId) {
     return await processPaymentJob(mongoClient, m)
   }
-  defaultLogger.debug(`Could not dispatch for message: $(m)`)
+  defaultLogger.debug(`Could not dispatch for message: $(JSON.stringify(m))`)
   return null
 }
 
