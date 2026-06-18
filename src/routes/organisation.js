@@ -4,9 +4,6 @@ import { orgCollection } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
 import { addVersionField, swaggerResponse } from './swagger-common.js'
-import { createLogger } from '../common/helpers/logging/logger.js'
-
-const logger = createLogger()
 
 export const organisations = [
   {
@@ -49,7 +46,7 @@ export const organisations = [
         )
         delete organisation.apiCodes
 
-        logger.info(
+        request.logger.info(
           `Organisation ${transactionType}: ${JSON.stringify({
             organisationId: organisation.organisationId,
             createdAt: organisation.createdAt
