@@ -26,8 +26,6 @@ export const createGovPayPayment = async ({ reference, amount, description, retu
     return { payload, status: res?.statusCode === CREATED ? 'success' : 'error', statusCode: res?.statusCode }
   } catch (e) {
     log.error(`Error initiating payment ${e} ${e.stack}`)
-    // TODO delete log
-    log.error(`ERROR DATA: ${JSON.stringify(e.data?.payload, null, 4)}`)
     return { status: 'error', error: e }
   }
 }
