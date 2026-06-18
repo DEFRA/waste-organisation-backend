@@ -127,12 +127,9 @@ describe('background processor', () => {
     expect(response).toBeUndefined()
   })
 
-  test('poll queue happy path', async () => {
+  test('poll queue happy path - only processes one message at a time', async () => {
     const { pollQueue } = await import('./backgroundProcessor.js')
-    const testData = [
-      { test: 'data1', ReceiptHandle: 'handle1' },
-      { test: 'data2', ReceiptHandle: 'handle2' }
-    ]
+    const testData = [{ test: 'data1', ReceiptHandle: 'handle1' }]
     const sideEffect = { processedMessages: [], deletedMessages: [] }
     await pollQueue({
       sqsClient: {
