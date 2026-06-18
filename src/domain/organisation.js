@@ -12,7 +12,6 @@ const validate = (org) => {
 const freePeriodEnd = () => config.get('govPay.serviceChargeFreePeriodEnd')
 
 const defaultOrgValues = (org) => {
-  // TODO maybe not store this in the db??
   const disableAfter = org.disableAfter ?? freePeriodEnd()
   return {
     ...org,
