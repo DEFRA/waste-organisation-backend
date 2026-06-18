@@ -217,6 +217,7 @@ export const processPaymentJob = async (db, message) => {
   processJobLogger.debug(`Looking for paymentId ${paymentId}, organisationId ${organisationId}, initiatedAt ${initiatedAt}`)
   const govPayment = await getPaymentStatus(paymentId, processJobLogger)
   const { payment } = await updatePaymentStatus(paymentId, organisationId, govPayment.payload, db)
+  processJobLogger.debug(`Payment ${JSON.stringify(payment)}`)
   return { logger: processJobLogger, payment, skipDeleteMessage: isPending(payment) }
 }
 
