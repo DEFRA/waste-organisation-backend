@@ -86,7 +86,8 @@
     "fast-xml-parser": "5.7.3",
     "hapi-swagger": {
       "joi": "18.2.2"
-    }
+    },
+    "hapi-pulse": { "joi": "18.2.2" }
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "4.59.0"
