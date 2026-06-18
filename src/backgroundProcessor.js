@@ -230,6 +230,22 @@ export const dispatchProcessJob = (s3Client, mongoClient) => async (message) => 
   return null
 }
 
+const processMessage = async (message, sqsClient, action, QueueUrl) => {
+  try {
+    const result = await action(message)
+    const lg = result?.logger || defaultLogger
+    if (result.skipDeleteMessage) {
+      lg.info(`Skipping deleting message ${message}`)
+    } else {
+      // Delete message after successful processing
+      await deleteMessage(sqsClient, QueueUrl, message.ReceiptHandle, lg)
+    }
+  } catch (err) {
+    // Message will become visible again after VisibilityTimeout
+    defaultLogger.error(`Error processing message: ${err.stack}`)
+  }
+}
+
 export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {
   const params = {
     QueueUrl,
@@ -241,23 +257,9 @@ export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {
   try {
     const command = new ReceiveMessageCommand(params)
     const data = await sqsClient.send(command)
-
     if (data.Messages && data.Messages.length > 0) {
       defaultLogger.info(`Received ${data.Messages.length} message(s)`)
-      const message = data.Messages[0] // Assumes batch size is 1 - see MaxNumberOfMessages above
-      try {
-        const result = await action(message)
-        // Delete message after successful processing
-        const lg = result?.logger || defaultLogger
-        if (result.skipDeleteMessage) {
-          lg.info(`Skipping deleting message ${message}`)
-        } else {
-          await deleteMessage(sqsClient, QueueUrl, message.ReceiptHandle, lg)
-        }
-      } catch (err) {
-        // Message will become visible again after VisibilityTimeout
-        defaultLogger.error(`Error processing message: ${err.stack}`)
-      }
+      await processMessage(data.Messages[0], sqsClient, action, QueueUrl) // Assumes batch size is 1 - see MaxNumberOfMessages above
     } else {
       defaultLogger.debug('No messages in queue')
     }
