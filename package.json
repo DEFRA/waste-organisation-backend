@@ -49,10 +49,10 @@
     "exceljs": "4.4.0",
     "global-agent": "3.0.0",
     "hapi-pino": "13.0.0",
-    "hapi-pulse": "3.0.1",
+    "hapi-pulse": "3.0.0",
     "hapi-swagger": "17.3.2",
     "https-proxy-agent": "9.0.0",
-    "joi": "18.2.1",
+    "joi": "18.2.2",
     "mongo-locks": "3.0.2",
     "mongodb": "6.17.0",
     "node-fetch": "3.3.2",
@@ -85,7 +85,10 @@
     },
     "fast-xml-parser": "5.7.3",
     "hapi-swagger": {
-      "joi": "18.2.1"
+      "joi": "18.2.2"
+    },
+    "hapi-pulse": {
+      "joi": "18.2.2"
     }
   },
   "optionalDependencies": {
