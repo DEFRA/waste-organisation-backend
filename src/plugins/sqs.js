@@ -1,7 +1,11 @@
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs'
 
-const constructSqsClient = ({ region, endpoint }) => {
-  return new SQSClient({ region, endpoint })
+export const constructSqsClient = ({ region, endpoint, forcePathStyle }) => {
+  const c = { region, endpoint }
+  if (forcePathStyle) {
+    c.forcePathStyle = forcePathStyle
+  }
+  return new SQSClient(c)
 }
 
 export const sendSqsMessage = async (messageData, jobtype, QueueUrl, logger, client) => {

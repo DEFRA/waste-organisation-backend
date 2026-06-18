@@ -3,7 +3,8 @@
 // import { updateWithOptimisticLock } from '../repositories/index.js'
 // import { spreadsheetCollection } from '../repositories/spreadsheet.js'
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
-import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs'
+import { ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs'
+import { constructSqsClient } from './plugins/sqs.js'
 import { MongoClient } from 'mongodb'
 
 import { config } from './config.js'
@@ -51,13 +52,6 @@ export const fetchS3Object = async (s3Client, Bucket, Key) => {
     chunks.push(c)
   }
   return Buffer.concat(chunks)
-}
-
-const constructSqsClient = () => {
-  return new SQSClient({
-    region: config.get('aws.region'),
-    endpoint: config.get('aws.sqsEndpoint')
-  })
 }
 
 export const constructMongoClient = async () => {
@@ -241,7 +235,7 @@ export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {
     QueueUrl,
     MaxNumberOfMessages: 1, // Process 1 messages at once
     WaitTimeSeconds: 20, // Long polling to reduce empty responses
-    VisibilityTimeout: 300 // Hide message for 300s while processing
+    VisibilityTimeout: 300 // Hide message while processing
   }
 
   try {
@@ -281,7 +275,10 @@ export const startWorker = async () => {
   defaultLogger.info('Worker started. Polling for jobs...')
   const QueueUrl = config.get('aws.backgroundProcessQueue')
   const s3Client = constructS3Client()
-  const sqsClient = constructSqsClient()
+  const sqsClient = constructSqsClient({
+    region: config.get('aws.region'),
+    endpoint: config.get('aws.sqsEndpoint')
+  })
   const mongoClient = await constructMongoClient()
   // prettier-ignore
   while (true) {  // NOSONAR

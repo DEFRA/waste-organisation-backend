@@ -10,6 +10,7 @@ import { addVersionField, swaggerResponse } from './swagger-common.js'
 import { createGovPayPayment, getPaymentStatus } from '../services/govPay/index.js'
 import boom from '@hapi/boom'
 import { randomUUID } from 'node:crypto'
+import { sendSqsMessage } from '../plugins/sqs.js'
 
 const uuidToBase36 = (uuid) => {
   const hex = uuid.replaceAll('-', '')
@@ -34,6 +35,10 @@ const updatePaymentStatus = async (paymentId, organisationId, govPayment, db) =>
     await updateWithOptimisticLock(db.collection(orgCollection), { organisationId }, (org) => updateOrganisationPaymentStatus(org, payment))
   }
   return payment
+}
+
+const schedulePollingTask = async (request, jobData) => {
+  return await sendSqsMessage(jobData, 'poll_for_payment', request.backgroundProcessSqsQueueUrl, request.logger, request.sqsClient)
 }
 
 export const payments = [
@@ -105,6 +110,7 @@ export const payments = [
           }
         )
         await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId }, updateDisableAfter)
+        await schedulePollingTask(request, { paymentId: payload.paymentId, organisationId, traceId: request.getTraceId() })
         return h.response({ message: 'success', payment })
       } else {
         const message = payload?.description ?? payload?.message ?? payload?.detail ?? `GovPay returned status ${statusCode}`
