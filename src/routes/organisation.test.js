@@ -1,3 +1,4 @@
+import { expect } from 'vitest'
 import { initialiseServer, WASTE_CLIENT_AUTH_TEST_TOKEN, stopServer } from '../common/helpers/initialse-test-server.js'
 import { paths, pathTo } from '../config/paths.js'
 
@@ -29,6 +30,8 @@ describe('organisation API', () => {
     expect(result).toEqual({
       message: 'success',
       organisation: {
+        createdAt: expect.any(Date),
+        updatedAt: expect.any(Date),
         name: 'Bob',
         organisationId: '456',
         users: ['123'],
@@ -61,6 +64,8 @@ describe('organisation API', () => {
     expect(result).toEqual({
       message: 'success',
       organisation: {
+        createdAt: expect.any(Date),
+        updatedAt: expect.any(Date),
         name: 'Mr Dabolina',
         organisationId: '456',
         users: ['123', '789'],

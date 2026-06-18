@@ -4,6 +4,9 @@ import { orgCollection } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
 import { addVersionField, swaggerResponse } from './swagger-common.js'
+import { createLogger } from '../common/helpers/logging/logger.js'
+
+const logger = createLogger()
 
 export const organisations = [
   {
@@ -16,10 +19,15 @@ export const organisations = [
     },
     handler: async (request, h) => {
       try {
+        let transactionType = 'updated'
         const organisation = await updateWithOptimisticLock(
           request.db.collection(orgCollection),
           { organisationId: request.params.organisationId },
           (dbOrg) => {
+            if (!dbOrg._id) {
+              transactionType = 'created'
+            }
+
             const organisationId = request.params.organisationId
             const userId = request.params.userId
             const org = mergeAndValidate(
@@ -40,6 +48,14 @@ export const organisations = [
           }
         )
         delete organisation.apiCodes
+
+        logger.info(
+          `Organisation ${transactionType}: ${JSON.stringify({
+            organisationId: organisation.organisationId,
+            createdAt: organisation.createdAt
+          })}`
+        )
+
         return h.response({ message: 'success', organisation })
       } catch (e) {
         return h.response({

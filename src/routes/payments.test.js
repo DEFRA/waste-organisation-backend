@@ -29,6 +29,8 @@ describe('payment API', () => {
     expect(result).toEqual({
       message: 'success',
       payment: {
+        createdAt: expect.any(Date),
+        updatedAt: expect.any(Date),
         status: 'FAILED',
         paymentId: '456',
         organisationId: '123',
@@ -59,6 +61,8 @@ describe('payment API', () => {
     expect(result).toEqual({
       message: 'success',
       payment: {
+        createdAt: expect.any(Date),
+        updatedAt: expect.any(Date),
         status: 'PENDING',
         paymentId: '999',
         organisationId: '111',
