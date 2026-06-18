@@ -111,7 +111,7 @@ export const payments = [
           }
         )
         await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId }, updateDisableAfter)
-        await schedulePollingTask(request, { paymentId: payload.paymentId, organisationId, traceId: request.getTraceId(), initiatedAt: new Date() })
+        await schedulePollingTask(request, { paymentId: payload.payment_id, organisationId, traceId: request.getTraceId(), initiatedAt: new Date() })
         return h.response({ message: 'success', payment })
       } else {
         const message = payload?.description ?? payload?.message ?? payload?.detail ?? `GovPay returned status ${statusCode}`
