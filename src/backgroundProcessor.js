@@ -206,20 +206,29 @@ const updatePaymentStatus = async (paymentId, organisationId, govPayment, db) =>
     }
   })
   if (shouldUpdateOrg) {
-    organisation = await updateWithOptimisticLock(db.collection(orgCollection), { organisationId }, (org) => updateOrganisationPaymentStatus(org, payment))
+    organisation = await updateWithOptimisticLock(db.collection(orgCollection), { organisationId }, (org) => {
+      return updateOrganisationPaymentStatus(org, payment)
+    })
   }
   return { payment, organisation }
 }
 
-export const processPaymentJob = async (db, message) => {
-  const { paymentId, organisationId, traceId, initiatedAt } = message
-  const processJobLogger = createLogger(traceId)
-  processJobLogger.debug(`Looking for paymentId ${paymentId}, organisationId ${organisationId}, initiatedAt ${initiatedAt}`)
-  const govPayment = await getPaymentStatus(paymentId, processJobLogger)
-  const { payment } = await updatePaymentStatus(paymentId, organisationId, govPayment.payload, db)
-  processJobLogger.debug(`Payment ${JSON.stringify(payment)}`)
-  return { logger: processJobLogger, payment, skipDeleteMessage: isPending(payment) }
-}
+export const processPaymentJob = (() => {
+  const threeDaysInMS = 3 * 24 * 60 * 60 * 1000
+  const isMessageTooOld = (initiatedAt) => {
+    const threeDaysAgo = new Date(new Date().getTime() - threeDaysInMS)
+    return initiatedAt < threeDaysAgo
+  }
+  return async (db, message) => {
+    const { paymentId, organisationId, traceId, initiatedAt } = message
+    const processJobLogger = createLogger(traceId)
+    processJobLogger.debug(`Looking for paymentId ${paymentId}, organisationId ${organisationId}, initiatedAt ${initiatedAt}`)
+    const govPayment = await getPaymentStatus(paymentId, processJobLogger)
+    const { payment } = await updatePaymentStatus(paymentId, organisationId, govPayment.payload, db)
+    processJobLogger.debug(`Payment ${JSON.stringify(payment)}`)
+    return { logger: processJobLogger, payment, skipDeleteMessage: isPending(payment) && !isMessageTooOld(initiatedAt) }
+  }
+})()
 
 export const dispatchProcessJob = (s3Client, mongoClient) => async (message) => {
   defaultLogger.debug(`Received message ReceiptHandle: ${message.ReceiptHandle} message: ${message.Body}`)
