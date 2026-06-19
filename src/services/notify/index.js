@@ -10,8 +10,8 @@ const createGovukNotifyToken = ({ apiKeyId, serviceId }) =>
 
 const parseGovNotifyKey = () => {
   const apiKey = config.get('notify.govNotifyKey')
-  const apiKeyId = apiKey.substring(apiKey.length - 36, apiKey.length)
-  const serviceId = apiKey.substring(apiKey.length - 73, apiKey.length - 37)
+  const apiKeyId = apiKey?.substring(apiKey.length - 36, apiKey.length)
+  const serviceId = apiKey?.substring(apiKey.length - 73, apiKey.length - 37)
   return { apiKeyId, serviceId }
 }
 
@@ -66,14 +66,14 @@ const send = async ({ template, email, name, file, referenceNumber, filename, lo
       logger.info(`Attaching file`)
       personalisation.link_to_file = prepareUpload(file)
     }
-    const response = wreck.post(`${govPayUrl}/v2/notifications/email`, {
+    const response = await wreck.post(`${govPayUrl}/v2/notifications/email`, {
       json: 'strict',
       headers: {
         Authorization: 'Bearer ' + createGovukNotifyToken(parseGovNotifyKey())
       },
       payload: { email_address: email, template_id: template, personalisation }
     })
-    logger.info(`Email Sent`)
+    logger.info(`Email Sent - ${Object.keys(response)}`)
     return response
   } catch (err) {
     logger.error(`Error sending emails: ${err}`)

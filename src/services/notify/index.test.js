@@ -9,13 +9,10 @@ describe('Notify', () => {
   const successfulSubmission = '2ffe3792-f097-421d-b3e2-9de5af81609f'
 
   beforeAll(() => {
-    vi.doMock('notifications-node-client', () => ({
-      NotifyClient: vi.fn().mockImplementation(function () {
-        return {
-          prepareUpload: prepareUploadMock.mockReturnValue('link'),
-          sendEmail: sendEmailMock
-        }
-      })
+    vi.doMock('@hapi/wreck', () => ({
+      default: {
+        post: sendEmailMock.mockReturnValue({ payload: { post: 'response' } })
+      }
     }))
 
     vi.doMock('pino', () => ({
@@ -26,8 +23,14 @@ describe('Notify', () => {
     }))
   })
 
+  afterAll(() => {
+    vi.clearAllMocks()
+  })
+
   it('should return email response', async () => {
-    sendEmailMock.mockReturnValue({ data: 'response' })
+    sendEmailMock.mockImplementation(async () => {
+      return { data: 'response' }
+    })
     const { sendEmail } = await import('./index.js')
     const actualResponse = await sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }) })
     const personalisation = {
@@ -35,7 +38,13 @@ describe('Notify', () => {
       'upload id': null,
       filename: null
     }
-    expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
+    expect(sendEmailMock).toHaveBeenCalledWith(expect.anything(), {
+      json: 'strict',
+      headers: {
+        Authorization: expect.anything()
+      },
+      payload: { email_address: email, template_id: expect.anything(), personalisation }
+    })
     expect(actualResponse).toBe(sendEmailMock())
     expect(loggerInfoMock).toBeCalledWith('Email Sent')
   })
