@@ -1,7 +1,34 @@
-import { NotifyClient } from 'notifications-node-client'
 import { config } from '../../config.js'
 import { createLogger } from '../../common/helpers/logging/logger.js'
-const apiKey = config.get('notify.govNotifyKey')
+import jwt from 'jsonwebtoken'
+import wreck from '@hapi/wreck'
+
+const govPayUrl = 'https://api.notifications.service.gov.uk'
+
+const createGovukNotifyToken = ({ apiKeyId, serviceId }) =>
+  jwt.sign({ iss: serviceId, iat: Math.round(Date.now() / 1000) }, apiKeyId, { header: { typ: 'JWT', alg: 'HS256' } })
+
+const parseGovNotifyKey = () => {
+  const apiKey = config.get('notify.govNotifyKey')
+  const apiKeyId = apiKey.substring(apiKey.length - 36, apiKey.length)
+  const serviceId = apiKey.substring(apiKey.length - 73, apiKey.length - 37)
+  return { apiKeyId, serviceId }
+}
+
+const prepareUpload = (file) => {
+  if (file.length > 2 * 1024 * 1024) {
+    throw new Error('File is larger than 2MB.')
+  }
+  // if (typeof file === 'string') {
+  //   file = Buffer.from(file)
+  // }
+  return {
+    file: file.toString('base64'),
+    filename: null,
+    confirm_email_before_download: null,
+    retention_period: null
+  }
+}
 
 const successTemplate = config.get('notify.successTemplate')
 const failedTemplate = config.get('notify.failedTemplate')
@@ -19,7 +46,6 @@ const send = async ({ template, email, name, file, referenceNumber, filename, lo
     logger = createLogger()
   }
 
-  const notifyClient = new NotifyClient(apiKey)
   let nameObject = null
 
   try {
@@ -38,9 +64,15 @@ const send = async ({ template, email, name, file, referenceNumber, filename, lo
     }
     if (file) {
       logger.info(`Attaching file`)
-      personalisation.link_to_file = notifyClient.prepareUpload(file)
+      personalisation.link_to_file = prepareUpload(file)
     }
-    const response = await notifyClient.sendEmail(template, email, { personalisation })
+    const response = wreck.post(`${govPayUrl}/v2/notifications/email`, {
+      json: 'strict',
+      headers: {
+        Authorization: 'Bearer ' + createGovukNotifyToken(parseGovNotifyKey())
+      },
+      payload: { email_address: email, template_id: template, personalisation }
+    })
     logger.info(`Email Sent`)
     return response
   } catch (err) {
