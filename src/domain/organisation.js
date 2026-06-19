@@ -154,7 +154,7 @@ export const calculateNextPaymentPeriod = (() => {
     const startDate = getStartDate(at)
     const paymentWindowStart = getPaymentWindowStart(at, startDate)
     const endOfFreePeriod = freePeriodEnd()
-    const paymentPeriods = [null, null, null, null, null]
+    const paymentPeriods = [null, null]
       .map((_) => {
         const p = new Date(startDate)
         startDate.setFullYear(p.getFullYear() + 1)
