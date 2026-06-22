@@ -52,7 +52,7 @@
     "hapi-swagger": "17.3.2",
     "joi": "18.2.2",
     "jsonwebtoken": "9.0.3",
-    "mongo-locks": "3.0.2",
+    "mongo-locks": "3.1.2",
     "mongodb": "6.17.0",
     "node-fetch": "3.3.2",
     "pino": "10.3.1",
