@@ -1,14 +1,14 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { config } from '../../config.js'
 
 describe('Notify', () => {
-  const prepareUploadMock = vi.fn()
   const sendEmailMock = vi.fn()
   const loggerErrorMock = vi.fn()
   const loggerInfoMock = vi.fn()
   const email = 'foo@example.com'
-  const successfulSubmission = '2ffe3792-f097-421d-b3e2-9de5af81609f'
 
   beforeAll(() => {
+    config.set('notify.govNotifyKey', 'fishy_testing_thing-' + 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa-aaaaaaaa' + '-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
     vi.doMock('@hapi/wreck', () => ({
       default: {
         post: sendEmailMock.mockReturnValue({ payload: { post: 'response' } })
@@ -29,7 +29,8 @@ describe('Notify', () => {
 
   it('should return email response', async () => {
     sendEmailMock.mockImplementation(async () => {
-      return { data: 'response' }
+      console.log('.>>>>')
+      return { payload: { data: 'response' } }
     })
     const { sendEmail } = await import('./index.js')
     const actualResponse = await sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }) })
@@ -46,7 +47,7 @@ describe('Notify', () => {
       payload: { email_address: email, template_id: expect.anything(), personalisation }
     })
     expect(actualResponse).toBe(sendEmailMock())
-    expect(loggerInfoMock).toBeCalledWith('Email Sent')
+    expect(loggerInfoMock).toHaveBeenCalledWith('Email Sent')
   })
 
   it('should return email response if name is not parsable to JSON', async () => {
@@ -58,9 +59,15 @@ describe('Notify', () => {
       'upload id': null,
       filename: null
     }
-    expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
+    expect(sendEmailMock).toHaveBeenCalledWith(expect.anything(), {
+      json: 'strict',
+      headers: {
+        Authorization: expect.anything()
+      },
+      payload: { email_address: email, template_id: expect.anything(), personalisation }
+    })
     expect(actualResponse).toBe(sendEmailMock())
-    expect(loggerInfoMock).toBeCalledWith('Email Sent')
+    expect(loggerInfoMock).toHaveBeenCalledWith('Email Sent')
   })
 
   it('should handle if there is no name', async () => {
@@ -72,9 +79,15 @@ describe('Notify', () => {
       'upload id': null,
       filename: null
     }
-    expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
+    expect(sendEmailMock).toHaveBeenCalledWith(expect.anything(), {
+      json: 'strict',
+      headers: {
+        Authorization: expect.anything()
+      },
+      payload: { email_address: email, template_id: expect.anything(), personalisation }
+    })
     expect(actualResponse).toBe(sendEmailMock())
-    expect(loggerInfoMock).toBeCalledWith('Email Sent')
+    expect(loggerInfoMock).toHaveBeenCalledWith('Email Sent')
   })
 
   it('should return email response with file link', async () => {
@@ -86,11 +99,21 @@ describe('Notify', () => {
       'first name': 'Joe Bloggs',
       'upload id': null,
       filename: null,
-      link_to_file: 'link'
+      link_to_file: {
+        confirm_email_before_download: null,
+        file: 'AA==', // base 64 encoded file byte array
+        filename: null,
+        retention_period: null
+      }
     }
 
-    expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
-    expect(prepareUploadMock).toBeCalledWith(file)
+    expect(sendEmailMock).toHaveBeenCalledWith(expect.anything(), {
+      json: 'strict',
+      headers: {
+        Authorization: expect.anything()
+      },
+      payload: { email_address: email, template_id: expect.anything(), personalisation }
+    })
   })
 
   it('should include upload id in personalisation when provided', async () => {
@@ -103,7 +126,13 @@ describe('Notify', () => {
       'upload id': 'abc-123',
       filename: null
     }
-    expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
+    expect(sendEmailMock).toHaveBeenCalledWith(expect.anything(), {
+      json: 'strict',
+      headers: {
+        Authorization: expect.anything()
+      },
+      payload: { email_address: email, template_id: expect.anything(), personalisation }
+    })
   })
 
   it('should include filename in personalisation when provided', async () => {
@@ -115,7 +144,13 @@ describe('Notify', () => {
       'upload id': null,
       filename: 'test.xlsx'
     }
-    expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
+    expect(sendEmailMock).toHaveBeenCalledWith(expect.anything(), {
+      json: 'strict',
+      headers: {
+        Authorization: expect.anything()
+      },
+      payload: { email_address: email, template_id: expect.anything(), personalisation }
+    })
   })
 
   it('should handle exception correctly', async () => {

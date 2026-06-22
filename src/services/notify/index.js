@@ -5,8 +5,13 @@ import wreck from '@hapi/wreck'
 
 const govPayUrl = 'https://api.notifications.service.gov.uk'
 
-const createGovukNotifyToken = ({ apiKeyId, serviceId }) =>
-  jwt.sign({ iss: serviceId, iat: Math.round(Date.now() / 1000) }, apiKeyId, { header: { typ: 'JWT', alg: 'HS256' } })
+const createGovukNotifyToken = ({ apiKeyId, serviceId }) => {
+  if (apiKeyId && serviceId) {
+    return jwt.sign({ iss: serviceId, iat: Math.round(Date.now() / 1000) }, apiKeyId, { header: { typ: 'JWT', alg: 'HS256' } })
+  } else {
+    throw new Error('Notify key not set')
+  }
+}
 
 const parseGovNotifyKey = () => {
   const apiKey = config.get('notify.govNotifyKey')
@@ -45,7 +50,6 @@ const send = async ({ template, email, name, file, referenceNumber, filename, lo
   if (!logger) {
     logger = createLogger()
   }
-
   let nameObject = null
 
   try {
@@ -55,7 +59,6 @@ const send = async ({ template, email, name, file, referenceNumber, filename, lo
   } catch (error) {
     logger.error(`name is not parsable to JSON: ${error}`)
   }
-
   try {
     const personalisation = {
       'first name': nameObject ? nameObject.firstName : null,
@@ -73,7 +76,7 @@ const send = async ({ template, email, name, file, referenceNumber, filename, lo
       },
       payload: { email_address: email, template_id: template, personalisation }
     })
-    logger.info(`Email Sent - ${Object.keys(response)}`)
+    logger.info(`Email Sent`)
     return response
   } catch (err) {
     logger.error(`Error sending emails: ${err}`)
