@@ -9,7 +9,6 @@ describe('Notify', () => {
 
   beforeAll(() => {
     // Note: string concatenation is workaround for security regex false positive
-    config.set('notify.govNotifyKey', 'fishy_testing_thing-' + 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa-aaaaaaaa' + '-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
     vi.doMock('@hapi/wreck', () => ({
       default: {
         post: sendEmailMock.mockReturnValue({ payload: { post: 'response' } })
@@ -24,13 +23,16 @@ describe('Notify', () => {
     }))
   })
 
+  beforeEach(() => {
+    config.set('notify.govNotifyKey', 'fishy_testing_thing-' + 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa-aaaaaaaa' + '-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
+  })
+
   afterAll(() => {
     vi.clearAllMocks()
   })
 
   it('should return email response', async () => {
     sendEmailMock.mockImplementation(async () => {
-      console.log('.>>>>')
       return { payload: { data: 'response' } }
     })
     const { sendEmail } = await import('./index.js')
@@ -161,18 +163,17 @@ describe('Notify', () => {
     expect(loggerErrorMock).toHaveBeenCalledWith('Error sending emails: Mock Error')
   })
 
+  it('should error when file is too large', async () => {
+    const { sendEmail } = await import('./index.js')
+    const file = { length: 2048 * 1024 + 1 }
+    await sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }), file })
+    expect(loggerErrorMock).toHaveBeenCalledWith('Error sending emails: Error: File is larger than 2MB.')
+  })
+
   it('should error when gov notify key is not set', async () => {
     config.set('notify.govNotifyKey', null)
     const { sendEmail } = await import('./index.js')
     await sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }) })
-    expect(loggerErrorMock).toHaveBeenCalledWith('Error sending emails: Error: Notify key not set')
-  })
-
-  it('should return email response with file link', async () => {
-    sendEmailMock.mockReturnValue('response')
-    const { sendEmail } = await import('./index.js')
-    const file = { length: 2049 }
-    await sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }), file })
     expect(loggerErrorMock).toHaveBeenCalledWith('Error sending emails: Error: Notify key not set')
   })
 })
