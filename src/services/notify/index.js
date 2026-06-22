@@ -15,8 +15,8 @@ const createGovukNotifyToken = ({ apiKeyId, serviceId }) => {
 
 const parseGovNotifyKey = () => {
   const apiKey = config.get('notify.govNotifyKey')
-  const apiKeyId = apiKey?.substring(apiKey.length - 36, apiKey.length)
-  const serviceId = apiKey?.substring(apiKey.length - 73, apiKey.length - 37)
+  const apiKeyId = apiKey?.substring(apiKey.length - 36, apiKey.length) // nosonar
+  const serviceId = apiKey?.substring(apiKey.length - 73, apiKey.length - 37) // nosonar
   return { apiKeyId, serviceId }
 }
 
