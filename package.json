@@ -53,7 +53,7 @@
     "joi": "18.2.2",
     "jsonwebtoken": "9.0.3",
     "mongo-locks": "3.1.2",
-    "mongodb": "7.3.0",
+    "mongodb": "6.17.0",
     "node-fetch": "3.3.2",
     "pino": "10.3.1",
     "pino-pretty": "13.1.3"
