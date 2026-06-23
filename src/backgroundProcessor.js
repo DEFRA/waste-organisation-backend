@@ -214,9 +214,9 @@ const updatePaymentStatus = async (paymentId, organisationId, govPayment, db) =>
 }
 
 export const processPaymentJob = (() => {
-  const threeDaysInMS = 3 * 24 * 60 * 60 * 1000
+  const maxMessageAge = config.get('govPay.maxAgeOfPaymentPollingMessage')
   const isMessageTooOld = (initiatedAt) => {
-    const threeDaysAgo = new Date(new Date().getTime() - threeDaysInMS)
+    const threeDaysAgo = new Date(new Date().getTime() - maxMessageAge)
     return initiatedAt < threeDaysAgo
   }
   return async (db, message) => {
