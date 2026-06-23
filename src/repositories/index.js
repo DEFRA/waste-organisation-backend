@@ -2,22 +2,30 @@ import { createLogger } from '../common/helpers/logging/logger.js'
 
 const logger = createLogger()
 
+const setCreatedAtIfMissing = (doc) => (updatedDoc) => {
+  if (updatedDoc) {
+    delete updatedDoc['version']
+    if (doc?.createdAt == null) {
+      updatedDoc.createdAt = doc?._id ? doc._id.getTimestamp() : new Date()
+    }
+  }
+  return updatedDoc
+}
+
 export const updateWithOptimisticLock = async (collection, query, updateFunction, maxRetries = 5) => {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const doc = await collection.findOne(query)
     const version = doc ? doc.version : { $exists: false }
-    const updatedDoc = updateFunction(doc || query)
+    const updatedDoc = setCreatedAtIfMissing(doc)(updateFunction(doc || query))
     if (updatedDoc) {
-      delete updatedDoc['version']
       const result = await collection.findOneAndUpdate(
         { ...query, version },
         {
-          $set: { ...updatedDoc },
+          $set: { ...updatedDoc, updatedAt: new Date() },
           $inc: { version: 1 }
         },
         { returnDocument: 'after', upsert: true }
       )
-
       if (result) {
         delete result['_id']
         return result

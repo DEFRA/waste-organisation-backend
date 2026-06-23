@@ -130,6 +130,8 @@ describe('payment API', () => {
         servicePeriodEnd: '2027-05-01T00:00:00.000Z',
         servicePeriodStart: '2026-05-01T00:00:00.000Z',
         status: 'payment_in_progress',
+        updatedAt: expect.anything(),
+        createdAt: expect.anything(),
         version: 1
       }
     })

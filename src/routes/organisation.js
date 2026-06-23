@@ -41,10 +41,15 @@ export const organisations = [
     },
     handler: async (request, h) => {
       try {
+        let transactionType = 'updated'
         const organisation = await updateWithOptimisticLock(
           request.db.collection(orgCollection),
           { organisationId: request.params.organisationId },
           (dbOrg) => {
+            if (!dbOrg._id) {
+              transactionType = 'created'
+            }
+
             const organisationId = request.params.organisationId
             const userId = request.params.userId
             const org = mergeAndValidate(
@@ -65,6 +70,14 @@ export const organisations = [
           }
         )
         delete organisation.apiCodes
+
+        request.logger.info(
+          `Organisation ${transactionType}: ${JSON.stringify({
+            organisationId: organisation.organisationId,
+            createdAt: organisation.createdAt
+          })}`
+        )
+
         return h.response({ message: 'success', organisation })
       } catch (e) {
         return h.response({

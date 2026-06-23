@@ -36,6 +36,8 @@ describe('spreadsheet API', () => {
       },
       payload: {
         spreadsheet: {
+          createdAt: expect.any(Date),
+          updatedAt: expect.any(Date),
           fileId: 'file-id'
         }
       }
@@ -44,6 +46,8 @@ describe('spreadsheet API', () => {
     expect(result).toEqual({
       message: 'success',
       spreadsheet: {
+        createdAt: expect.any(Date),
+        updatedAt: expect.any(Date),
         organisationId: '456',
         fileId: 'file-id',
         traceId: null,
@@ -262,6 +266,8 @@ describe('spreadsheet API', () => {
       message: 'success',
       spreadsheets: [
         {
+          createdAt: expect.any(Date),
+          updatedAt: expect.any(Date),
           uploadId: '1234',
           organisationId: '5678',
           traceId: null,
@@ -288,6 +294,8 @@ describe('spreadsheet API', () => {
       message: 'success',
       spreadsheets: [
         {
+          createdAt: expect.any(Date),
+          updatedAt: expect.any(Date),
           uploadId: '1234',
           organisationId: '5678',
           traceId: null,
