@@ -44,7 +44,8 @@ export const getPaymentStatus = async (paymentId, logger) => {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
-      }
+      },
+      agent
     })
     return { payload, status: res?.statusCode === SUCCESS ? 'success' : 'error', statusCode: res?.statusCode }
   } catch (e) {
