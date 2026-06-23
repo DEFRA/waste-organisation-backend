@@ -1,3 +1,4 @@
+import { setupProxy } from '../../common/helpers/proxy/setup-proxy.js'
 import wreck from '@hapi/wreck'
 import { config } from '../../config.js'
 import { CREATED } from '../httpStatusCodes.js'
@@ -5,7 +6,10 @@ import { createLogger } from '../../common/helpers/logging/logger.js'
 
 const fallbackLogger = createLogger()
 
+setupProxy()
+
 export const createGovPayPayment = async ({ reference, amount, description, returnUrl, metadata }, logger) => {
+  setupProxy()
   const log = logger ?? fallbackLogger
   try {
     const { apiUrl, apiKey } = config.get('govPay')
