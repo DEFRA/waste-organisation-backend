@@ -2,9 +2,6 @@ import { setupProxy } from '../../common/helpers/proxy/setup-proxy.js'
 import { config } from '../../config.js'
 import { createLogger } from '../../common/helpers/logging/logger.js'
 import jwt from 'jsonwebtoken'
-import wreck from '@hapi/wreck'
-
-setupProxy()
 
 const govPayUrl = 'https://api.notifications.service.gov.uk'
 
@@ -50,7 +47,7 @@ export const sendEmail = {
 }
 
 const send = async ({ template, email, name, file, referenceNumber, filename, logger }) => {
-  setupProxy()
+  const wreck = setupProxy()
   if (!logger) {
     logger = createLogger()
   }

@@ -6,11 +6,12 @@ import { config } from '../../../config.js'
 
 const logger = createLogger()
 
-export function setupProxy() {
+export const setupProxy = () => {
   if (config.get('httpProxy')) {
     logger.info('Routing outbound requests via proxy')
     // Required for Wreck
     Wreck.agents.http = http.globalAgent
     Wreck.agents.https = https.globalAgent
   }
+  return Wreck
 }
