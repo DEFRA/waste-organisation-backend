@@ -1,9 +1,12 @@
+import { createAgent } from '../../common/helpers/proxy/setup-proxy.js'
 import { config } from '../../config.js'
 import { createLogger } from '../../common/helpers/logging/logger.js'
 import jwt from 'jsonwebtoken'
 import wreck from '@hapi/wreck'
 
 const govPayUrl = 'https://api.notifications.service.gov.uk'
+
+const agent = createAgent()
 
 const createGovukNotifyToken = ({ apiKeyId, serviceId }) => {
   if (apiKeyId && serviceId) {
@@ -24,9 +27,6 @@ const prepareUpload = (file) => {
   if (file.length > 2 * 1024 * 1024) {
     throw new Error('File is larger than 2MB.')
   }
-  // if (typeof file === 'string') {
-  //   file = Buffer.from(file)
-  // }
   return {
     file: file.toString('base64'),
     filename: null,
@@ -74,7 +74,8 @@ const send = async ({ template, email, name, file, referenceNumber, filename, lo
       headers: {
         Authorization: 'Bearer ' + createGovukNotifyToken(parseGovNotifyKey())
       },
-      payload: { email_address: email, template_id: template, personalisation }
+      payload: { email_address: email, template_id: template, personalisation },
+      agent
     })
     logger.info(`Email Sent`)
     return response

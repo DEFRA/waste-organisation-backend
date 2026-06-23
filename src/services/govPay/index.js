@@ -1,14 +1,18 @@
-import wreck from '@hapi/wreck'
 import { config } from '../../config.js'
 import { CREATED, SUCCESS } from '../httpStatusCodes.js'
 import { createLogger } from '../../common/helpers/logging/logger.js'
+import wreck from '@hapi/wreck'
+import { createAgent } from '../../common/helpers/proxy/setup-proxy.js'
 
 const fallbackLogger = createLogger()
+
+const agent = createAgent()
 
 export const createGovPayPayment = async ({ reference, amount, description, returnUrl, metadata }, logger) => {
   const log = logger ?? fallbackLogger
   try {
     const { apiUrl, apiKey } = config.get('govPay')
+    log.info(`initiating payment ${apiUrl.replace(/\/$/, '')}/payments`)
     const { res, payload } = await wreck.post(`${apiUrl.replace(/\/$/, '')}/payments`, {
       json: true,
       headers: {
@@ -21,7 +25,8 @@ export const createGovPayPayment = async ({ reference, amount, description, retu
         metadata,
         reference,
         return_url: returnUrl
-      }
+      },
+      agent
     })
     return { payload, status: res?.statusCode === CREATED ? 'success' : 'error', statusCode: res?.statusCode }
   } catch (e) {
