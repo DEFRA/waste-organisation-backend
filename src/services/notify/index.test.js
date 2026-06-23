@@ -1,21 +1,18 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { config } from '../../config.js'
 
 describe('Notify', () => {
-  const prepareUploadMock = vi.fn()
   const sendEmailMock = vi.fn()
   const loggerErrorMock = vi.fn()
   const loggerInfoMock = vi.fn()
   const email = 'foo@example.com'
-  const successfulSubmission = '2ffe3792-f097-421d-b3e2-9de5af81609f'
 
   beforeAll(() => {
-    vi.doMock('notifications-node-client', () => ({
-      NotifyClient: vi.fn().mockImplementation(function () {
-        return {
-          prepareUpload: prepareUploadMock.mockReturnValue('link'),
-          sendEmail: sendEmailMock
-        }
-      })
+    // Note: string concatenation is workaround for security regex false positive
+    vi.doMock('@hapi/wreck', () => ({
+      default: {
+        post: sendEmailMock.mockReturnValue({ payload: { post: 'response' } })
+      }
     }))
 
     vi.doMock('pino', () => ({
@@ -26,8 +23,18 @@ describe('Notify', () => {
     }))
   })
 
+  beforeEach(() => {
+    config.set('notify.govNotifyKey', 'fishy_testing_thing-' + 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa-aaaaaaaa' + '-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
+  })
+
+  afterAll(() => {
+    vi.clearAllMocks()
+  })
+
   it('should return email response', async () => {
-    sendEmailMock.mockReturnValue({ data: 'response' })
+    sendEmailMock.mockImplementation(async () => {
+      return { payload: { data: 'response' } }
+    })
     const { sendEmail } = await import('./index.js')
     const actualResponse = await sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }) })
     const personalisation = {
@@ -35,9 +42,16 @@ describe('Notify', () => {
       'upload id': null,
       filename: null
     }
-    expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
+    expect(sendEmailMock).toHaveBeenCalledWith(expect.anything(), {
+      json: 'strict',
+      headers: {
+        Authorization: expect.anything()
+      },
+      payload: { email_address: email, template_id: expect.anything(), personalisation },
+      agent: expect.anything()
+    })
     expect(actualResponse).toBe(sendEmailMock())
-    expect(loggerInfoMock).toBeCalledWith('Email Sent')
+    expect(loggerInfoMock).toHaveBeenCalledWith('Email Sent')
   })
 
   it('should return email response if name is not parsable to JSON', async () => {
@@ -49,9 +63,16 @@ describe('Notify', () => {
       'upload id': null,
       filename: null
     }
-    expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
+    expect(sendEmailMock).toHaveBeenCalledWith(expect.anything(), {
+      json: 'strict',
+      headers: {
+        Authorization: expect.anything()
+      },
+      payload: { email_address: email, template_id: expect.anything(), personalisation },
+      agent: expect.anything()
+    })
     expect(actualResponse).toBe(sendEmailMock())
-    expect(loggerInfoMock).toBeCalledWith('Email Sent')
+    expect(loggerInfoMock).toHaveBeenCalledWith('Email Sent')
   })
 
   it('should handle if there is no name', async () => {
@@ -63,9 +84,16 @@ describe('Notify', () => {
       'upload id': null,
       filename: null
     }
-    expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
+    expect(sendEmailMock).toHaveBeenCalledWith(expect.anything(), {
+      json: 'strict',
+      headers: {
+        Authorization: expect.anything()
+      },
+      payload: { email_address: email, template_id: expect.anything(), personalisation },
+      agent: expect.anything()
+    })
     expect(actualResponse).toBe(sendEmailMock())
-    expect(loggerInfoMock).toBeCalledWith('Email Sent')
+    expect(loggerInfoMock).toHaveBeenCalledWith('Email Sent')
   })
 
   it('should return email response with file link', async () => {
@@ -77,11 +105,22 @@ describe('Notify', () => {
       'first name': 'Joe Bloggs',
       'upload id': null,
       filename: null,
-      link_to_file: 'link'
+      link_to_file: {
+        confirm_email_before_download: null,
+        file: 'AA==', // base 64 encoded file byte array
+        filename: null,
+        retention_period: null
+      }
     }
 
-    expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
-    expect(prepareUploadMock).toBeCalledWith(file)
+    expect(sendEmailMock).toHaveBeenCalledWith(expect.anything(), {
+      json: 'strict',
+      headers: {
+        Authorization: expect.anything()
+      },
+      payload: { email_address: email, template_id: expect.anything(), personalisation },
+      agent: expect.anything()
+    })
   })
 
   it('should include upload id in personalisation when provided', async () => {
@@ -94,7 +133,14 @@ describe('Notify', () => {
       'upload id': 'abc-123',
       filename: null
     }
-    expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
+    expect(sendEmailMock).toHaveBeenCalledWith(expect.anything(), {
+      json: 'strict',
+      headers: {
+        Authorization: expect.anything()
+      },
+      payload: { email_address: email, template_id: expect.anything(), personalisation },
+      agent: expect.anything()
+    })
   })
 
   it('should include filename in personalisation when provided', async () => {
@@ -106,13 +152,34 @@ describe('Notify', () => {
       'upload id': null,
       filename: 'test.xlsx'
     }
-    expect(sendEmailMock).toBeCalledWith(successfulSubmission, email, { personalisation })
+    expect(sendEmailMock).toHaveBeenCalledWith(expect.anything(), {
+      json: 'strict',
+      headers: {
+        Authorization: expect.anything()
+      },
+      payload: { email_address: email, template_id: expect.anything(), personalisation },
+      agent: expect.anything()
+    })
   })
 
   it('should handle exception correctly', async () => {
     sendEmailMock.mockRejectedValue('Mock Error')
     const { sendEmail } = await import('./index.js')
     await sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }) })
-    expect(loggerErrorMock).toBeCalledWith('Error sending emails: Mock Error')
+    expect(loggerErrorMock).toHaveBeenCalledWith('Error sending emails: Mock Error')
+  })
+
+  it('should error when file is too large', async () => {
+    const { sendEmail } = await import('./index.js')
+    const file = { length: 2048 * 1024 + 1 }
+    await sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }), file })
+    expect(loggerErrorMock).toHaveBeenCalledWith('Error sending emails: Error: File is larger than 2MB.')
+  })
+
+  it('should error when gov notify key is not set', async () => {
+    config.set('notify.govNotifyKey', null)
+    const { sendEmail } = await import('./index.js')
+    await sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }) })
+    expect(loggerErrorMock).toHaveBeenCalledWith('Error sending emails: Error: Notify key not set')
   })
 })

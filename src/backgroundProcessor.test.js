@@ -1,13 +1,19 @@
 import { beforeAll, describe, expect, vi } from 'vitest'
 import { ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs'
+import * as mockMongo from 'vitest-mongodb'
+import fs from 'node:fs/promises'
 
+import { config } from './config.js'
 import * as encryption from './services/decrypt.js'
 import * as bulkImportModule from './services/bulkImport.js'
 import * as spreadsheetImportModule from './services/spreadsheetImport.js'
 import * as excelImportModule from './services/spreadsheetImport/excel.js'
-import fs from 'node:fs/promises'
 import { sendEmail } from './services/notify/index.js'
 import { createLogger } from './common/helpers/logging/logger.js'
+import { paymentCollection } from './repositories/payment.js'
+import { orgCollection } from './repositories/organisation.js'
+import { isPaid } from './domain/payment.js'
+import { randomUUID } from 'node:crypto'
 
 const logger = createLogger()
 
@@ -15,6 +21,8 @@ describe('background processor', () => {
   let message
   const wreckPostMock = vi.fn()
   const wreckPutMock = vi.fn()
+  const wreckGetMock = vi.fn()
+  const origMongoUrl = config.get('mongo.mongoUrl')
 
   const mockWorksheet = (fakeData) => {
     const fakeRows = [[], [], [], [], [], [], [], []].concat(fakeData)
@@ -37,7 +45,7 @@ describe('background processor', () => {
     }
   }
 
-  beforeAll(() => {
+  beforeAll(async () => {
     vi.clearAllMocks()
     message = {
       Body: JSON.stringify({
@@ -54,9 +62,19 @@ describe('background processor', () => {
     vi.doMock('@hapi/wreck', () => ({
       default: {
         post: wreckPostMock.mockReturnValue({ payload: { post: 'response' } }),
-        put: wreckPutMock.mockReturnValue({ payload: { put: 'response' } })
+        put: wreckPutMock.mockReturnValue({ payload: { put: 'response' } }),
+        get: wreckGetMock.mockReturnValue({ payload: { get: 'response' } })
       }
     }))
+
+    await mockMongo.setup()
+    if (globalThis?.__MONGO_URI__) {
+      config.set('mongo.mongoUrl', globalThis.__MONGO_URI__)
+    }
+  })
+
+  afterAll(() => {
+    config.set('mongo.mongoUrl', origMongoUrl)
   })
 
   test('fetch S3 object', async () => {
@@ -111,12 +129,9 @@ describe('background processor', () => {
     expect(response).toBeUndefined()
   })
 
-  test('poll queue happy path', async () => {
+  test('poll queue happy path - only processes one message at a time', async () => {
     const { pollQueue } = await import('./backgroundProcessor.js')
-    const testData = [
-      { test: 'data1', ReceiptHandle: 'handle1' },
-      { test: 'data2', ReceiptHandle: 'handle2' }
-    ]
+    const testData = [{ test: 'data1', ReceiptHandle: 'handle1' }]
     const sideEffect = { processedMessages: [], deletedMessages: [] }
     await pollQueue({
       sqsClient: {
@@ -216,11 +231,12 @@ describe('background processor', () => {
       }
     }
 
-    const { processJob } = await import('./backgroundProcessor.js')
-    const response = await processJob(s3Client, message)
+    const { dispatchProcessJob } = await import('./backgroundProcessor.js')
+    const processSpreadsheetJob = dispatchProcessJob(s3Client)
+    const response = await processSpreadsheetJob(message)
 
     expect(response.logger).toEqual(expect.anything())
-    expect(mockSendFailed).toBeCalled()
+    expect(mockSendFailed).toHaveBeenCalled()
   })
 
   it('should send failed email with no file when not excel file', { timeout: 50000 }, async () => {
@@ -236,11 +252,11 @@ describe('background processor', () => {
       }
     }
 
-    const { processJob } = await import('./backgroundProcessor.js')
-    const response = await processJob(s3Client, message)
+    const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
+    const response = await processSpreadsheetJob(s3Client, JSON.parse(message.Body))
 
     expect(response.logger).toEqual(expect.anything())
-    expect(mockSendFailed).toBeCalled()
+    expect(mockSendFailed).toHaveBeenCalled()
   })
 
   it('should send failed email with file when api returns errors', { timeout: 50000 }, async () => {
@@ -266,12 +282,12 @@ describe('background processor', () => {
       }
     }
 
-    const { processJob } = await import('./backgroundProcessor.js')
+    const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
 
-    const response = await processJob(s3Client, message)
+    const response = await processSpreadsheetJob(s3Client, JSON.parse(message.Body))
 
     expect(response.logger).toEqual(expect.anything())
-    expect(mockSendFailed).toBeCalled()
+    expect(mockSendFailed).toHaveBeenCalled()
   })
 
   it('should send success email when api call is successful', { timeout: 50000 }, async () => {
@@ -291,12 +307,12 @@ describe('background processor', () => {
       }
     }
 
-    const { processJob } = await import('./backgroundProcessor.js')
+    const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
 
-    const response = await processJob(s3Client, message)
+    const response = await processSpreadsheetJob(s3Client, JSON.parse(message.Body))
 
     expect(response.logger).toEqual(expect.anything())
-    expect(mockSendSuccess).toBeCalled()
+    expect(mockSendSuccess).toHaveBeenCalled()
   })
 
   it('should not send email is no movements are returned', { timeout: 50000 }, async () => {
@@ -316,12 +332,12 @@ describe('background processor', () => {
       }
     }
 
-    const { processJob } = await import('./backgroundProcessor.js')
+    const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
 
-    const response = await processJob(s3Client, message)
+    const response = await processSpreadsheetJob(s3Client, JSON.parse(message.Body))
 
     expect(response.logger).toEqual(expect.anything())
-    expect(mockSendSuccess).not.toBeCalled()
+    expect(mockSendSuccess).not.toHaveBeenCalled()
   })
 
   it('should do nothing if s3 is not set up', { timeout: 50000 }, async () => {
@@ -346,11 +362,11 @@ describe('background processor', () => {
       }
     }
 
-    const { processJob } = await import('./backgroundProcessor.js')
+    const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
 
-    await processJob(s3Client, message)
+    await processSpreadsheetJob(s3Client, JSON.parse(message.Body))
 
-    expect(mockSendSuccess).not.toBeCalled()
+    expect(mockSendSuccess).not.toHaveBeenCalled()
   })
 
   it('should send failed email if file has errors', { timeout: 50000 }, async () => {
@@ -387,11 +403,11 @@ describe('background processor', () => {
       }
     }
 
-    const { processJob } = await import('./backgroundProcessor.js')
+    const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
 
-    await processJob(s3Client, message)
+    await processSpreadsheetJob(s3Client, JSON.parse(message.Body))
 
-    expect(mockSendFailed).toBeCalled()
+    expect(mockSendFailed).toHaveBeenCalled()
   })
 
   it('should handle name not being an object', { timeout: 50000 }, async () => {
@@ -428,11 +444,11 @@ describe('background processor', () => {
       }
     }
 
-    const { processJob } = await import('./backgroundProcessor.js')
+    const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
 
-    await processJob(s3Client, message)
+    await processSpreadsheetJob(s3Client, JSON.parse(message.Body))
 
-    expect(mockSendFailed).toBeCalled()
+    expect(mockSendFailed).toHaveBeenCalled()
   })
 
   it('should call bulkImport for create uploads', { timeout: 50000 }, async () => {
@@ -460,8 +476,8 @@ describe('background processor', () => {
       }
     }
 
-    const { processJob } = await import('./backgroundProcessor.js')
-    await processJob(s3Client, createMessage)
+    const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
+    await processSpreadsheetJob(s3Client, JSON.parse(createMessage.Body))
 
     expect(mockBulkImport).toHaveBeenCalled()
     expect(mockSendSuccess).toHaveBeenCalled()
@@ -502,8 +518,8 @@ describe('background processor', () => {
       }
     }
 
-    const { processJob } = await import('./backgroundProcessor.js')
-    await processJob(s3Client, createMessage)
+    const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
+    await processSpreadsheetJob(s3Client, JSON.parse(createMessage.Body))
 
     expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
       '7. Waste movement level': [
@@ -553,8 +569,8 @@ describe('background processor', () => {
       }
     }
 
-    const { processJob } = await import('./backgroundProcessor.js')
-    await processJob(s3Client, updateMessage)
+    const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
+    await processSpreadsheetJob(s3Client, JSON.parse(updateMessage.Body))
 
     expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
       '7. Waste movement level': [
@@ -610,8 +626,8 @@ describe('background processor', () => {
       }
     }
 
-    const { processJob } = await import('./backgroundProcessor.js')
-    await processJob(s3Client, updateMessage)
+    const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
+    await processSpreadsheetJob(s3Client, JSON.parse(updateMessage.Body))
 
     expect(mockBulkUpdate).toHaveBeenCalled()
     const sentMovements = mockBulkUpdate.mock.calls[0][1]
@@ -656,8 +672,8 @@ describe('background processor', () => {
       }
     }
 
-    const { processJob } = await import('./backgroundProcessor.js')
-    await processJob(s3Client, createMessage)
+    const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
+    await processSpreadsheetJob(s3Client, JSON.parse(createMessage.Body))
 
     expect(mockSendFailed).toHaveBeenCalledWith({ email: 'test@email.com', name: 'test@email.com', referenceNumber: 'upload-failed' })
   })
@@ -686,9 +702,9 @@ describe('background processor', () => {
       }
     }
 
-    const { processJob } = await import('./backgroundProcessor.js')
+    const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
 
-    await expect(processJob(s3Client, transientMessage)).rejects.toEqual(transientError)
+    await expect(processSpreadsheetJob(s3Client, JSON.parse(transientMessage.Body))).rejects.toEqual(transientError)
     expect(mockSendFailed).not.toHaveBeenCalled()
   })
 
@@ -715,9 +731,9 @@ describe('background processor', () => {
       }
     }
 
-    const { processJob } = await import('./backgroundProcessor.js')
+    const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
 
-    await processJob(s3Client, unexpectedErrorMessage)
+    await processSpreadsheetJob(s3Client, JSON.parse(unexpectedErrorMessage.Body))
 
     expect(mockSendFailed).toHaveBeenCalledWith({
       email: 'test@email.com',
@@ -725,5 +741,71 @@ describe('background processor', () => {
       referenceNumber: 'upload-unexpected',
       logger: expect.anything()
     })
+  })
+
+  test('should poll for payment id status', async () => {
+    wreckGetMock.mockReturnValue({
+      payload: {
+        payment_id: 'abc123',
+        amount: 1234,
+        refund_summary: {
+          status: 'available',
+          amount_available: 1234,
+          amount_submitted: 0
+        },
+        state: {
+          status: 'success',
+          finished: true
+        },
+        metadata: {
+          organisationId: 'org-id',
+          organisationName: 'organisation name',
+          servicePeriodEnd: '2027-05-01T00:00:00Z',
+          servicePeriodStart: '2026-05-01T00:00:00Z'
+        }
+      }
+    })
+    const { processPaymentJob, constructMongoClient } = await import('./backgroundProcessor.js')
+    const db = await constructMongoClient()
+    await db.collection(paymentCollection).insertOne({ paymentId: 'abc123', organisationId: 'org-id', status: 'payment_in_progress' })
+    const result = await processPaymentJob(db, { paymentId: 'abc123', organisationId: 'org-id', initiatedAt: new Date() })
+    expect(isPaid(result.payment)).toEqual(true)
+  })
+
+  test('should drop paymment message after 3 days', async () => {
+    const organisationId = randomUUID()
+    const paymentId = randomUUID()
+    const threeDaysInMS = 3 * 24 * 61 * 60 * 1000
+    const threeDaysAgo = new Date(new Date().getTime() - threeDaysInMS)
+
+    wreckGetMock.mockReturnValue({
+      payload: {
+        payment_id: paymentId,
+        amount: 1234,
+        refund_summary: {
+          status: 'pending',
+          amount_available: 1234,
+          amount_submitted: 0
+        },
+        state: {
+          status: 'started',
+          finished: false
+        },
+        metadata: {
+          organisationId,
+          organisationName: 'organisation name',
+          servicePeriodEnd: '2027-05-01T00:00:00Z',
+          servicePeriodStart: '2026-05-01T00:00:00Z'
+        }
+      }
+    })
+    const { dispatchProcessJob, constructMongoClient } = await import('./backgroundProcessor.js')
+    const db = await constructMongoClient()
+    await db.collection(paymentCollection).insertOne({ paymentId, organisationId, status: 'payment_in_progress' })
+    await db.collection(orgCollection).insertOne({ organisationId, disableAfter: new Date() })
+    const processPaymentJob = dispatchProcessJob(vi.fn(), db)
+    const result = await processPaymentJob({ Body: JSON.stringify({ paymentId, organisationId, initiatedAt: threeDaysAgo }) })
+    expect(isPaid(result.payment)).toEqual(false)
+    expect(isPaid(result.skipDeleteMessage)).toEqual(false)
   })
 })

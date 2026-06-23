@@ -11,10 +11,14 @@ export const mergeParams = (dbEntity, requestEntity) => {
   }
 }
 
-export const mergeAndValidate = (dbEntity, requestEntity, entitySchema) => {
-  const entity = mergeParams(dbEntity, requestEntity)
+export const validate = (entity, entitySchema) => {
   return joi.attempt(entity, entitySchema, 'Validation Error', {
     abortEarly: false,
     stripUnknown: true
   })
+}
+
+export const mergeAndValidate = (dbEntity, requestEntity, entitySchema) => {
+  const entity = mergeParams(dbEntity, requestEntity)
+  return validate(entity, entitySchema)
 }
