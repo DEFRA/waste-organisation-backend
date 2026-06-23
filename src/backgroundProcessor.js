@@ -3,7 +3,10 @@
 // import { updateWithOptimisticLock } from '../repositories/index.js'
 // import { spreadsheetCollection } from '../repositories/spreadsheet.js'
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
-import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs'
+import { ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs'
+import { constructSqsClient } from './plugins/sqs.js'
+import { MongoClient } from 'mongodb'
+
 import { config } from './config.js'
 import { createLogger } from './common/helpers/logging/logger.js'
 import {
@@ -19,6 +22,12 @@ import { sendEmail } from './services/notify/index.js'
 import { bulkImport, bulkUpdate } from './services/bulkImport.js'
 import { TRANSIENT_STATUS_CODES } from './services/httpStatusCodes.js'
 import { validateWasteTrackingIdExists, validateWasteTrackingIdMissing } from './services/spreadsheetImport/transforms.js'
+import { getPaymentStatus } from './services/govPay/index.js'
+import { updateOrganisationPaymentStatus } from './domain/organisation.js'
+import { updateFromGovPayEvent, hasStatusChanged, isPending } from './domain/payment.js'
+import { updateWithOptimisticLock } from './repositories/index.js'
+import { paymentCollection } from './repositories/payment.js'
+import { orgCollection } from './repositories/organisation.js'
 
 const defaultLogger = createLogger()
 
@@ -45,11 +54,12 @@ export const fetchS3Object = async (s3Client, Bucket, Key) => {
   return Buffer.concat(chunks)
 }
 
-const constructSqsClient = () => {
-  return new SQSClient({
-    region: config.get('aws.region'),
-    endpoint: config.get('aws.sqsEndpoint')
+export const constructMongoClient = async () => {
+  const options = config.get('mongo')
+  const client = await MongoClient.connect(options.mongoUrl, {
+    ...options.mongoOptions
   })
+  return client.db(options.databaseName)
 }
 
 export const deleteMessage = async (client, QueueUrl, receiptHandle, logger) => {
@@ -145,10 +155,8 @@ const processSpreadsheet = async (
   logger.error(`ReferenceNumber: ${referenceNumber} -- Unhandled case. No errors or waste tracking ids generated for ${referenceNumber}`)
 }
 
-export const processJob = async (s3Client, message) => {
-  const { s3Bucket, s3Key, encryptedEmail, encryptedName, organisationId, uploadId, uploadType, hasError, referenceNumber, filename, traceId } = JSON.parse(
-    message.Body
-  )
+export const processSpreadsheetJob = async (s3Client, message) => {
+  const { s3Bucket, s3Key, encryptedEmail, encryptedName, organisationId, uploadId, uploadType, hasError, referenceNumber, filename, traceId } = message
   const processJobLogger = createLogger(traceId)
   processJobLogger.info(`Message: ${JSON.stringify(message)}`)
   const decryptedEmail = decrypt(encryptedEmail, config.get('encryptionKey'))
@@ -185,34 +193,86 @@ export const processJob = async (s3Client, message) => {
   return { logger: processJobLogger }
 }
 
+const updatePaymentStatus = async (paymentId, organisationId, govPayment, db) => {
+  let shouldUpdateOrg = false
+  let organisation = null
+  const payment = await updateWithOptimisticLock(db.collection(paymentCollection), { paymentId, organisationId }, (dbPayment) => {
+    if (dbPayment.status) {
+      const p = updateFromGovPayEvent(dbPayment, govPayment)
+      shouldUpdateOrg = hasStatusChanged(dbPayment, p)
+      return p
+    } else {
+      return null
+    }
+  })
+  if (shouldUpdateOrg) {
+    organisation = await updateWithOptimisticLock(db.collection(orgCollection), { organisationId }, (org) => {
+      return updateOrganisationPaymentStatus(org, payment)
+    })
+  }
+  return { payment, organisation }
+}
+
+export const processPaymentJob = (() => {
+  const maxMessageAge = config.get('govPay.maxAgeOfPaymentPollingMessage')
+  const isMessageTooOld = (initiatedAt) => {
+    const threeDaysAgo = new Date(new Date().getTime() - maxMessageAge)
+    return initiatedAt < threeDaysAgo
+  }
+  return async (db, message) => {
+    const { paymentId, organisationId, traceId, initiatedAt } = message
+    const processJobLogger = createLogger(traceId)
+    processJobLogger.debug(`Looking for paymentId ${paymentId}, organisationId ${organisationId}, initiatedAt ${initiatedAt}`)
+    const govPayment = await getPaymentStatus(paymentId, processJobLogger)
+    const { payment } = await updatePaymentStatus(paymentId, organisationId, govPayment.payload, db)
+    processJobLogger.debug(`Payment ${JSON.stringify(payment)}`)
+    return { logger: processJobLogger, payment, skipDeleteMessage: isPending(payment) && !isMessageTooOld(initiatedAt) }
+  }
+})()
+
+export const dispatchProcessJob = (s3Client, mongoClient) => async (message) => {
+  defaultLogger.debug(`Received message ReceiptHandle: ${message.ReceiptHandle} message: ${message.Body}`)
+  const m = JSON.parse(message.Body)
+  if (m.uploadId) {
+    return await processSpreadsheetJob(s3Client, m)
+  }
+  if (m.paymentId) {
+    return await processPaymentJob(mongoClient, m)
+  }
+  defaultLogger.info(`Could not dispatch ReceiptHandle: ${message.ReceiptHandle} message: ${JSON.stringify(m)}`)
+  return null
+}
+
+const processMessage = async (message, sqsClient, action, QueueUrl) => {
+  try {
+    const result = await action(message)
+    const lg = result?.logger || defaultLogger
+    if (result?.skipDeleteMessage) {
+      lg.info(`Skipping deleting message ${message.ReceiptHandle}`)
+    } else {
+      // Delete message after successful processing
+      await deleteMessage(sqsClient, QueueUrl, message.ReceiptHandle, lg)
+    }
+  } catch (err) {
+    // Message will become visible again after VisibilityTimeout
+    defaultLogger.error(`Error processing message: ${err.stack}`)
+  }
+}
+
 export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {
   const params = {
     QueueUrl,
     MaxNumberOfMessages: 1, // Process 1 messages at once
     WaitTimeSeconds: 20, // Long polling to reduce empty responses
-    VisibilityTimeout: 30 // Hide message for 30s while processing
+    VisibilityTimeout: 300 // Hide message while processing
   }
 
   try {
     const command = new ReceiveMessageCommand(params)
     const data = await sqsClient.send(command)
-
     if (data.Messages && data.Messages.length > 0) {
       defaultLogger.info(`Received ${data.Messages.length} message(s)`)
-
-      // Process messages in parallel
-      await Promise.all(
-        data.Messages.map(async (message) => {
-          try {
-            const result = await action(message)
-            // Delete message after successful processing
-            await deleteMessage(sqsClient, QueueUrl, message.ReceiptHandle, result?.logger || defaultLogger)
-          } catch (err) {
-            // Message will become visible again after VisibilityTimeout
-            defaultLogger.error(`Error processing message: ${err.stack}`)
-          }
-        })
-      )
+      await processMessage(data.Messages[0], sqsClient, action, QueueUrl) // Assumes batch size is 1 - see MaxNumberOfMessages above
     } else {
       defaultLogger.debug('No messages in queue')
     }
@@ -225,13 +285,17 @@ export const startWorker = async () => {
   defaultLogger.info('Worker started. Polling for jobs...')
   const QueueUrl = config.get('aws.backgroundProcessQueue')
   const s3Client = constructS3Client()
-  const sqsClient = constructSqsClient()
+  const sqsClient = constructSqsClient({
+    region: config.get('aws.region'),
+    endpoint: config.get('aws.sqsEndpoint')
+  })
+  const mongoClient = await constructMongoClient()
   // prettier-ignore
   while (true) {  // NOSONAR
     await pollQueue({
       sqsClient,
       QueueUrl,
-      action: async (message) => await processJob(s3Client, message)
+      action: dispatchProcessJob(s3Client, mongoClient)
     })
     await new Promise((resolve) => setTimeout(resolve, 1000))
   }

@@ -176,6 +176,10 @@ describe('calculate payment period', () => {
     ])
   })
 
+  test('paid for next year, payment window open', () => {
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october27), may26).paymentPeriods).toEqual([])
+  })
+
   test('paid for current year, payment window closed', () => {
     expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october26), march26).paymentPeriods).toEqual([])
   })

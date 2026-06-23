@@ -3,6 +3,8 @@ import { faker } from '@faker-js/faker'
 
 import * as tracing from '@defra/hapi-tracing'
 
+vi.mock('@defra/hapi-tracing', { spy: true })
+
 describe('loggerOptions', () => {
   afterEach(() => {
     vi.restoreAllMocks()
@@ -18,7 +20,6 @@ describe('loggerOptions', () => {
 
   it('should return header traceId if traceId is not provided', () => {
     const traceId = faker.string.uuid()
-    vi.mock('@defra/hapi-tracing', { spy: true })
 
     vi.spyOn(tracing, 'getTraceId').mockReturnValue(traceId)
 
@@ -29,8 +30,6 @@ describe('loggerOptions', () => {
   })
 
   it('should not return traceId if traceId is not set', () => {
-    vi.mock('@defra/hapi-tracing', { spy: true })
-
     vi.spyOn(tracing, 'getTraceId').mockReturnValue(null)
 
     const options = loggerOptions()

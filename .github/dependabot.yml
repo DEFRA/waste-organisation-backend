@@ -39,11 +39,6 @@ updates:
     ignore:
       - dependency-name: 'eslint-*'
       - dependency-name: 'eslint'
-      # global-agent v4 has broken TLS handling (ERR_TLS_CERT_ALTNAME_INVALID)
-      # https://github.com/gajus/global-agent/issues/83
-      # https://github.com/gajus/global-agent/issues/82
-      - dependency-name: 'global-agent'
-        versions: ['>=4']
 
     # Schedule run every Monday, local time
     schedule:

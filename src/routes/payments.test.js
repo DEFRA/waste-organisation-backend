@@ -8,18 +8,21 @@ import { faker } from '@faker-js/faker'
 describe('payment API', () => {
   let server
   const wreckPostMock = vi.fn()
+  const wreckGetMock = vi.fn()
 
   beforeAll(async () => {
     vi.clearAllMocks()
     vi.doMock('@hapi/wreck', () => ({
       default: {
-        post: wreckPostMock.mockReturnValue({ payload: { post: 'response' } })
+        post: wreckPostMock.mockReturnValue({ payload: { post: 'response' } }),
+        get: wreckGetMock.mockReturnValue({ payload: { get: 'response' } })
       }
     }))
     server = await initialiseServer()
   })
 
   afterAll(async () => {
+    vi.clearAllMocks()
     stopServer(server)
   })
 
@@ -52,70 +55,6 @@ describe('payment API', () => {
     const payment = fakeGovPayResponse(organisationId).payload
     const r = await updatePayment(server, organisationId, paymentId, { payment })
     expect(r.statusCode).toBe(404)
-  })
-
-  const fakeGovPayResponse = (organisationId) => ({
-    res: {
-      statusCode: 201
-    },
-    payload: {
-      amount: 14500,
-      description: 'Pay your council tax.',
-      reference: '12345',
-      language: 'en',
-      state: {
-        status: 'created',
-        finished: false
-      },
-      payment_id: 'hu20sqlact5260q2nanm0q8u93',
-      payment_provider: 'stripe',
-      created_date: '2022-03-25T13:11:29.019Z',
-      refund_summary: {
-        status: 'available',
-        amount_available: 14500,
-        amount_submitted: 0
-      },
-      settlement_summary: {},
-      delayed_capture: false,
-      moto: false,
-      return_url: 'https://your.service.gov.uk/completed',
-      _links: {
-        self: {
-          href: 'https://publicapi.payments.service.gov.uk/v1/payments/hu20sqlact5260q2nanm0q8u93',
-          method: 'GET'
-        },
-        next_url: {
-          href: 'https://www.payments.service.gov.uk/secure/ef1b6ff1-db34-4c62-b854-3ed4ba3c4049',
-          method: 'GET'
-        },
-        next_url_post: {
-          type: 'application/x-www-form-urlencoded',
-          params: {
-            chargeTokenId: 'ef1b6ff1-db34-4c62-b854-3ed4ba3c4049'
-          },
-          href: 'https://www.payments.service.gov.uk/secure',
-          method: 'POST'
-        },
-        events: {
-          href: 'https://publicapi.payments.service.gov.uk/v1/payments/hu20sqlact5260q2nanm0q8u93/events',
-          method: 'GET'
-        },
-        refunds: {
-          href: 'https://publicapi.payments.service.gov.uk/v1/payments/hu20sqlact5260q2nanm0q8u93/refunds',
-          method: 'GET'
-        },
-        cancel: {
-          href: 'https://publicapi.payments.service.gov.uk/v1/payments/hu20sqlact5260q2nanm0q8u93/cancel',
-          method: 'POST'
-        }
-      },
-      metadata: {
-        organisationId,
-        organisationName: 'organisation name',
-        servicePeriodStart: '2026-05-01T00:00:00Z',
-        servicePeriodEnd: '2027-05-01T00:00:00Z'
-      }
-    }
   })
 
   test('initiate payment', async () => {
@@ -185,7 +124,7 @@ describe('payment API', () => {
           servicePeriodStart: '2026-05-01T00:00:00Z'
         },
         organisationId: 'abc123',
-        paymentId: 'hu20sqlact5260q2nanm0q8u93',
+        paymentId: expect.anything(),
         reference: expect.anything(),
         returnUrl: 'http://example.com/paymentDetails',
         servicePeriodEnd: '2027-05-01T00:00:00.000Z',
@@ -282,7 +221,105 @@ describe('payment API', () => {
     const org3 = await server.db.collection(orgCollection).findOne({ organisationId: { $eq: organisationId } }, { projection: { _id: 0 } })
     expect(org3.disableAfter).toEqual(new Date('2026-05-01T00:00:00.000Z'))
   })
+
+  test('refund payment for last year does not disable org', async () => {
+    const organisationId = 'abc123'
+    wreckPostMock.mockImplementation(async () => {
+      return fakeGovPayResponse(organisationId)
+    })
+
+    const payFor = payForFn(server, organisationId)
+
+    const payment = await payFor('2026-05-01T00:00:00.000Z', '2027-05-01T00:00:00.000Z', (payment) => {
+      payment.state.status = 'success'
+      payment.state.finished = true
+      return payment
+    })
+
+    await payFor('2027-05-01T00:00:00.000Z', '2028-05-01T00:00:00.000Z', (payment) => {
+      payment.state.status = 'success'
+      payment.state.finished = true
+      return payment
+    })
+
+    const org2 = await server.db.collection(orgCollection).findOne({ organisationId: { $eq: organisationId } }, { projection: { _id: 0 } })
+    expect(org2.disableAfter).toEqual(new Date('2028-05-01T00:00:00.000Z'))
+
+    payment.refund_summary.amount_available = 0
+    payment.refund_summary.amount_submitted = payment.amount
+    const r3 = await updatePayment(server, organisationId, payment.payment_id, { payment })
+    expect(r3.statusCode).toBe(200)
+    const org3 = await server.db.collection(orgCollection).findOne({ organisationId: { $eq: organisationId } }, { projection: { _id: 0 } })
+    expect(org3.disableAfter).toEqual(new Date('2028-05-01T00:00:00.000Z'))
+  })
+
+  test('poll for status', async () => {
+    const organisationId = 'abc123'
+    const paymentId = 'qqq555'
+    wreckPostMock.mockImplementation(async () => {
+      return fakeGovPayResponse(organisationId, paymentId)
+    })
+    const payFor = payForFn(server, organisationId)
+    const payment = await payFor('2026-05-01T00:00:00.000Z', '2027-05-01T00:00:00.000Z', (payment) => {
+      payment.state.status = 'success'
+      payment.state.finished = true
+      return payment
+    })
+    wreckGetMock.mockImplementation(async () => {
+      payment.refund_summary.amount_available = 0
+      payment.refund_summary.amount_submitted = payment.amount
+      return { res: { statusCode: 200 }, payload: payment }
+    })
+    const { statusCode, payload } = await server.inject({
+      method: 'POST',
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
+      url: pathTo(paths.payment, { organisationId, paymentId }),
+      payload: {}
+    })
+    expect(statusCode).toEqual(200)
+    expect(JSON.parse(payload).payment.status).toEqual('refund_succeeded')
+  })
+
+  test('poll for status should handle errors in gov pay', async () => {
+    const organisationId = 'abc123'
+    const paymentId = 'qqq555'
+    wreckPostMock.mockImplementation(async () => {
+      return fakeGovPayResponse(organisationId, paymentId)
+    })
+    const payFor = payForFn(server, organisationId)
+    await payFor('2026-05-01T00:00:00.000Z', '2027-05-01T00:00:00.000Z', (payment) => {
+      payment.state.status = 'success'
+      payment.state.finished = true
+      return payment
+    })
+    wreckGetMock.mockImplementation(async () => {
+      console.log(`Log >>>: `)
+      throw new Error('fish')
+    })
+    const { statusCode, payload } = await server.inject({
+      method: 'POST',
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
+      url: pathTo(paths.payment, { organisationId, paymentId }),
+      payload: {}
+    })
+    expect(JSON.parse(payload).message).toBe('error')
+    expect(statusCode).toBe(200)
+  })
 })
+
+const payForFn = (server, organisationId) => async (from, to, paymentFn) => {
+  const r1 = await initiatePayment(server, organisationId, 'organisation name', from, to)
+  expect(r1.statusCode).toBe(200)
+  const { paymentId } = JSON.parse(r1.payload).payment
+  const payment = paymentFn(fakeGovPayResponse(organisationId, paymentId).payload)
+  const r2 = await updatePayment(server, organisationId, paymentId, { payment })
+  expect(r2.statusCode).toBe(200)
+  return payment
+}
 
 const updateOrganisation = async (server, userId, organisationId, organisation) => {
   return await server.inject({
@@ -325,3 +362,67 @@ const updatePayment = async (server, organisationId, paymentId, payload) => {
     payload
   })
 }
+
+const fakeGovPayResponse = (organisationId, paymentId) => ({
+  res: {
+    statusCode: 201
+  },
+  payload: {
+    amount: 14500,
+    description: 'Pay your council tax.',
+    reference: '12345',
+    language: 'en',
+    state: {
+      status: 'created',
+      finished: false
+    },
+    payment_id: paymentId ?? faker.string.uuid(), //'hu20sqlact5260q2nanm0q8u93',
+    payment_provider: 'stripe',
+    created_date: '2022-03-25T13:11:29.019Z',
+    refund_summary: {
+      status: 'available',
+      amount_available: 14500,
+      amount_submitted: 0
+    },
+    settlement_summary: {},
+    delayed_capture: false,
+    moto: false,
+    return_url: 'https://your.service.gov.uk/completed',
+    _links: {
+      self: {
+        href: 'https://publicapi.payments.service.gov.uk/v1/payments/hu20sqlact5260q2nanm0q8u93',
+        method: 'GET'
+      },
+      next_url: {
+        href: 'https://www.payments.service.gov.uk/secure/ef1b6ff1-db34-4c62-b854-3ed4ba3c4049',
+        method: 'GET'
+      },
+      next_url_post: {
+        type: 'application/x-www-form-urlencoded',
+        params: {
+          chargeTokenId: 'ef1b6ff1-db34-4c62-b854-3ed4ba3c4049'
+        },
+        href: 'https://www.payments.service.gov.uk/secure',
+        method: 'POST'
+      },
+      events: {
+        href: 'https://publicapi.payments.service.gov.uk/v1/payments/hu20sqlact5260q2nanm0q8u93/events',
+        method: 'GET'
+      },
+      refunds: {
+        href: 'https://publicapi.payments.service.gov.uk/v1/payments/hu20sqlact5260q2nanm0q8u93/refunds',
+        method: 'GET'
+      },
+      cancel: {
+        href: 'https://publicapi.payments.service.gov.uk/v1/payments/hu20sqlact5260q2nanm0q8u93/cancel',
+        method: 'POST'
+      }
+    },
+    metadata: {
+      organisationId,
+      organisationName: 'organisation name',
+      servicePeriodStart: '2026-05-01T00:00:00Z',
+      servicePeriodEnd: '2027-05-01T00:00:00Z'
+    }
+  }
+})

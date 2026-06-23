@@ -12,7 +12,6 @@ const validate = (org) => {
 const freePeriodEnd = () => config.get('govPay.serviceChargeFreePeriodEnd')
 
 const defaultOrgValues = (org) => {
-  // TODO maybe not store this in the db??
   const disableAfter = org.disableAfter ?? freePeriodEnd()
   return {
     ...org,
@@ -112,7 +111,12 @@ export const updateOrganisationPaymentStatus = (org, payment) => {
     return validate(updateDisableAfter({ ...org, disabledReason: null }, payment.servicePeriodEnd))
   }
   if (isRefunded(payment)) {
-    return validate(moveDisableAfterBackwards({ ...org, disabledReason: null }, payment.servicePeriodStart))
+    // Note: only allow refunding the current year - refunds of previous years shouldn't disable the org
+    if (org.disableAfter <= payment.servicePeriodEnd) {
+      return validate(moveDisableAfterBackwards({ ...org, disabledReason: null }, payment.servicePeriodStart))
+    } else {
+      return validate(org)
+    }
   }
   if (isFailed(payment)) {
     return validate({ ...org, disabledReason: 'Payment failed' })
@@ -150,7 +154,7 @@ export const calculateNextPaymentPeriod = (() => {
     const startDate = getStartDate(at)
     const paymentWindowStart = getPaymentWindowStart(at, startDate)
     const endOfFreePeriod = freePeriodEnd()
-    const paymentPeriods = [null, null, null, null, null]
+    const paymentPeriods = [null, null]
       .map((_) => {
         const p = new Date(startDate)
         startDate.setFullYear(p.getFullYear() + 1)

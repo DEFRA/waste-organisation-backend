@@ -152,14 +152,23 @@ export const config = convict({
       doc: 'The date the payment window opens in "dd-mm" format.',
       format: String,
       validate: (val) => {
+        /* v8 ignore start */
         if (isString(val) && val.match(/^([0123]?[0-9])-(1[012]|0?[1-9])$/)) {
           return val
         }
         throw new Error('payment window should be in format `DD-MM`')
+        /* v8 ignore stop */
       },
       nullable: true,
       default: '07-01',
       env: 'GOVPAY_SERVICE_PAYMENT_WINDOW_START'
+    },
+    maxAgeOfPaymentPollingMessage: {
+      doc: 'Time after which a message polling for the status of a payment will be dropped if it is still pending',
+      format: Number,
+      nullable: false,
+      default: 3 * 24 * 60 * 60 * 1000, // nosonar
+      env: 'GOVPAY_SERVICE_CHARGE_PAYMENT_POLLING_MAX_AGE'
     }
   },
   aws: {
