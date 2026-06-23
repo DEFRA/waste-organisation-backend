@@ -1,6 +1,6 @@
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs'
 
-export const constructSqsClient = ({ region, endpoint, forcePathStyle }) => {
+export const constructSqsClient = ({ region, endpoint }) => {
   return new SQSClient({ region, endpoint })
 }
 
