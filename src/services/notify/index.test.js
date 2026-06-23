@@ -47,7 +47,8 @@ describe('Notify', () => {
       headers: {
         Authorization: expect.anything()
       },
-      payload: { email_address: email, template_id: expect.anything(), personalisation }
+      payload: { email_address: email, template_id: expect.anything(), personalisation },
+      agent: expect.anything()
     })
     expect(actualResponse).toBe(sendEmailMock())
     expect(loggerInfoMock).toHaveBeenCalledWith('Email Sent')
@@ -67,7 +68,8 @@ describe('Notify', () => {
       headers: {
         Authorization: expect.anything()
       },
-      payload: { email_address: email, template_id: expect.anything(), personalisation }
+      payload: { email_address: email, template_id: expect.anything(), personalisation },
+      agent: expect.anything()
     })
     expect(actualResponse).toBe(sendEmailMock())
     expect(loggerInfoMock).toHaveBeenCalledWith('Email Sent')
@@ -87,7 +89,8 @@ describe('Notify', () => {
       headers: {
         Authorization: expect.anything()
       },
-      payload: { email_address: email, template_id: expect.anything(), personalisation }
+      payload: { email_address: email, template_id: expect.anything(), personalisation },
+      agent: expect.anything()
     })
     expect(actualResponse).toBe(sendEmailMock())
     expect(loggerInfoMock).toHaveBeenCalledWith('Email Sent')
@@ -115,7 +118,8 @@ describe('Notify', () => {
       headers: {
         Authorization: expect.anything()
       },
-      payload: { email_address: email, template_id: expect.anything(), personalisation }
+      payload: { email_address: email, template_id: expect.anything(), personalisation },
+      agent: expect.anything()
     })
   })
 
@@ -134,7 +138,8 @@ describe('Notify', () => {
       headers: {
         Authorization: expect.anything()
       },
-      payload: { email_address: email, template_id: expect.anything(), personalisation }
+      payload: { email_address: email, template_id: expect.anything(), personalisation },
+      agent: expect.anything()
     })
   })
 
@@ -152,7 +157,8 @@ describe('Notify', () => {
       headers: {
         Authorization: expect.anything()
       },
-      payload: { email_address: email, template_id: expect.anything(), personalisation }
+      payload: { email_address: email, template_id: expect.anything(), personalisation },
+      agent: expect.anything()
     })
   })
 
