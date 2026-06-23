@@ -125,6 +125,8 @@ describe('organisation API', () => {
           ],
           users: ['123'],
           disableAfter: new Date('2026-10-01T00:00:00.000Z'),
+          createdAt: expect.any(Date),
+          updatedAt: expect.any(Date),
           version: expect.anything()
         }
       })
