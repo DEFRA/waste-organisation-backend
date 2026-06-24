@@ -297,7 +297,6 @@ describe('payment API', () => {
       return payment
     })
     wreckGetMock.mockImplementation(async () => {
-      console.log(`Log >>>: `)
       throw new Error('fish')
     })
     const { statusCode, payload } = await server.inject({
