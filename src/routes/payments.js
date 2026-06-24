@@ -9,16 +9,13 @@ import { apiKeyAuthStrategy } from '../plugins/auth.js'
 import { addVersionField, swaggerResponse } from './swagger-common.js'
 import { createGovPayPayment, getPaymentStatus } from '../services/govPay/index.js'
 import boom from '@hapi/boom'
-import { randomUUID } from 'node:crypto'
 import { sendSqsMessage } from '../plugins/sqs.js'
 
-const uuidToBase36 = (uuid) => {
-  const hex = uuid.replaceAll('-', '')
-  const decimal = BigInt('0x' + hex)
-  return decimal.toString(36) // nosonar
+const createPaymentReference = ({ servicePeriodStart, servicePeriodEnd, organisationId }) => {
+  const start = new Date(servicePeriodStart).getFullYear()
+  const end = new Date(servicePeriodEnd).getFullYear()
+  return `DWT-${start}/${end}-${organisationId}`.toUpperCase()
 }
-
-const createPaymentReference = ({ servicePeriodStart, servicePeriodEnd }) => `WASTE-${servicePeriodStart}-${servicePeriodEnd}-${uuidToBase36(randomUUID())}`
 
 const updatePaymentStatus = async (paymentId, organisationId, govPayment, db) => {
   let shouldUpdateOrg = false
