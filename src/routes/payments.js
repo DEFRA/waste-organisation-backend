@@ -46,7 +46,7 @@ export const idempontentlyInitiatePayment = async (createPayment, findPayments, 
   const idempotencyKey = randomUUID()
   await createPayment(idempotencyKey)
   const foundPayments = (await findPayments())?.filter((p) => !isFailed(p) && !isRefunded(p))?.filter((p) => p.createdAt == null || p.createdAt < anHourAgo)
-  if (foundPayments == null || foundPayments.length > 1) {
+  if (foundPayments.length > 1) {
     await deletePayment(idempotencyKey)
     return { message: 'duplicate payment' }
   }
