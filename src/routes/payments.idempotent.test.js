@@ -11,12 +11,16 @@ const deferred = () => {
   return { promise, resolve: res, reject: rej }
 }
 
-describe.skip('idempotency behaviour', () => {
+describe('idempotency behaviour', () => {
   const organisationId = 'org123'
   const createdAt = new Date('2026-06-26T14:00:00.000Z')
 
   it('should validate minimalist payment', () => {
-    expect(domain.validate({ organisationId: 'abc123', idempotencyKey: 'qqq', period: '1981/1982' }, paymentSchema))
+    expect(domain.validate({ organisationId: 'abc123', idempotencyKey: 'qqq', period: '1981/1982' }, paymentSchema)).toEqual({
+      organisationId: 'abc123',
+      idempotencyKey: 'qqq',
+      period: '1981/1982'
+    })
   })
 
   test.each([
