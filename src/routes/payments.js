@@ -115,43 +115,34 @@ export const payments = [
       const reference = createPaymentReference(metadata)
       const initiatedAt = new Date(request.info.recieved)
 
-      try {
-        const result = await idempontentlyInitiatePayment(
-          async (idempotencyKey) => await createStubPayment(request.db, organisationId, period, idempotencyKey),
-          async () => await findMatchingPayments(request.db, organisationId, period),
-          async (idempotencyKey) => await deleteStubPayment(request.db, organisationId, idempotencyKey),
-          async (idempotencyKey) => await createGovPayPayment({ reference, amount, description, returnUrl, metadata, idempotencyKey }, request.logger),
-          async (idempotencyKey, paymentId, govPayLinks) => {
-            const payment = await updateWithOptimisticLock(request.db.collection(paymentCollection), { idempotencyKey, organisationId }, (dbPayment) => {
-              return initiatePayment({ ...dbPayment, paymentId, amount, description, returnUrl, metadata, reference, govPayLinks })
-            })
-            await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId }, updateDisableAfter)
-            await schedulePollingTask(request, { paymentId, organisationId, traceId: request.getTraceId(), initiatedAt })
-            return payment
-          },
-          initiatedAt
-        )
-        console.log('>>', result)
-        if (result.message !== 'error') {
-          return h.response(result)
-        } else {
-          const { payload, status, statusCode, message } = result
-          request.logger.error(`Error contacting GovPay: ${message}, ${status}, ${statusCode}, ${JSON.stringify(payload, null, 4)}`)
-          const r = {
-            message: 'error',
-            errors: [message, payload?.description, payload?.message, payload?.detail, statusCode ? `GovPay returned status ${statusCode}` : null]
-              .filter((x) => x)
-              .map((x) => ({
-                message: x
-              }))
-          }
-          return h.response(r)
-        }
-      } catch (e) {
-        console.log(`>> ${e} ${e.stack}`)
+      const result = await idempontentlyInitiatePayment(
+        async (idempotencyKey) => await createStubPayment(request.db, organisationId, period, idempotencyKey),
+        async () => await findMatchingPayments(request.db, organisationId, period),
+        async (idempotencyKey) => await deleteStubPayment(request.db, organisationId, idempotencyKey),
+        async (idempotencyKey) => await createGovPayPayment({ reference, amount, description, returnUrl, metadata, idempotencyKey }, request.logger),
+        async (idempotencyKey, paymentId, govPayLinks) => {
+          const payment = await updateWithOptimisticLock(request.db.collection(paymentCollection), { idempotencyKey, organisationId }, (dbPayment) => {
+            return initiatePayment({ ...dbPayment, paymentId, amount, description, returnUrl, metadata, reference, govPayLinks })
+          })
+          await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId }, updateDisableAfter)
+          await schedulePollingTask(request, { paymentId, organisationId, traceId: request.getTraceId(), initiatedAt })
+          return payment
+        },
+        initiatedAt
+      )
+      console.log('>>', result)
+      if (result.message !== 'error') {
+        return h.response(result)
+      } else {
+        const { payload, status, statusCode, message } = result
+        request.logger.error(`Error contacting GovPay: ${message}, ${status}, ${statusCode}, ${JSON.stringify(payload, null, 4)}`)
         const r = {
           message: 'error',
-          errors: [{ message: `${e} ${e.stack}` }]
+          errors: [message, payload?.description, payload?.message, payload?.detail, statusCode ? `GovPay returned status ${statusCode}` : null]
+            .filter((x) => x)
+            .map((x) => ({
+              message: x
+            }))
         }
         return h.response(r)
       }
