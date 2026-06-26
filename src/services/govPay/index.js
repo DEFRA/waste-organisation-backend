@@ -9,7 +9,6 @@ const fallbackLogger = createLogger()
 const agent = createAgent()
 
 export const createGovPayPayment = async ({ reference, amount, description, returnUrl, metadata, idempotencyKey }, logger) => {
-  // TODO add idempotent header to request
   const log = logger ?? fallbackLogger
   try {
     const { apiUrl, apiKey } = config.get('govPay')

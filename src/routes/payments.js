@@ -39,11 +39,14 @@ const schedulePollingTask = async (request, jobData) => {
   return await sendSqsMessage(jobData, 'poll_for_payment', request.backgroundProcessSqsQueueUrl, request.logger, request.sqsClient)
 }
 
-export const idempontentlyInitiatePayment = async (createPayment, findPayments, deletePayment, createGovPayment, savePayment) => {
+const sixtySeconds = 60000
+
+export const idempontentlyInitiatePayment = async (createPayment, findPayments, deletePayment, createGovPayment, savePayment, now) => {
+  const anHourAgo = new Date(now.getTime() - sixtySeconds)
   const idempotencyKey = randomUUID()
   await createPayment(idempotencyKey)
-  const foundPayments = await findPayments()
-  if (foundPayments.filter((p) => !isFailed(p) && !isRefunded(p)).length > 1) {
+  const foundPayments = (await findPayments())?.filter((p) => !isFailed(p) && !isRefunded(p))?.filter((p) => p.createdAt == null || p.createdAt < anHourAgo)
+  if (foundPayments == null || foundPayments.length > 1) {
     await deletePayment(idempotencyKey)
     return { message: 'duplicate payment' }
   }
@@ -53,7 +56,7 @@ export const idempontentlyInitiatePayment = async (createPayment, findPayments, 
     return { message: 'success', payment }
   } else {
     await deletePayment(idempotencyKey)
-    return { message: 'error', payload, statusCode }
+    return { message: 'error', payload, statusCode, status }
   }
 }
 
@@ -106,55 +109,49 @@ export const payments = [
         throw boom.forbidden(`wrong organisationId in metadata: ${metadata?.organisationId} !== ${organisationId}`)
       }
 
-      // const idempotencyKey = randomUUID()
-
-      const foundPayment = await findMatchingPayments(request.db, organisationId, amount)
-      if (foundPayment) {
-        return h.response({ message: 'success', payment: foundPayment })
-      }
-
-      const idempotencyKey = randomUUID()
       const servicePeriodStart = new Date(metadata.servicePeriodStart)
       const servicePeriodEnd = new Date(metadata.servicePeriodEnd)
       const period = `${servicePeriodStart.getFullYear()}/${servicePeriodEnd.getFullYear()}`
       const reference = createPaymentReference(metadata)
+      const initiatedAt = new Date(request.info.recieved)
 
-      await createStubPayment(request.db, organisationId, period, idempotencyKey)
-      const foundPayments = await findMatchingPayments(request.db, organisationId, amount)
-      if (foundPayments.length > 1) {
-        await deleteStubPayment(request.db, organisationId, idempotencyKey)
-        return h.response({ message: 'duplicate payment' })
-      }
-
-      // const reference = createPaymentReference(metadata)
-      const { payload, status, statusCode } = await createGovPayPayment({ reference, amount, description, returnUrl, metadata }, request.logger)
-      if (status === 'success') {
-        const payment = await updateWithOptimisticLock(
-          request.db.collection(paymentCollection),
-          { paymentId: payload.payment_id, organisationId },
-          (_dbPayment) => {
-            return initiatePayment({
-              idempotencyKey,
-              organisationId,
-              paymentId: payload.payment_id,
-              amount,
-              description,
-              returnUrl,
-              metadata,
-              reference,
-              govPayLinks: payload._links
+      try {
+        const result = await idempontentlyInitiatePayment(
+          async (idempotencyKey) => await createStubPayment(request.db, organisationId, period, idempotencyKey),
+          async () => await findMatchingPayments(request.db, organisationId, period),
+          async (idempotencyKey) => await deleteStubPayment(request.db, organisationId, idempotencyKey),
+          async (idempotencyKey) => await createGovPayPayment({ reference, amount, description, returnUrl, metadata, idempotencyKey }, request.logger),
+          async (idempotencyKey, paymentId, govPayLinks) => {
+            const payment = await updateWithOptimisticLock(request.db.collection(paymentCollection), { idempotencyKey, organisationId }, (dbPayment) => {
+              return initiatePayment({ ...dbPayment, paymentId, amount, description, returnUrl, metadata, reference, govPayLinks })
             })
-          }
+            await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId }, updateDisableAfter)
+            await schedulePollingTask(request, { paymentId, organisationId, traceId: request.getTraceId(), initiatedAt })
+            return payment
+          },
+          initiatedAt
         )
-        await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId }, updateDisableAfter)
-        await schedulePollingTask(request, { paymentId: payload.payment_id, organisationId, traceId: request.getTraceId(), initiatedAt: new Date() })
-        return h.response({ message: 'success', payment })
-      } else {
-        const message = payload?.description ?? payload?.message ?? payload?.detail ?? `GovPay returned status ${statusCode}`
-        request.logger.error(`Error contacting GovPay: ${status}, ${statusCode}, ${JSON.stringify(payload, null, 4)}`)
+        console.log('>>', result)
+        if (result.message !== 'error') {
+          return h.response(result)
+        } else {
+          const { payload, status, statusCode, message } = result
+          request.logger.error(`Error contacting GovPay: ${message}, ${status}, ${statusCode}, ${JSON.stringify(payload, null, 4)}`)
+          const r = {
+            message: 'error',
+            errors: [message, payload?.description, payload?.message, payload?.detail, statusCode ? `GovPay returned status ${statusCode}` : null]
+              .filter((x) => x)
+              .map((x) => ({
+                message: x
+              }))
+          }
+          return h.response(r)
+        }
+      } catch (e) {
+        console.log(`>> ${e} ${e.stack}`)
         const r = {
           message: 'error',
-          errors: [{ message }]
+          errors: [{ message: `${e} ${e.stack}` }]
         }
         return h.response(r)
       }

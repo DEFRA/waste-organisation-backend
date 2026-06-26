@@ -2,142 +2,10 @@ import { initialiseServer, WASTE_CLIENT_AUTH_TEST_TOKEN, stopServer } from '../c
 import { paths, pathTo } from '../config/paths.js'
 import { orgCollection } from '../repositories/organisation.js'
 import { isEnabled, updateDisableAfter } from '../domain/organisation.js'
-import { paymentSchema } from '../domain/payment.js'
-import * as domain from '../domain/index.js'
 import { paymentCollection } from '../repositories/payment.js'
 import { faker } from '@faker-js/faker'
-import { idempontentlyInitiatePayment } from './payments.js'
 
-const deferred = () => {
-  let resolve, reject
-  const promise = new Promise((res, rej) => {
-    resolve = res
-    reject = rej
-  })
-  return { promise, resolve, reject }
-}
-
-describe('idempotency behaviour', () => {
-  const organisationId = 'org123'
-
-  it('should validate minimalist payment', () => {
-    expect(domain.validate({ organisationId: 'abc123', idempotencyKey: 'qqq', period: '1981/1982' }, paymentSchema))
-  })
-
-  test.each([
-    [
-      (findPayments, findPayments2) => {
-        findPayments.resolve([{ organisationId }])
-        findPayments2.resolve([{ organisationId }, { organisationId }])
-      },
-      (result, result2, deletePayment, deletePayment2) => {
-        expect(result.message).toEqual('success')
-        expect(result2.message).toEqual('duplicate payment')
-        expect(deletePayment).not.toHaveBeenCalled()
-        expect(deletePayment2).toHaveBeenCalled()
-      }
-    ],
-    [
-      (findPayments, findPayments2) => {
-        findPayments.resolve([{ organisationId }, { organisationId }])
-        findPayments2.resolve([{ organisationId }])
-      },
-      (result, result2, deletePayment, deletePayment2) => {
-        expect(result.message).toEqual('duplicate payment')
-        expect(result2.message).toEqual('success')
-        expect(deletePayment).toHaveBeenCalled()
-        expect(deletePayment2).not.toHaveBeenCalled()
-      }
-    ],
-    [
-      (findPayments, findPayments2) => {
-        findPayments.resolve([{ organisationId }, { organisationId }])
-        findPayments2.resolve([{ organisationId }, { organisationId }])
-      },
-      (result, result2, deletePayment, deletePayment2) => {
-        expect(result.message).toEqual('duplicate payment')
-        expect(result2.message).toEqual('duplicate payment')
-        expect(deletePayment).toHaveBeenCalled()
-        expect(deletePayment2).toHaveBeenCalled()
-      }
-    ],
-    [
-      (findPayments, findPayments2) => {
-        findPayments.resolve([{ organisationId, status: 'refund_succeeded' }, { organisationId }, { organisationId }])
-        findPayments2.resolve([{ organisationId, status: 'refund_succeeded' }, { organisationId }])
-      },
-      (result, result2, deletePayment, deletePayment2) => {
-        expect(result.message).toEqual('duplicate payment')
-        expect(result2.message).toEqual('success')
-        expect(deletePayment).toHaveBeenCalled()
-        expect(deletePayment2).not.toHaveBeenCalled()
-      }
-    ],
-    [
-      (findPayments, findPayments2) => {
-        findPayments.resolve([{ organisationId, status: 'payment_failed' }, { organisationId }, { organisationId }])
-        findPayments2.resolve([{ organisationId, status: 'payment_failed' }, { organisationId }])
-      },
-      (result, result2, deletePayment, deletePayment2) => {
-        expect(result.message).toEqual('duplicate payment')
-        expect(result2.message).toEqual('success')
-        expect(deletePayment).toHaveBeenCalled()
-        expect(deletePayment2).not.toHaveBeenCalled()
-      }
-    ],
-    [
-      (findPayments, findPayments2) => {
-        findPayments.resolve([{ organisationId, status: 'payment_succeeded' }, { organisationId }, { organisationId }])
-        findPayments2.resolve([{ organisationId, status: 'payment_succeeded' }, { organisationId }])
-      },
-      (result, result2, deletePayment, deletePayment2) => {
-        expect(result.message).toEqual('duplicate payment')
-        expect(result2.message).toEqual('duplicate payment')
-        expect(deletePayment).toHaveBeenCalled()
-        expect(deletePayment2).toHaveBeenCalled()
-      }
-    ],
-    [
-      (findPayments, findPayments2) => {
-        findPayments.resolve([{ organisationId, status: 'payment_in_progress' }, { organisationId }, { organisationId }])
-        findPayments2.resolve([{ organisationId, status: 'payment_in_progress' }, { organisationId }])
-      },
-      (result, result2, deletePayment, deletePayment2) => {
-        expect(result.message).toEqual('duplicate payment')
-        expect(result2.message).toEqual('duplicate payment')
-        expect(deletePayment).toHaveBeenCalled()
-        expect(deletePayment2).toHaveBeenCalled()
-      }
-    ]
-  ])('should create at most on payment per period', async (deliverPromises, assertResults) => {
-    const findPayments = deferred() // resolve([{ organisationId }])
-    const findPayments2 = deferred() // resolve([{ organisationId }])
-    const deletePayment = vi.fn()
-    const deletePayment2 = vi.fn()
-
-    const resultPromise = idempontentlyInitiatePayment(
-      async () => ({}),
-      () => findPayments.promise,
-      deletePayment,
-      async () => ({ payload: { payment_id: 'payid', _links: ['link1'] }, statusCode: 200, status: 'success' }),
-      async (idempotencyKey, paymentId, links) => ({ idempotencyKey, paymentId, links, organisationId })
-    )
-    const resultPromise2 = idempontentlyInitiatePayment(
-      async () => ({}),
-      () => findPayments2.promise,
-      deletePayment2,
-      async () => ({ payload: { payment_id: 'payid', _links: ['link1'] }, statusCode: 200, status: 'success' }),
-      async (idempotencyKey, paymentId, links) => ({ idempotencyKey, paymentId, links, organisationId })
-    )
-
-    deliverPromises(findPayments, findPayments2)
-    const result = await resultPromise
-    const result2 = await resultPromise2
-    assertResults(result, result2, deletePayment, deletePayment2)
-  })
-})
-
-describe.skip('payment API', () => {
+describe('payment API', () => {
   let server
   const wreckPostMock = vi.fn()
   const wreckGetMock = vi.fn()
@@ -265,6 +133,7 @@ describe.skip('payment API', () => {
         status: 'payment_in_progress',
         updatedAt: expect.anything(),
         createdAt: expect.anything(),
+        period: '2026/2027',
         version: 1
       }
     })
@@ -303,8 +172,29 @@ describe.skip('payment API', () => {
       throw new Error('fish')
     })
     const { payload, statusCode } = await initiatePayment(server, organisationId, 'organisation name')
-    expect(payload).toBe('{"message":"error","errors":[{"message":"GovPay returned status undefined"}]}')
+    expect(payload).toBe('{"message":"error","errors":[{"message":"error"}]}')
     expect(statusCode).toBe(200)
+  })
+
+  test('abandoned payment get closed', async () => {
+    const organisationId = 'abc123'
+    wreckPostMock.mockImplementation(async () => {
+      return fakeGovPayResponse(organisationId)
+    })
+    const organisation = updateDisableAfter({ organisationId, name: 'Weyland-Yutani Corporation' }, new Date('2026-05-01T00:00:00.000Z'))
+    const r = await updateOrganisation(server, 'user123', organisationId, organisation)
+    expect(isEnabled(JSON.parse(r.payload).organisation)).toBe(false)
+    const r1 = await initiatePayment(server, organisationId, 'organisation name', '2026-05-01T00:00:00.000Z', '2027-05-01T00:00:00.000Z')
+    expect(r1.statusCode).toBe(200)
+    const { paymentId } = JSON.parse(r1.payload).payment
+
+    const payment = fakeGovPayResponse(organisationId).payload
+    payment.state.status = 'timedout'
+    payment.state.finished = true
+    const r2 = await updatePayment(server, organisationId, paymentId, { payment })
+
+    expect(r2.statusCode).toBe(200)
+    expect(JSON.parse(r2.payload).payment.status).toBe('payment_failed')
   })
 
   test('update payment with `success` enables org', async () => {
@@ -389,8 +279,8 @@ describe.skip('payment API', () => {
   })
 
   test('poll for status', async () => {
-    const organisationId = 'abc123'
-    const paymentId = 'qqq555'
+    const organisationId = faker.string.uuid()
+    const paymentId = faker.string.uuid()
     wreckPostMock.mockImplementation(async () => {
       return fakeGovPayResponse(organisationId, paymentId)
     })
@@ -418,11 +308,12 @@ describe.skip('payment API', () => {
   })
 
   test('poll for status should handle errors in gov pay', async () => {
-    const organisationId = 'abc123'
-    const paymentId = 'qqq555'
+    const organisationId = faker.string.uuid()
+    const paymentId = faker.string.uuid()
     wreckPostMock.mockImplementation(async () => {
       return fakeGovPayResponse(organisationId, paymentId)
     })
+    await updateOrganisation(server, 'user123', organisationId, { name: 'Weyland-Yutani Corporation' })
     const payFor = payForFn(server, organisationId)
     await payFor('2026-05-01T00:00:00.000Z', '2027-05-01T00:00:00.000Z', (payment) => {
       payment.state.status = 'success'

@@ -7,7 +7,7 @@ export const createPaymentIndexes = async (db) => {
 }
 
 export const findMatchingPayments = async (db, organisationId, period) => {
-  return await db.collection(paymentCollection).findOne({ organisationId, period })
+  return await db.collection(paymentCollection).find({ organisationId, period })
 }
 
 export const createStubPayment = async (db, organisationId, period, idempotencyKey) => {
