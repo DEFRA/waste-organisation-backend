@@ -1,7 +1,8 @@
-// import Boom from '@hapi/boom'
+import { randomUUID } from 'node:crypto'
 import { paths } from '../config/paths.js'
-import { paymentSchema, initiatePayment, updateFromGovPayEvent, hasStatusChanged } from '../domain/payment.js'
-import { paymentCollection } from '../repositories/payment.js'
+import { config } from '../config.js'
+import { paymentSchema, initiatePayment, updateFromGovPayEvent, hasStatusChanged, isFailed, isRefunded, isPaid } from '../domain/payment.js'
+import { paymentCollection, findMatchingPayments, createStubPayment, deleteStubPayment } from '../repositories/payment.js'
 import { orgCollection } from '../repositories/organisation.js'
 import { updateOrganisationPaymentStatus, updateDisableAfter } from '../domain/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
@@ -37,6 +38,31 @@ const updatePaymentStatus = async (paymentId, organisationId, govPayment, db) =>
 const schedulePollingTask = async (request, jobData) => {
   request.logger.debug(`Scheduling polling task: ${JSON.stringify(jobData)}`)
   return await sendSqsMessage(jobData, 'poll_for_payment', request.backgroundProcessSqsQueueUrl, request.logger, request.sqsClient)
+}
+
+const removeOldPayments = (now) => {
+  const anHourAgo = new Date(now.getTime() - config.get('govPay.pendingCreatePaymentTimeout'))
+  return (p) => !isFailed(p) && !isRefunded(p) && (isPaid(p) || p.createdAt == null || p.createdAt > anHourAgo)
+}
+
+export const idempontentlyInitiatePayment = async (createPayment, findPayments, deletePayment, createGovPayment, savePayment, now, log) => {
+  const idempotencyKey = randomUUID()
+  await createPayment(idempotencyKey)
+  const foundPayments = (await findPayments())?.filter(removeOldPayments(now))
+  if (foundPayments.length > 1) {
+    const msg = `Found Payments during idempontentlyInitiatePayment (orgId - ${foundPayments[0].organisationId})`
+    log.info(`${msg}: ${foundPayments.map((p) => [p._id, p.idempotencyKey, p.paymentId, p.status, p.createAt]).join(' ')}`)
+    await deletePayment(idempotencyKey)
+    return { message: 'duplicate payment' }
+  }
+  const { payload, status, statusCode } = await createGovPayment(idempotencyKey)
+  if (status === 'success') {
+    const payment = await savePayment(idempotencyKey, payload.payment_id, payload._links)
+    return { message: 'success', payment }
+  } else {
+    await deletePayment(idempotencyKey)
+    return { message: 'error', payload, statusCode, status }
+  }
 }
 
 export const payments = [
@@ -88,34 +114,40 @@ export const payments = [
         throw boom.forbidden(`wrong organisationId in metadata: ${metadata?.organisationId} !== ${organisationId}`)
       }
 
+      const servicePeriodStart = new Date(metadata.servicePeriodStart)
+      const servicePeriodEnd = new Date(metadata.servicePeriodEnd)
+      const period = `${servicePeriodStart.getFullYear()}/${servicePeriodEnd.getFullYear()}`
       const reference = createPaymentReference(metadata)
-      const { payload, status, statusCode } = await createGovPayPayment({ reference, amount, description, returnUrl, metadata }, request.logger)
-      if (status === 'success') {
-        const payment = await updateWithOptimisticLock(
-          request.db.collection(paymentCollection),
-          { paymentId: payload.payment_id, organisationId: request.params.organisationId },
-          (_dbPayment) => {
-            return initiatePayment({
-              organisationId,
-              paymentId: payload.payment_id,
-              amount,
-              description,
-              returnUrl,
-              metadata,
-              reference,
-              govPayLinks: payload._links
-            })
-          }
-        )
-        await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId }, updateDisableAfter)
-        await schedulePollingTask(request, { paymentId: payload.payment_id, organisationId, traceId: request.getTraceId(), initiatedAt: new Date() })
-        return h.response({ message: 'success', payment })
+      const initiatedAt = new Date(request.info.recieved)
+
+      const result = await idempontentlyInitiatePayment(
+        async (idempotencyKey) => await createStubPayment(request.db, organisationId, period, idempotencyKey),
+        async () => await findMatchingPayments(request.db, organisationId, period),
+        async (idempotencyKey) => await deleteStubPayment(request.db, organisationId, idempotencyKey),
+        async (idempotencyKey) => await createGovPayPayment({ reference, amount, description, returnUrl, metadata, idempotencyKey }, request.logger),
+        async (idempotencyKey, paymentId, govPayLinks) => {
+          const payment = await updateWithOptimisticLock(request.db.collection(paymentCollection), { idempotencyKey, organisationId }, (dbPayment) => {
+            return initiatePayment({ ...dbPayment, paymentId, amount, description, returnUrl, metadata, reference, govPayLinks })
+          })
+          await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId }, updateDisableAfter)
+          await schedulePollingTask(request, { paymentId, organisationId, traceId: request.getTraceId(), initiatedAt })
+          return payment
+        },
+        initiatedAt,
+        request.logger
+      )
+      if (result.message !== 'error') {
+        return h.response(result)
       } else {
-        const message = payload?.description ?? payload?.message ?? payload?.detail ?? `GovPay returned status ${statusCode}`
-        request.logger.error(`Error contacting GovPay: ${status}, ${statusCode}, ${JSON.stringify(payload, null, 4)}`)
+        const { payload, status, statusCode, message } = result
+        request.logger.error(`Error contacting GovPay: ${message}, ${status}, ${statusCode}, ${JSON.stringify(payload, null, 4)}`)
         const r = {
           message: 'error',
-          errors: [{ message }]
+          errors: [message, payload?.description, payload?.message, payload?.detail, statusCode ? `GovPay returned status ${statusCode}` : null]
+            .filter((x) => x)
+            .map((x) => ({
+              message: x
+            }))
         }
         return h.response(r)
       }

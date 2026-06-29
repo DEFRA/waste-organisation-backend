@@ -117,6 +117,7 @@ describe('payment API', () => {
             method: 'GET'
           }
         },
+        idempotencyKey: expect.anything(),
         metadata: {
           organisationId: 'abc123',
           organisationName: 'organisation name',
@@ -132,6 +133,7 @@ describe('payment API', () => {
         status: 'payment_in_progress',
         updatedAt: expect.anything(),
         createdAt: expect.anything(),
+        period: '2026/2027',
         version: 1
       }
     })
@@ -170,8 +172,29 @@ describe('payment API', () => {
       throw new Error('fish')
     })
     const { payload, statusCode } = await initiatePayment(server, organisationId, 'organisation name')
-    expect(payload).toBe('{"message":"error","errors":[{"message":"GovPay returned status undefined"}]}')
+    expect(payload).toBe('{"message":"error","errors":[{"message":"error"}]}')
     expect(statusCode).toBe(200)
+  })
+
+  test('abandoned payment get closed', async () => {
+    const organisationId = 'abc123'
+    wreckPostMock.mockImplementation(async () => {
+      return fakeGovPayResponse(organisationId)
+    })
+    const organisation = updateDisableAfter({ organisationId, name: 'Weyland-Yutani Corporation' }, new Date('2026-05-01T00:00:00.000Z'))
+    const r = await updateOrganisation(server, 'user123', organisationId, organisation)
+    expect(isEnabled(JSON.parse(r.payload).organisation)).toBe(false)
+    const r1 = await initiatePayment(server, organisationId, 'organisation name', '2026-05-01T00:00:00.000Z', '2027-05-01T00:00:00.000Z')
+    expect(r1.statusCode).toBe(200)
+    const { paymentId } = JSON.parse(r1.payload).payment
+
+    const payment = fakeGovPayResponse(organisationId).payload
+    payment.state.status = 'timedout'
+    payment.state.finished = true
+    const r2 = await updatePayment(server, organisationId, paymentId, { payment })
+
+    expect(r2.statusCode).toBe(200)
+    expect(JSON.parse(r2.payload).payment.status).toBe('payment_failed')
   })
 
   test('update payment with `success` enables org', async () => {
@@ -256,8 +279,8 @@ describe('payment API', () => {
   })
 
   test('poll for status', async () => {
-    const organisationId = 'abc123'
-    const paymentId = 'qqq555'
+    const organisationId = faker.string.uuid()
+    const paymentId = faker.string.uuid()
     wreckPostMock.mockImplementation(async () => {
       return fakeGovPayResponse(organisationId, paymentId)
     })
@@ -285,11 +308,12 @@ describe('payment API', () => {
   })
 
   test('poll for status should handle errors in gov pay', async () => {
-    const organisationId = 'abc123'
-    const paymentId = 'qqq555'
+    const organisationId = faker.string.uuid()
+    const paymentId = faker.string.uuid()
     wreckPostMock.mockImplementation(async () => {
       return fakeGovPayResponse(organisationId, paymentId)
     })
+    await updateOrganisation(server, 'user123', organisationId, { name: 'Weyland-Yutani Corporation' })
     const payFor = payForFn(server, organisationId)
     await payFor('2026-05-01T00:00:00.000Z', '2027-05-01T00:00:00.000Z', (payment) => {
       payment.state.status = 'success'

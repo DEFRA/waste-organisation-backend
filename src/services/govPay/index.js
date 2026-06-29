@@ -8,7 +8,7 @@ const fallbackLogger = createLogger()
 
 const agent = createAgent()
 
-export const createGovPayPayment = async ({ reference, amount, description, returnUrl, metadata }, logger) => {
+export const createGovPayPayment = async ({ reference, amount, description, returnUrl, metadata, idempotencyKey }, logger) => {
   const log = logger ?? fallbackLogger
   try {
     const { apiUrl, apiKey } = config.get('govPay')
@@ -17,7 +17,8 @@ export const createGovPayPayment = async ({ reference, amount, description, retu
       json: true,
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Idempotency-Key': idempotencyKey
       },
       payload: {
         amount,

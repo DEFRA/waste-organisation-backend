@@ -10,7 +10,9 @@ const linkData = joi.object({
 
 export const paymentSchema = joi.object({
   organisationId: joi.string().required(),
-  paymentId: joi.string().required(),
+  period: joi.string().required(),
+  idempotencyKey: joi.string().required(),
+  paymentId: joi.string(),
   status: joi.string(),
   reference: joi.string(),
   returnUrl: joi.string(),
@@ -30,24 +32,27 @@ export const paymentSchema = joi.object({
     cancel: linkData
   }),
   servicePeriodStart: joi.date(),
-  servicePeriodEnd: joi.date(),
-  createdDate: joi.date()
+  servicePeriodEnd: joi.date()
 })
 
-export const initiatePayment = ({ organisationId, paymentId, amount, description, returnUrl, metadata, reference, govPayLinks }) => {
+export const initiatePayment = ({ organisationId, paymentId, amount, description, returnUrl, metadata, reference, govPayLinks, idempotencyKey }) => {
+  const servicePeriodStart = new Date(metadata.servicePeriodStart)
+  const servicePeriodEnd = new Date(metadata.servicePeriodEnd)
   metadata.organisationId = organisationId
   const payment = {
     organisationId,
     paymentId,
+    idempotencyKey,
     amount,
     description,
     returnUrl,
     metadata,
     reference,
     status: 'payment_in_progress',
-    servicePeriodStart: new Date(metadata.servicePeriodStart),
-    servicePeriodEnd: new Date(metadata.servicePeriodEnd),
-    govPayLinks
+    servicePeriodStart,
+    servicePeriodEnd,
+    govPayLinks,
+    period: `${servicePeriodStart.getFullYear()}/${servicePeriodEnd.getFullYear()}`
   }
   return common.validate(payment, paymentSchema)
 }
@@ -60,6 +65,7 @@ export const govPayStatusToStatus = (() => {
     captureable: 'payment_in_progress',
     success: 'payment_succeeded',
     failed: 'payment_failed',
+    timedout: 'payment_failed',
     cancelled: 'payment_failed',
     error: 'payment_failed'
   }

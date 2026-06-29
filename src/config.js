@@ -169,6 +169,13 @@ export const config = convict({
       nullable: false,
       default: 3 * 24 * 60 * 60 * 1000, // nosonar
       env: 'GOVPAY_SERVICE_CHARGE_PAYMENT_POLLING_MAX_AGE'
+    },
+    pendingCreatePaymentTimeout: {
+      doc: 'Time after which a message polling for the status of a payment will be dropped if it is still pending',
+      format: Number,
+      nullable: false,
+      default: 60 * 60 * 1000, // nosonar
+      env: 'GOVPAY_SERVICE_CHARGE_PENDING_CREATE_PAYMENT_TIMEOUT'
     }
   },
   aws: {
