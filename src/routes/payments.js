@@ -130,7 +130,6 @@ export const payments = [
         },
         initiatedAt
       )
-      console.log('>>', result)
       if (result.message !== 'error') {
         return h.response(result)
       } else {
