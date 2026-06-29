@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { paths } from '../config/paths.js'
-import { paymentSchema, initiatePayment, updateFromGovPayEvent, hasStatusChanged, isFailed, isRefunded } from '../domain/payment.js'
+import { config } from '../config.js'
+import { paymentSchema, initiatePayment, updateFromGovPayEvent, hasStatusChanged, isFailed, isRefunded, isPaid } from '../domain/payment.js'
 import { paymentCollection, findMatchingPayments, createStubPayment, deleteStubPayment } from '../repositories/payment.js'
 import { orgCollection } from '../repositories/organisation.js'
 import { updateOrganisationPaymentStatus, updateDisableAfter } from '../domain/organisation.js'
@@ -39,14 +40,18 @@ const schedulePollingTask = async (request, jobData) => {
   return await sendSqsMessage(jobData, 'poll_for_payment', request.backgroundProcessSqsQueueUrl, request.logger, request.sqsClient)
 }
 
-const sixtySeconds = 60000
+const removeOldPayments = (now) => {
+  const anHourAgo = new Date(now.getTime() - config.get('govPay.pendingCreatePaymentTimeout'))
+  return (p) => !isFailed(p) && !isRefunded(p) && (isPaid(p) || p.createdAt == null || p.createdAt > anHourAgo)
+}
 
-export const idempontentlyInitiatePayment = async (createPayment, findPayments, deletePayment, createGovPayment, savePayment, now) => {
-  const anHourAgo = new Date(now.getTime() - sixtySeconds)
+export const idempontentlyInitiatePayment = async (createPayment, findPayments, deletePayment, createGovPayment, savePayment, now, log) => {
   const idempotencyKey = randomUUID()
   await createPayment(idempotencyKey)
-  const foundPayments = (await findPayments())?.filter((p) => !isFailed(p) && !isRefunded(p))?.filter((p) => p.createdAt == null || p.createdAt < anHourAgo)
+  const foundPayments = (await findPayments())?.filter(removeOldPayments(now))
   if (foundPayments.length > 1) {
+    const msg = `Found Payments during idempontentlyInitiatePayment (orgId - ${foundPayments[0].organisationId})`
+    log.info(`${msg}: ${foundPayments.map((p) => [p._id, p.idempotencyKey, p.paymentId, p.status, p.createAt]).join(' ')}`)
     await deletePayment(idempotencyKey)
     return { message: 'duplicate payment' }
   }
@@ -128,7 +133,8 @@ export const payments = [
           await schedulePollingTask(request, { paymentId, organisationId, traceId: request.getTraceId(), initiatedAt })
           return payment
         },
-        initiatedAt
+        initiatedAt,
+        request.logger
       )
       if (result.message !== 'error') {
         return h.response(result)
