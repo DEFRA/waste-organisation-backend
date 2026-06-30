@@ -42,6 +42,7 @@
     "@hapi/hapi": "21.4.9",
     "@hapi/inert": "7.1.1",
     "@hapi/vision": "7.0.3",
+    "@pulsecron/pulse": "1.6.8",
     "aws-embedded-metrics": "4.2.1",
     "aws4": "1.13.2",
     "convict": "6.2.5",

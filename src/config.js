@@ -176,6 +176,13 @@ export const config = convict({
       nullable: false,
       default: 60 * 60 * 1000, // nosonar
       env: 'GOVPAY_SERVICE_CHARGE_PENDING_CREATE_PAYMENT_TIMEOUT'
+    },
+    refundPollingSchedule: {
+      doc: 'The refund polling cron expression',
+      format: String,
+      nullable: true,
+      default: '30 3 * * *',
+      env: 'GOVPAY_REFUND_POLLING_SCHEDULE'
     }
   },
   aws: {
