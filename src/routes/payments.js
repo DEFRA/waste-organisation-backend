@@ -18,11 +18,11 @@ const createPaymentReference = ({ servicePeriodStart, servicePeriodEnd, organisa
   return `DWT-${start}/${end}-${organisationId}`.toUpperCase()
 }
 
-const updatePaymentStatus = async (paymentId, organisationId, govPayment, db) => {
+const updatePaymentStatus = async (paymentId, organisationId, govPayment, db, logger) => {
   let shouldUpdateOrg = false
   const payment = await updateWithOptimisticLock(db.collection(paymentCollection), { paymentId, organisationId }, (dbPayment) => {
     if (dbPayment.status) {
-      const p = updateFromGovPayEvent(dbPayment, govPayment)
+      const p = updateFromGovPayEvent(dbPayment, govPayment, logger)
       shouldUpdateOrg = hasStatusChanged(dbPayment, p)
       return p
     } else {
@@ -84,7 +84,7 @@ export const payments = [
     options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ payment: addVersionField(paymentSchema) }), sample: 0 } },
     handler: async (request, h) => {
       const { paymentId, organisationId } = request.params
-      const payment = await updatePaymentStatus(paymentId, organisationId, request.payload.payment, request.db)
+      const payment = await updatePaymentStatus(paymentId, organisationId, request.payload.payment, request.db, request.logger)
       return h.response({ message: 'success', payment })
     }
   },
@@ -96,7 +96,7 @@ export const payments = [
       const { paymentId, organisationId } = request.params
       const govPayment = await getPaymentStatus(paymentId, request.logger)
       if (govPayment.status === 'success') {
-        const payment = await updatePaymentStatus(paymentId, organisationId, govPayment.payload, request.db)
+        const payment = await updatePaymentStatus(paymentId, organisationId, govPayment.payload, request.db, request.logger)
         return h.response({ message: 'success', payment })
       } else {
         return h.response({ message: 'error', error: govPayment })

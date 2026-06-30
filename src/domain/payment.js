@@ -67,6 +67,7 @@ export const govPayStatusToStatus = (() => {
     failed: 'payment_failed',
     timedout: 'payment_failed',
     cancelled: 'payment_failed',
+    declined: 'payment_failed',
     error: 'payment_failed'
   }
   const refundMapping = {
@@ -79,19 +80,23 @@ export const govPayStatusToStatus = (() => {
     // available: 'refund_succeeded' // partial??
     // unavailable: '' // payment failed or can't be refunded again?
   }
-  return (govPay) => {
+  return (govPay, logger) => {
     const ps = govPay?.state?.status
     const rs = govPay?.refund_summary?.status
     if (rs === 'available' && govPay?.amount !== govPay?.refund_summary?.amount_available) {
       return 'refund_succeeded'
     } else {
-      return refundMapping[rs] || paymentMapping[ps]
+      const newState = refundMapping[rs] || paymentMapping[ps]
+      if (newState == null) {
+        logger.info(`Unknown govpay status: payment: ${ps} refund: ${rs}`)
+      }
+      return newState
     }
   }
 })()
 
-export const updateFromGovPayEvent = (payment, govPay) => {
-  const status = govPayStatusToStatus(govPay)
+export const updateFromGovPayEvent = (payment, govPay, logger) => {
+  const status = govPayStatusToStatus(govPay, logger)
   return common.validate({ ...payment, ...(status ? { status } : {}) }, paymentSchema)
 }
 

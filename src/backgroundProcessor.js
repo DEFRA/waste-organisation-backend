@@ -193,12 +193,12 @@ export const processSpreadsheetJob = async (s3Client, message) => {
   return { logger: processJobLogger }
 }
 
-const updatePaymentStatus = async (paymentId, organisationId, govPayment, db) => {
+const updatePaymentStatus = async (paymentId, organisationId, govPayment, db, logger) => {
   let shouldUpdateOrg = false
   let organisation = null
   const payment = await updateWithOptimisticLock(db.collection(paymentCollection), { paymentId, organisationId }, (dbPayment) => {
     if (dbPayment.status) {
-      const p = updateFromGovPayEvent(dbPayment, govPayment)
+      const p = updateFromGovPayEvent(dbPayment, govPayment, logger)
       shouldUpdateOrg = hasStatusChanged(dbPayment, p)
       return p
     } else {
@@ -224,7 +224,7 @@ export const processPaymentJob = (() => {
     const processJobLogger = createLogger(traceId)
     processJobLogger.debug(`Looking for paymentId ${paymentId}, organisationId ${organisationId}, initiatedAt ${initiatedAt}`)
     const govPayment = await getPaymentStatus(paymentId, processJobLogger)
-    const { payment } = await updatePaymentStatus(paymentId, organisationId, govPayment.payload, db)
+    const { payment } = await updatePaymentStatus(paymentId, organisationId, govPayment.payload, db, processJobLogger)
     processJobLogger.debug(`Payment ${JSON.stringify(payment)}`)
     return { logger: processJobLogger, payment, skipDeleteMessage: isPending(payment) && !isMessageTooOld(initiatedAt) }
   }
