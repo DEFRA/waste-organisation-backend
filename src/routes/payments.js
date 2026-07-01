@@ -40,7 +40,7 @@ const schedulePollingTask = async (request, jobData) => {
   return await sendSqsMessage(jobData, 'poll_for_payment', request.backgroundProcessSqsQueueUrl, request.logger, request.sqsClient)
 }
 
-const removeOldPayments = (now, log) => {
+const removeOldPayments = (now) => {
   const anHourAgo = new Date(now.getTime() - config.get('govPay.pendingCreatePaymentTimeout'))
   return (p) => !isFailed(p) && !isRefunded(p) && (isPaid(p) || p.createdAt == null || p.createdAt > anHourAgo)
 }
@@ -50,7 +50,7 @@ export const idempontentlyInitiatePayment = async (createPayment, findPayments, 
   log.info(`creating payment with idempotencyKey ${idempotencyKey}`)
   const stub = await createPayment(idempotencyKey)
   log.info(`created payment ${JSON.stringify(stub)}`)
-  const foundPayments = (await findPayments())?.filter(removeOldPayments(now, log))
+  const foundPayments = (await findPayments())?.filter(removeOldPayments(now))
   log.info(`payments found in the db - count ${foundPayments.length}`)
   if (foundPayments.length === 0) {
     log.error(`no payments found in the db ${stub}`)
@@ -147,8 +147,6 @@ export const payments = [
         )
         if (result.message !== 'error') {
           return h.response(result)
-        } else if (result.message !== 'duplicate payment') {
-          throw boom.badRequest(result)
         } else {
           const { payload, status, statusCode, message } = result
           request.logger.error(`Error contacting GovPay: ${message}, ${status}, ${statusCode}, ${JSON.stringify(payload, null, 4)}`)

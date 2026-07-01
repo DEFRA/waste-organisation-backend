@@ -4,7 +4,6 @@ import { orgCollection } from '../repositories/organisation.js'
 import { isEnabled, updateDisableAfter } from '../domain/organisation.js'
 import { paymentCollection } from '../repositories/payment.js'
 import { faker } from '@faker-js/faker'
-import { randomUUID } from 'node:crypto'
 
 describe('payment API', () => {
   let server
