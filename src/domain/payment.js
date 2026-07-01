@@ -62,7 +62,7 @@ export const govPayStatusToStatus = (() => {
     created: 'payment_in_progress',
     started: 'payment_in_progress',
     submitted: 'payment_in_progress',
-    captureable: 'payment_in_progress',
+    capturable: 'payment_in_progress',
     success: 'payment_succeeded',
     failed: 'payment_failed',
     timedout: 'payment_failed',
