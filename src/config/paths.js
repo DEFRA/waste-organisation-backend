@@ -1,6 +1,7 @@
 // prettier-ignore
 export const paths = {
   getOrganisations:     '/user/{userId}/organisations',
+  getOrganisationsByDateRange: '/organisations',
   getOrganisation:      '/user/{userId}/organisation/{organisationId}',
   putOrganisation:      '/user/{userId}/organisation/{organisationId}',
   getSpreadsheets:      '/spreadsheet/{organisationId}',
@@ -16,10 +17,10 @@ export const paths = {
 }
 
 export const pathTo = (route, params) => {
-  const routeParams = route.match(/\{\w+\*?\}/g)
+  const routeParams = route.match(/\{\w+\*?}/g)
 
   for (const r of routeParams) {
-    const parts = r.match(/\{(\w+)\*?\}/)
+    const parts = r.match(/\{(\w+)\*?}/)
     const src = params[parts[1]]
     const dst = parts[0]
     const key = parts[1]
