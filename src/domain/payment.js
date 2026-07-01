@@ -100,12 +100,12 @@ export const updateFromGovPayEvent = (payment, govPay, logger) => {
   return common.validate({ ...payment, ...(status ? { status } : {}) }, paymentSchema)
 }
 
-export const isPaid = (payment) => payment.status === 'payment_succeeded'
+export const isPaid = (payment) => payment?.status === 'payment_succeeded'
 
-export const isRefunded = (payment) => payment.status === 'refund_succeeded'
+export const isRefunded = (payment) => payment?.status === 'refund_succeeded'
 
-export const isFailed = (payment) => payment.status === 'payment_failed'
+export const isFailed = (payment) => payment?.status === 'payment_failed'
 
-export const isPending = (payment) => payment.status === 'payment_in_progress'
+export const isPending = (payment) => payment?.status === 'payment_in_progress'
 
 export const hasStatusChanged = (oldPayment, newPayment) => oldPayment.status !== newPayment.status

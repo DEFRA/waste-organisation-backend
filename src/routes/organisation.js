@@ -1,5 +1,5 @@
 import { paths } from '../config/paths.js'
-import { mergeAndValidate, createApiCode, orgSchemaWithoutApiCodes, calculateNextPaymentPeriod } from '../domain/organisation.js'
+import { mergeAndValidate, ensureAtLeastOneApiCodeExists, orgSchemaWithoutApiCodes, calculateNextPaymentPeriod } from '../domain/organisation.js'
 import { orgCollection, findOrganisationById } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
@@ -62,11 +62,7 @@ export const organisations = [
               organisationId,
               userId
             )
-            if (org.apiCodes == null) {
-              return createApiCode(org)
-            } else {
-              return org
-            }
+            return ensureAtLeastOneApiCodeExists(org)
           }
         )
         delete organisation.apiCodes

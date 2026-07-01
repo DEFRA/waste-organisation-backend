@@ -103,6 +103,7 @@ describe('update disable after', () => {
 
     expect(updateDisableAfter(organisation, nextDate)).toEqual({
       ...organisation,
+      apiCodes: [expect.anything()],
       disableAfter: nextDate
     })
   })
@@ -110,6 +111,7 @@ describe('update disable after', () => {
     const organisation = createOrganisation()
     expect(updateDisableAfter({ ...organisation, disableAfter: new Date('2026-01-01T00:00:00Z') }, new Date('2027-01-01T00:00:00Z'))).toEqual({
       ...organisation,
+      apiCodes: [expect.anything()],
       disableAfter: new Date('2027-01-01T00:00:00Z')
     })
   })
@@ -117,6 +119,7 @@ describe('update disable after', () => {
     const organisation = createOrganisation()
     expect(updateDisableAfter({ ...organisation, disableAfter: new Date('2027-01-01T00:00:00Z') }, new Date('2024-01-01T00:00:00Z'))).toEqual({
       ...organisation,
+      apiCodes: [expect.anything()],
       disableAfter: new Date('2027-01-01T00:00:00Z')
     })
   })
@@ -220,7 +223,13 @@ describe('updateOrganisationPaymentStatus', () => {
     const payment = createPayment('payment_succeeded')
     const initialOrganisation = createOrganisation()
     const updatedOrganisation = updateOrganisationPaymentStatus(initialOrganisation, payment)
-    expect(updatedOrganisation).toEqual({ ...initialOrganisation, disabledReason: null, isDisabled: false, disableAfter: payment.servicePeriodEnd })
+    expect(updatedOrganisation).toEqual({
+      ...initialOrganisation,
+      apiCodes: [expect.anything()],
+      disabledReason: null,
+      isDisabled: false,
+      disableAfter: payment.servicePeriodEnd
+    })
     expect(isEnabled(updatedOrganisation)).toBe(true)
   })
 
