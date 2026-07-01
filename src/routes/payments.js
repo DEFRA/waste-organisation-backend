@@ -11,6 +11,7 @@ import { addVersionField, swaggerResponse } from './swagger-common.js'
 import { createGovPayPayment, getPaymentStatus } from '../services/govPay/index.js'
 import boom from '@hapi/boom'
 import { sendSqsMessage } from '../plugins/sqs.js'
+import { setTimeout } from 'timers/promises'
 
 const createPaymentReference = ({ servicePeriodStart, servicePeriodEnd, organisationId }) => {
   const start = new Date(servicePeriodStart).getFullYear()
@@ -40,6 +41,7 @@ export const schedulePollingTask = async (request, jobData) => {
   // prettier-ignore
   for (let i = 0; i < 5; i++) { // nosonar
     try {
+      await setTimeout(i * config.get('govPay.schedulingPollingTaskRetrySleepStep'))
       return await sendSqsMessage(jobData, 'poll_for_payment', request.backgroundProcessSqsQueueUrl, request.logger, request.sqsClient)
     } catch (e) {
       request.logger.debug(`Scheduling polling task failed retrying (${i}): ${e}`)
@@ -147,7 +149,7 @@ export const payments = [
               return initiatePayment({ ...dbPayment, paymentId, amount, description, returnUrl, metadata, reference, govPayLinks })
             })
             await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId }, updateDisableAfter)
-            await schedulePollingTask(request, { paymentId, organisationId, traceId: request.getTraceId(), initiatedAt })
+            schedulePollingTask(request, { paymentId, organisationId, traceId: request.getTraceId(), initiatedAt })
             return payment
           },
           initiatedAt,

@@ -2,6 +2,7 @@ import { paymentSchema } from '../domain/payment.js'
 import * as domain from '../domain/index.js'
 import { idempontentlyInitiatePayment, schedulePollingTask } from './payments.js'
 import { randomUUID } from 'node:crypto'
+import { config } from '../config.js'
 
 const deferred = () => {
   let res, rej
@@ -238,6 +239,7 @@ describe('idempotency behaviour', () => {
   })
 
   test('should retry sending sqs msg and swallow exceptions', async () => {
+    config.set('govPay.schedulingPollingTaskRetrySleepStep', 1)
     const send = vi.fn().mockImplementation(async () => {
       throw new Error('test error')
     })
