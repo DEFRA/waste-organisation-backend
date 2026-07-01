@@ -62,11 +62,12 @@ export const govPayStatusToStatus = (() => {
     created: 'payment_in_progress',
     started: 'payment_in_progress',
     submitted: 'payment_in_progress',
-    captureable: 'payment_in_progress',
+    capturable: 'payment_in_progress',
     success: 'payment_succeeded',
     failed: 'payment_failed',
     timedout: 'payment_failed',
     cancelled: 'payment_failed',
+    declined: 'payment_failed',
     error: 'payment_failed'
   }
   const refundMapping = {
@@ -79,28 +80,32 @@ export const govPayStatusToStatus = (() => {
     // available: 'refund_succeeded' // partial??
     // unavailable: '' // payment failed or can't be refunded again?
   }
-  return (govPay) => {
+  return (govPay, logger) => {
     const ps = govPay?.state?.status
     const rs = govPay?.refund_summary?.status
     if (rs === 'available' && govPay?.amount !== govPay?.refund_summary?.amount_available) {
       return 'refund_succeeded'
     } else {
-      return refundMapping[rs] || paymentMapping[ps]
+      const newState = refundMapping[rs] || paymentMapping[ps]
+      if (newState == null) {
+        logger.info(`Unknown govpay status: payment: ${ps} refund: ${rs}`)
+      }
+      return newState
     }
   }
 })()
 
-export const updateFromGovPayEvent = (payment, govPay) => {
-  const status = govPayStatusToStatus(govPay)
+export const updateFromGovPayEvent = (payment, govPay, logger) => {
+  const status = govPayStatusToStatus(govPay, logger)
   return common.validate({ ...payment, ...(status ? { status } : {}) }, paymentSchema)
 }
 
-export const isPaid = (payment) => payment.status === 'payment_succeeded'
+export const isPaid = (payment) => payment?.status === 'payment_succeeded'
 
-export const isRefunded = (payment) => payment.status === 'refund_succeeded'
+export const isRefunded = (payment) => payment?.status === 'refund_succeeded'
 
-export const isFailed = (payment) => payment.status === 'payment_failed'
+export const isFailed = (payment) => payment?.status === 'payment_failed'
 
-export const isPending = (payment) => payment.status === 'payment_in_progress'
+export const isPending = (payment) => payment?.status === 'payment_in_progress'
 
 export const hasStatusChanged = (oldPayment, newPayment) => oldPayment.status !== newPayment.status

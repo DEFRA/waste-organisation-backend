@@ -50,7 +50,7 @@ describe('payment API', () => {
   })
 
   test('Should error if payment not found', async () => {
-    const organisationId = 'abc123'
+    const organisationId = faker.string.uuid()
     const paymentId = 'blahblah'
     const payment = fakeGovPayResponse(organisationId).payload
     const r = await updatePayment(server, organisationId, paymentId, { payment })
@@ -58,7 +58,7 @@ describe('payment API', () => {
   })
 
   test('initiate payment', async () => {
-    const organisationId = 'abc123'
+    const organisationId = faker.string.uuid()
     wreckPostMock.mockImplementation(async () => {
       return fakeGovPayResponse(organisationId)
     })
@@ -119,12 +119,12 @@ describe('payment API', () => {
         },
         idempotencyKey: expect.anything(),
         metadata: {
-          organisationId: 'abc123',
+          organisationId,
           organisationName: 'organisation name',
           servicePeriodEnd: '2027-05-01T00:00:00Z',
           servicePeriodStart: '2026-05-01T00:00:00Z'
         },
-        organisationId: 'abc123',
+        organisationId,
         paymentId: expect.anything(),
         reference: expect.anything(),
         returnUrl: 'http://example.com/paymentDetails',
@@ -140,7 +140,7 @@ describe('payment API', () => {
   })
 
   test('initiate payment should reject non-matching org ids', async () => {
-    const organisationId = 'abc123'
+    const organisationId = faker.string.uuid()
     wreckPostMock.mockImplementation(async () => {
       return fakeGovPayResponse(organisationId)
     })
@@ -167,7 +167,7 @@ describe('payment API', () => {
   })
 
   test('initiate payment should handle errors in gov pay', async () => {
-    const organisationId = 'abc123'
+    const organisationId = faker.string.uuid()
     wreckPostMock.mockImplementation(async () => {
       throw new Error('fish')
     })
@@ -177,7 +177,7 @@ describe('payment API', () => {
   })
 
   test('abandoned payment get closed', async () => {
-    const organisationId = 'abc123'
+    const organisationId = faker.string.uuid()
     wreckPostMock.mockImplementation(async () => {
       return fakeGovPayResponse(organisationId)
     })
@@ -198,7 +198,7 @@ describe('payment API', () => {
   })
 
   test('update payment with `success` enables org', async () => {
-    const organisationId = 'abc123'
+    const organisationId = faker.string.uuid()
     wreckPostMock.mockImplementation(async () => {
       return fakeGovPayResponse(organisationId)
     })
@@ -222,10 +222,11 @@ describe('payment API', () => {
   })
 
   test('refund payment disables org', async () => {
-    const organisationId = 'abc123'
+    const organisationId = faker.string.uuid()
     wreckPostMock.mockImplementation(async () => {
       return fakeGovPayResponse(organisationId)
     })
+    await updateOrganisation(server, 'user123', organisationId, { name: 'Weyland-Yutani Corporation' })
     const r1 = await initiatePayment(server, organisationId, 'organisation name', '2026-05-01T00:00:00.000Z', '2027-05-01T00:00:00.000Z')
     expect(r1.statusCode).toBe(200)
     const { paymentId } = JSON.parse(r1.payload).payment
@@ -248,7 +249,7 @@ describe('payment API', () => {
   })
 
   test('refund payment for last year does not disable org', async () => {
-    const organisationId = 'abc123'
+    const organisationId = faker.string.uuid()
     wreckPostMock.mockImplementation(async () => {
       return fakeGovPayResponse(organisationId)
     })
@@ -333,6 +334,28 @@ describe('payment API', () => {
     })
     expect(JSON.parse(payload).message).toBe('error')
     expect(statusCode).toBe(200)
+  })
+
+  test('second initiate is rejected', async () => {
+    const organisationId = faker.string.uuid()
+    const paymentId1 = faker.string.uuid()
+    const paymentId2 = faker.string.uuid()
+
+    const from = '2026-05-01T00:00:00.000Z'
+    const to = '2027-05-01T00:00:00.000Z'
+
+    let paymentCall = 0
+    const fakePayments = [fakeGovPayResponse(organisationId, paymentId1), fakeGovPayResponse(organisationId, paymentId2)]
+    wreckPostMock.mockImplementation(async () => {
+      return fakePayments[paymentCall++]
+    })
+    await updateOrganisation(server, 'user123', organisationId, { name: 'Weyland-Yutani Corporation' })
+
+    const r1 = await initiatePayment(server, organisationId, 'organisation name', from, to)
+    expect(r1.statusCode).toBe(200)
+
+    const r2 = await initiatePayment(server, organisationId, 'organisation name', from, to)
+    expect(r2.payload).toBe('{"message":"duplicate payment"}')
   })
 })
 

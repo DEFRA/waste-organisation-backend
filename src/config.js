@@ -134,13 +134,6 @@ export const config = convict({
       default: 2600,
       env: 'GOVPAY_SERVICE_CHARGE_AMOUNT_PENCE'
     },
-    webhookSigningSecret: {
-      doc: 'The signing secret unique to the GOV.UK Pay webhook',
-      format: String,
-      nullable: true,
-      sensitive: true,
-      default: null
-    },
     serviceChargeFreePeriodEnd: {
       doc: 'The date the free period ends and the service change kicks in.',
       format: 'date',
@@ -183,6 +176,13 @@ export const config = convict({
       nullable: true,
       default: '30 3 * * *',
       env: 'GOVPAY_REFUND_POLLING_SCHEDULE'
+    },
+    schedulingPollingTaskRetrySleepStep: {
+      doc: '',
+      format: Number,
+      nullable: false,
+      default: 1000, // nosonar
+      env: 'GOVPAY_SERVICE_CHARGE_SCHEDULING_POLLING_TASK_RETRY_SLEEP_STEP'
     }
   },
   aws: {
