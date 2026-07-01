@@ -238,7 +238,9 @@ describe('idempotency behaviour', () => {
   })
 
   test('should retry sending sqs msg and swallow exceptions', async () => {
-    const send = vi.fn()
+    const send = vi.fn().mockImplementation(async () => {
+      throw new Error('test error')
+    })
     const request = {
       backgroundProcessSqsQueueUrl: randomUUID(),
       logger: console,
