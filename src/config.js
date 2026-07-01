@@ -169,6 +169,13 @@ export const config = convict({
       nullable: false,
       default: 60 * 60 * 1000, // nosonar
       env: 'GOVPAY_SERVICE_CHARGE_PENDING_CREATE_PAYMENT_TIMEOUT'
+    },
+    schedulingPollingTaskRetrySleepStep: {
+      doc: '',
+      format: Number,
+      nullable: false,
+      default: 1000, // nosonar
+      env: 'GOVPAY_SERVICE_CHARGE_SCHEDULING_POLLING_TASK_RETRY_SLEEP_STEP'
     }
   },
   aws: {

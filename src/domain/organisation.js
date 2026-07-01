@@ -73,6 +73,14 @@ export const createApiCode = (org, name) => {
   })
 }
 
+export const ensureAtLeastOneApiCodeExists = (org) => {
+  if (org.apiCodes == null) {
+    return createApiCode(org)
+  } else {
+    return org
+  }
+}
+
 export const updateApiCode = (org, apiCode, name, isDisabled) => {
   const apiCodes = org.apiCodes || []
   const a = apiCodes.find(({ code }) => code === apiCode)
@@ -126,12 +134,12 @@ export const updateOrganisationPaymentStatus = (org, payment) => {
 
 export const updateDisableAfter = (org, servicePeriodEnd) => {
   const disableAfter = org.disableAfter == null || org.disableAfter < servicePeriodEnd ? servicePeriodEnd : org.disableAfter
-  return validate({ ...org, disableAfter })
+  return validate(ensureAtLeastOneApiCodeExists({ ...org, disableAfter }))
 }
 
 export const moveDisableAfterBackwards = (org, servicePeriodEnd) => {
   const disableAfter = org.disableAfter == null || org.disableAfter > servicePeriodEnd ? servicePeriodEnd : org.disableAfter
-  return validate({ ...org, disableAfter })
+  return validate(ensureAtLeastOneApiCodeExists({ ...org, disableAfter }))
 }
 
 export const calculateNextPaymentPeriod = (() => {

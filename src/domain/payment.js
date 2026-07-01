@@ -62,7 +62,7 @@ export const govPayStatusToStatus = (() => {
     created: 'payment_in_progress',
     started: 'payment_in_progress',
     submitted: 'payment_in_progress',
-    captureable: 'payment_in_progress',
+    capturable: 'payment_in_progress',
     success: 'payment_succeeded',
     failed: 'payment_failed',
     timedout: 'payment_failed',
@@ -100,12 +100,12 @@ export const updateFromGovPayEvent = (payment, govPay, logger) => {
   return common.validate({ ...payment, ...(status ? { status } : {}) }, paymentSchema)
 }
 
-export const isPaid = (payment) => payment.status === 'payment_succeeded'
+export const isPaid = (payment) => payment?.status === 'payment_succeeded'
 
-export const isRefunded = (payment) => payment.status === 'refund_succeeded'
+export const isRefunded = (payment) => payment?.status === 'refund_succeeded'
 
-export const isFailed = (payment) => payment.status === 'payment_failed'
+export const isFailed = (payment) => payment?.status === 'payment_failed'
 
-export const isPending = (payment) => payment.status === 'payment_in_progress'
+export const isPending = (payment) => payment?.status === 'payment_in_progress'
 
 export const hasStatusChanged = (oldPayment, newPayment) => oldPayment.status !== newPayment.status
