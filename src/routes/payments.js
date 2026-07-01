@@ -37,7 +37,13 @@ const updatePaymentStatus = async (paymentId, organisationId, govPayment, db, lo
 
 const schedulePollingTask = async (request, jobData) => {
   request.logger.debug(`Scheduling polling task: ${JSON.stringify(jobData)}`)
-  return await sendSqsMessage(jobData, 'poll_for_payment', request.backgroundProcessSqsQueueUrl, request.logger, request.sqsClient)
+  for (const i in [1, 2, 3, 4, 5]) {
+    try {
+      return await sendSqsMessage(jobData, 'poll_for_payment', request.backgroundProcessSqsQueueUrl, request.logger, request.sqsClient)
+    } catch (e) {
+      request.logger.debug(`Scheduling polling task failed retrying (${i}): ${e}`)
+    }
+  }
 }
 
 const removeOldPayments = (now) => {
