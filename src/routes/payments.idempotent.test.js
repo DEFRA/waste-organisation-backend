@@ -1,6 +1,7 @@
 import { paymentSchema } from '../domain/payment.js'
 import * as domain from '../domain/index.js'
-import { idempontentlyInitiatePayment } from './payments.js'
+import { idempontentlyInitiatePayment, schedulePollingTask } from './payments.js'
+import { randomUUID } from 'node:crypto'
 
 const deferred = () => {
   let res, rej
@@ -234,5 +235,16 @@ describe('idempotency behaviour', () => {
     expect(result2.message).toEqual('duplicate payment')
     expect(deletePayment).not.toHaveBeenCalled()
     expect(deletePayment2).toHaveBeenCalled()
+  })
+
+  test('should retry sending sqs msg and swallow exceptions', async () => {
+    const send = vi.fn()
+    const request = {
+      backgroundProcessSqsQueueUrl: randomUUID(),
+      logger: console,
+      sqsClient: { send }
+    }
+    await schedulePollingTask(request, { test: 'data' })
+    expect(send).toHaveBeenCalledTimes(5)
   })
 })

@@ -35,7 +35,7 @@ const updatePaymentStatus = async (paymentId, organisationId, govPayment, db, lo
   return payment
 }
 
-const schedulePollingTask = async (request, jobData) => {
+export const schedulePollingTask = async (request, jobData) => {
   request.logger.debug(`Scheduling polling task: ${JSON.stringify(jobData)}`)
   for (const i in [1, 2, 3, 4, 5]) {
     try {
