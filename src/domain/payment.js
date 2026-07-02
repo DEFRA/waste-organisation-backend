@@ -95,8 +95,24 @@ export const govPayStatusToStatus = (() => {
   }
 })()
 
+const transitionState = (() => {
+  // a map of target states to banned source states
+  const invalidTransitions = {
+    payment_in_progress: ['payment_succeeded', 'payment_failed'],
+    refund_in_progress: ['refund_succeeded']
+  }
+  return (payment, status) => {
+    console.log('->', payment.status, status)
+    if (payment.status && invalidTransitions[status]?.includes(payment.status)) {
+      return payment.status
+    } else {
+      return status
+    }
+  }
+})()
+
 export const updateFromGovPayEvent = (payment, govPay, logger) => {
-  const status = govPayStatusToStatus(govPay, logger)
+  const status = transitionState(payment, govPayStatusToStatus(govPay, logger))
   return common.validate({ ...payment, ...(status ? { status } : {}) }, paymentSchema)
 }
 
