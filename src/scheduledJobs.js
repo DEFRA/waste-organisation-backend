@@ -6,7 +6,6 @@ import { config } from './config.js'
 export const scheduleBackgroundProcess =
   ({ queueUrl, logger, sqsClient }) =>
   async (job) => {
-    console.log('>>>>', sendSqsMessage)
     logger.info(`Starting scheduled job - ${job.attrs.name} - ${JSON.stringify(job)}`)
     const message = {
       refundQuery: 'initiate polling',
@@ -14,7 +13,6 @@ export const scheduleBackgroundProcess =
       job
     }
     await sendSqsMessage(message, 'refund_polling', queueUrl, logger, sqsClient)
-    console.log('-> message sent', message)
   }
 
 export const scheduledJobs = {

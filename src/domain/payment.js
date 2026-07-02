@@ -102,7 +102,6 @@ const transitionState = (() => {
     refund_in_progress: ['refund_succeeded']
   }
   return (payment, status) => {
-    console.log('->', payment.status, status)
     if (payment.status && invalidTransitions[status]?.includes(payment.status)) {
       return payment.status
     } else {
