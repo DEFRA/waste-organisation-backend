@@ -1,6 +1,7 @@
 import { expect } from 'vitest'
 import { initialiseServer, WASTE_CLIENT_AUTH_TEST_TOKEN, stopServer } from '../common/helpers/initialse-test-server.js'
 import { paths, pathTo } from '../config/paths.js'
+import { orgCollection } from '../repositories/organisation.js'
 import { randomUUID } from 'node:crypto'
 
 describe('organisation API', () => {
@@ -155,6 +156,83 @@ describe('organisation API', () => {
       })
 
       expect(statusCode).toBe(403)
+    })
+  })
+
+  describe('GET organisations by registration date range', () => {
+    const getByDateRange = (query) =>
+      server.inject({
+        method: 'GET',
+        url: `${paths.getOrganisationsByDateRange}?${new URLSearchParams(query).toString()}`,
+        headers: { 'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN }
+      })
+
+    // org-0002 and org-0003 share the same registration timestamp to exercise the orgId tie-break
+    const sameDay = new Date('2025-01-20T09:00:00.000Z')
+    const apiCode = (code, isDisabled = false) => ({ code, name: code, isDisabled })
+    const seededOrgs = [
+      { organisationId: 'org-0001', createdAt: new Date('2025-01-10T09:00:00.000Z'), apiCodes: [apiCode('dr-c1'), apiCode('dr-c2')] },
+      { organisationId: 'org-0002', createdAt: sameDay, apiCodes: [apiCode('dr-c3'), apiCode('dr-c4', true)] },
+      { organisationId: 'org-0003', createdAt: sameDay, apiCodes: [apiCode('dr-c5', true)] },
+      // org-0004 mixes an enabled code with codes whose isDisabled is null / absent, which are not "active"
+      {
+        organisationId: 'org-0004',
+        createdAt: new Date('2025-03-15T09:00:00.000Z'),
+        apiCodes: [apiCode('dr-c7'), { code: 'dr-c8', name: 'dr-c8', isDisabled: null }, { code: 'dr-c9', name: 'dr-c9' }]
+      },
+      { organisationId: 'org-9999', createdAt: new Date('2025-06-01T09:00:00.000Z'), apiCodes: [apiCode('dr-c6')] }
+    ]
+
+    beforeAll(async () => {
+      await server.db.collection(orgCollection).insertMany(seededOrgs.map((o) => ({ ...o })))
+    })
+
+    test('returns active API code counts, sorted by date then orgId descending, excluding out-of-range orgs', async () => {
+      const { result, statusCode } = await getByDateRange({ startDate: '2025-01-01', endDate: '2025-01-31' })
+
+      expect(statusCode).toBe(200)
+      expect(result).toEqual([
+        { organisationId: 'org-0003', dateRegistered: sameDay, activeApiCodeCount: 0 },
+        { organisationId: 'org-0002', dateRegistered: sameDay, activeApiCodeCount: 1 },
+        { organisationId: 'org-0001', dateRegistered: new Date('2025-01-10T09:00:00.000Z'), activeApiCodeCount: 2 }
+      ])
+    })
+
+    test('counts only explicitly enabled API codes, treating null/absent isDisabled as inactive', async () => {
+      const { result, statusCode } = await getByDateRange({ startDate: '2025-03-01', endDate: '2025-03-31' })
+
+      expect(statusCode).toBe(200)
+      expect(result).toEqual([{ organisationId: 'org-0004', dateRegistered: new Date('2025-03-15T09:00:00.000Z'), activeApiCodeCount: 1 }])
+    })
+
+    test('endDate is inclusive of the whole day', async () => {
+      const { result, statusCode } = await getByDateRange({ startDate: '2025-01-15', endDate: '2025-01-20' })
+
+      expect(statusCode).toBe(200)
+      expect(result.map((o) => o.organisationId)).toEqual(['org-0003', 'org-0002'])
+    })
+
+    test('returns an empty array when no organisations registered in range', async () => {
+      const { result, statusCode } = await getByDateRange({ startDate: '2024-01-01', endDate: '2024-12-31' })
+
+      expect(statusCode).toBe(200)
+      expect(result).toEqual([])
+    })
+
+    test.each([
+      ['missing startDate', { endDate: '2025-01-31' }],
+      ['missing endDate', { startDate: '2025-01-01' }],
+      ['endDate before startDate', { startDate: '2025-02-01', endDate: '2025-01-01' }],
+      ['endDate equal to startDate (zero-day range)', { startDate: '2025-01-01', endDate: '2025-01-01' }],
+      ['invalid date', { startDate: 'not-a-date', endDate: '2025-01-31' }]
+    ])('rejects %s with 400', async (_label, query) => {
+      const { statusCode } = await getByDateRange(query)
+      expect(statusCode).toBe(400)
+    })
+
+    test('createdAt index exists to support the date-range query', async () => {
+      const indexes = await server.db.collection(orgCollection).indexes()
+      expect(indexes.some((index) => index.key?.createdAt === -1)).toBe(true)
     })
   })
 })

@@ -1,12 +1,42 @@
+import joi from 'joi'
 import { paths } from '../config/paths.js'
 import { mergeAndValidate, ensureAtLeastOneApiCodeExists, orgSchemaWithoutApiCodes, calculateNextPaymentPeriod } from '../domain/organisation.js'
-import { orgCollection, findOrganisationById } from '../repositories/organisation.js'
+import { orgCollection, findOrganisationById, findOrganisationsByDateRange } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
 import { addVersionField, swaggerResponse } from './swagger-common.js'
 import boom from '@hapi/boom'
 
 export const organisations = [
+  {
+    method: 'GET',
+    path: paths.getOrganisationsByDateRange,
+    options: {
+      auth: apiKeyAuthStrategy,
+      tags: ['api'],
+      description: 'List organisations registered within a date range',
+      validate: {
+        query: joi.object({
+          startDate: joi.date().iso().required().description('Start of the registration date range (inclusive)'),
+          endDate: joi.date().iso().greater(joi.ref('startDate')).required().description('End of the registration date range (inclusive)')
+        })
+      },
+      response: {
+        schema: joi.array().items(
+          joi.object({
+            organisationId: joi.string().required(),
+            dateRegistered: joi.date().required(),
+            activeApiCodeCount: joi.number().integer().required().strict()
+          })
+        ),
+        sample: 0
+      }
+    },
+    handler: async (request, h) => {
+      const { startDate, endDate } = request.query
+      return h.response(await findOrganisationsByDateRange(request.db, startDate, endDate))
+    }
+  },
   {
     method: 'GET',
     path: paths.getOrganisation,
