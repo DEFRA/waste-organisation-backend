@@ -3,11 +3,26 @@ import { constructSqsClient, sendSqsMessage } from './plugins/sqs.js'
 import { createLogger } from './common/helpers/logging/logger.js'
 import { config } from './config.js'
 
+export const scheduleBackgroundProcess =
+  ({ queueUrl, logger, sqsClient }) =>
+  async (job) => {
+    console.log('>>>>', sendSqsMessage)
+    logger.info(`Starting scheduled job - ${job.attrs.name} - ${JSON.stringify(job)}`)
+    const message = {
+      refundQuery: 'initiate polling',
+      initiatedAt: new Date(),
+      job
+    }
+    await sendSqsMessage(message, 'refund_polling', queueUrl, logger, sqsClient)
+    console.log('-> message sent', message)
+  }
+
 export const scheduledJobs = {
   REFUND_POLLING: {
     enabled: true,
     name: 'Poll for refunds that have been initiated',
-    schedule: config.get('govPay.refundPollingSchedule')
+    schedule: config.get('govPay.refundPollingSchedule'),
+    func: scheduleBackgroundProcess
   }
 }
 
@@ -25,6 +40,7 @@ const constructPulse = (mongoAddress, logger) => {
       processEvery: '300 seconds',
       resumeOnRestart: true
     },
+    /* v8 ignore start */
     (error, collection) => {
       if (error) {
         logger.error(`Pulse Mongo connection error: ${error}`)
@@ -42,6 +58,7 @@ const constructPulse = (mongoAddress, logger) => {
   pulse.on('fail', (error, job) => {
     logger.error(error, `Job <${job.attrs.name}> failed at ${time()}`)
   })
+  /* v8 ignore stop */
   return pulse
 }
 
@@ -61,15 +78,7 @@ const startJobs = async (jobs, pulse, logger, sqsClient, queueUrl) => {
     logger.debug(`Pulse starting ${j} - ${jobs[j].schedule}`)
     await pulse.define(
       jobs[j].name,
-      async (job) => {
-        logger.info(`Starting scheduled job - ${jobs[j].name} - ${JSON.stringify(job)}`)
-        const message = {
-          refundQuery: 'initiate polling',
-          initiatedAt: new Date(),
-          job
-        }
-        await sendSqsMessage(message, 'refund_polling', queueUrl, logger, sqsClient)
-      },
+      jobs[j].func({sqsClient, queueUrl, logger}),
       defaultJobSettings
     )
     await pulse.every(jobs[j].schedule, jobs[j].name)
@@ -77,7 +86,7 @@ const startJobs = async (jobs, pulse, logger, sqsClient, queueUrl) => {
   logger.info(`Pulse started and ${Object.keys(jobs)} jobs scheduled`)
 }
 
-export const startTasks = async () => {
+export const startTasks = async (jobs) => {
   const logger = createLogger()
   try {
     const queueUrl = config.get('aws.backgroundProcessQueue')
@@ -89,7 +98,7 @@ export const startTasks = async () => {
     })
     const pulse = constructPulse(mongoUri, logger)
     await pulse.start()
-    await startJobs(scheduledJobs, pulse, logger, sqsClient, queueUrl)
+    await startJobs(jobs ?? scheduledJobs, pulse, logger, sqsClient, queueUrl)
     const stopPulseScheduling = async () => {
       await pulse.stop()
       logger.info('Pulse stopped')
@@ -97,6 +106,6 @@ export const startTasks = async () => {
     return { stopPulseScheduling, pulse }
   } catch (e) {
     logger.error(`Error defining pulse jobs ${e} - ${e.stack}`)
-    return {}
+    return { error: e }
   }
 }
