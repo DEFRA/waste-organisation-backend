@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect } from 'vitest'
 import * as mockMongo from 'vitest-mongodb'
 import { config } from './config.js'
-import { setTimeout } from 'timers/promises'
 
 describe('schedulet tasks', () => {
   const mockSqsClient = vi.fn()
