@@ -17,7 +17,7 @@ describe('govpay', () => {
   })
 
   test('generator func paginates correctly', async () => {
-    let govPayResponses = [
+    const govPayResponses = [
       { res: { statusCode: 200 }, payload: { results: [1, 2, 3], _links: { next_page: { href: 'test' } } } },
       { res: { statusCode: 'timeout' } },
       { res: { statusCode: 200 }, payload: { results: [4, 5, 6], _links: { next_page: { href: 'test' } } } },
@@ -41,5 +41,21 @@ describe('govpay', () => {
       expect(x).toBe(i)
     }
     expect(i).toBe(10)
+  })
+
+  test('generator func eventually fails', async () => {
+    wreckGetMock.mockImplementation(async () => {
+      return { res: { statusCode: 'timeout' } }
+    })
+    const { getRefundsBetween } = await import('./index.js')
+    let x = null
+    try {
+      for await (const x of getRefundsBetween(new Date(), new Date(), console)) {
+        expect(true).toBe(false)
+      }
+    } catch (e) {
+      x = 'pass'
+    }
+    expect(x).toEqual('pass')
   })
 })

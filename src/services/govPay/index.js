@@ -71,7 +71,7 @@ next_page to get the next page
  */
 export async function* getRefundsBetween(start, end, logger) {
   const log = logger ?? fallbackLogger
-  const maxRetries = 5
+  const maxRetries = 20
   logger.debug(`fetching refund data between ${start} and ${end}`)
   const { apiUrl, apiKey } = config.get('govPay')
   let nextUrl = `${apiUrl.replace(/\/$/, '')}/refunds?from_date=${formatDate(start)}&to_date=${formatDate(end)}&display_size=10`
@@ -86,19 +86,17 @@ export async function* getRefundsBetween(start, end, logger) {
         },
         agent
       })
-      logger.debug(`fetched ${res?.statusCode}`)
+      logger.debug(`fetched refunds statusCode: ${res?.statusCode} data: ${payload.results}`)
       if (res?.statusCode === SUCCESS) {
-        i = maxRetries + 1
         nextUrl = payload?._links?.next_page?.href
-        logger.debug(` >> ${payload.results}`)
         yield* payload.results
       } else {
-        throw new Error('error status code')
+        throw new Error(`error status code ${res?.statusCode}`)
       }
     } catch (e) {
       log.error(`Error initiating payment ${e}  >> retry ${i} ${e.stack}`)
       i++
-      if (i > 100) {
+      if (i > maxRetries) {
         throw e
       } else {
         await setTimeout(i * config.get('govPay.schedulingPollingTaskRetrySleepStep'))
