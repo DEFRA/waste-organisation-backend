@@ -11,20 +11,9 @@ export const scheduledJobs = {
   }
 }
 
-const buildMongoUri = () => {
-  const mongoUri = config.get('mongo.mongoUrl')
-  const dbName = config.get('mongo.databaseName')
-
-  if (mongoUri.includes('/admin')) {
-    const replacedUri = mongoUri.replace('/admin', `/${dbName}`)
-    return replacedUri
-  }
-
-  return `${mongoUri}${dbName}`
-}
-
 const constructPulse = (mongoAddress, logger) => {
   const time = () => new Date().toTimeString().split(' ')[0]
+  logger.info('Connecting to Pulse ... ' + mongoAddress)
   const pulse = new Pulse(
     {
       db: {
@@ -56,7 +45,7 @@ const constructPulse = (mongoAddress, logger) => {
   return pulse
 }
 
-const startJobs = (jobs, pulse, logger, sqsClient, queueUrl) => {
+const startJobs = async (jobs, pulse, logger, sqsClient, queueUrl) => {
   logger.info('Starting Pulse scheduling...')
   const lockLifetime = 120000 // 2 minutes in ms
   const backoffDelay = 30000 // 30 seconds in ms
@@ -68,10 +57,11 @@ const startJobs = (jobs, pulse, logger, sqsClient, queueUrl) => {
     shouldSaveResult: false
   }
   for (const j in jobs) {
-    pulse.define(
+    logger.debug(`Pulse starting ${j} - ${jobs[j].schedule}`)
+    await pulse.define(
       jobs[j].name,
       async (job) => {
-        logger.info(`Starting scheduled job - ${jobs[j].name} - ${job}`)
+        logger.info(`Starting scheduled job - ${jobs[j].name} - ${JSON.stringify(job)}`)
         const message = {
           refundQuery: 'initiate polling',
           initiatedAt: new Date(),
@@ -81,22 +71,30 @@ const startJobs = (jobs, pulse, logger, sqsClient, queueUrl) => {
       },
       defaultJobSettings
     )
+    await pulse.every(jobs[j].schedule, jobs[j].name)
   }
   logger.info(`Pulse started and ${Object.keys(jobs)} jobs scheduled`)
 }
 
-export const startTasks = () => {
+export const startTasks = async () => {
   const logger = createLogger()
-  const queueUrl = config.get('aws.backgroundProcessQueue')
-  const sqsClient = constructSqsClient({
-    region: config.get('aws.region'),
-    endpoint: config.get('aws.sqsEndpoint')
-  })
-  const pulse = constructPulse(buildMongoUri())
-  startJobs(scheduledJobs, pulse, logger, sqsClient, queueUrl)
-  const stopPulseScheduling = async () => {
-    await pulse.stop()
-    logger.info('Pulse stopped')
+  try {
+    const queueUrl = config.get('aws.backgroundProcessQueue')
+    const mongoUri = config.get('mongo.mongoUrl').replace(/(.*)\//, '$1/' + config.get('mongo.databaseName'))
+    const sqsClient = constructSqsClient({
+      region: config.get('aws.region'),
+      endpoint: config.get('aws.sqsEndpoint')
+    })
+    const pulse = constructPulse(mongoUri, logger)
+    await pulse.start()
+    await startJobs(scheduledJobs, pulse, logger, sqsClient, queueUrl)
+    const stopPulseScheduling = async () => {
+      await pulse.stop()
+      logger.info('Pulse stopped')
+    }
+    return { stopPulseScheduling }
+  } catch (e) {
+    logger.error(`Error defining pulse jobs ${e} - ${e.stack}`)
+    return {}
   }
-  return { stopPulseScheduling }
 }
