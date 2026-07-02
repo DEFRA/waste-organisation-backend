@@ -50,8 +50,8 @@ describe('govpay', () => {
     const { getRefundsBetween } = await import('./index.js')
     let x = null
     try {
-      for await (const _ of getRefundsBetween(new Date(), new Date(), console)) {
-        expect(true).toBe(false)
+      for await (const thing of getRefundsBetween(new Date(), new Date(), console)) {
+        expect(thing).toBe('not a thing - this test should always fail')
       }
     } catch (_) {
       x = 'pass'

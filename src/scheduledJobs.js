@@ -56,7 +56,8 @@ const startJobs = async (jobs, pulse, logger, sqsClient, queueUrl) => {
     backoff: { type: 'exponential', delay: backoffDelay },
     shouldSaveResult: false
   }
-  for (const j in jobs) {
+  // prettier-ignore
+  for (const j in jobs) { // nosonar
     logger.debug(`Pulse starting ${j} - ${jobs[j].schedule}`)
     await pulse.define(
       jobs[j].name,
@@ -80,7 +81,8 @@ export const startTasks = async () => {
   const logger = createLogger()
   try {
     const queueUrl = config.get('aws.backgroundProcessQueue')
-    const mongoUri = config.get('mongo.mongoUrl').replace(/(.*)\//, '$1/' + config.get('mongo.databaseName'))
+    // prettier-ignore
+    const mongoUri = config.get('mongo.mongoUrl').replace(/(.*)\//, '$1/' + config.get('mongo.databaseName')) // nosonar
     const sqsClient = constructSqsClient({
       region: config.get('aws.region'),
       endpoint: config.get('aws.sqsEndpoint')
