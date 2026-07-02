@@ -18,13 +18,15 @@ export const findOrganisationsByDateRange = (db, startDate, endDate) => {
   const inclusiveStartDate = new Date(startDate)
   inclusiveStartDate.setUTCHours(0, 0, 0, 0)
 
-  const inclusiveEndDate = new Date(endDate)
-  inclusiveEndDate.setUTCHours(23, 59, 59, 999)
+  // Exclusive upper bound at the start of the day after endDate, so the whole of endDate is included
+  const exclusiveEndDate = new Date(endDate)
+  exclusiveEndDate.setUTCHours(0, 0, 0, 0)
+  exclusiveEndDate.setUTCDate(exclusiveEndDate.getUTCDate() + 1)
 
   return db
     .collection(orgCollection)
     .aggregate([
-      { $match: { createdAt: { $gte: inclusiveStartDate, $lte: inclusiveEndDate } } },
+      { $match: { createdAt: { $gte: inclusiveStartDate, $lt: exclusiveEndDate } } },
       {
         $project: {
           _id: 0,
