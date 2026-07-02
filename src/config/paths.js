@@ -17,10 +17,10 @@ export const paths = {
 }
 
 export const pathTo = (route, params) => {
-  const routeParams = route.match(/\{\w+\*?}/g)
+  const routeParams = route.match(/\{\w+\*?\}/g)
 
   for (const r of routeParams) {
-    const parts = r.match(/\{(\w+)\*?}/)
+    const parts = r.match(/\{(\w+)\*?\}/)
     const src = params[parts[1]]
     const dst = parts[0]
     const key = parts[1]
