@@ -50,10 +50,10 @@ describe('govpay', () => {
     const { getRefundsBetween } = await import('./index.js')
     let x = null
     try {
-      for await (const x of getRefundsBetween(new Date(), new Date(), console)) {
+      for await (const _ of getRefundsBetween(new Date(), new Date(), console)) {
         expect(true).toBe(false)
       }
-    } catch (e) {
+    } catch (_) {
       x = 'pass'
     }
     expect(x).toEqual('pass')

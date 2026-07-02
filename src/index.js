@@ -10,7 +10,7 @@ process.env.TZ = config.get('bulkUpload.spreadsheetTimezone')
 
 startWorker()
 
-startTasks()
+const { stopPulseScheduling } = await startTasks()
 
 await startServer(await createServer())
 
@@ -19,4 +19,8 @@ process.on('unhandledRejection', (error) => {
   logger.info('Unhandled rejection')
   logger.error(error)
   process.exitCode = 1
+})
+
+process.on('exit', async () => {
+  await stopPulseScheduling()
 })

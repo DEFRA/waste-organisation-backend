@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, vi } from 'vitest'
+import { beforeEach, describe, expect } from 'vitest'
 
 describe('schedulet tasks', () => {
   let mockPulse
@@ -11,6 +11,9 @@ describe('schedulet tasks', () => {
 
   it('should start jobs', async () => {
     const { startTasks, scheduledJobs } = await import('./scheduledJobs.js')
-    const { stopPulseScheduling } = startTasks(scheduledJobs, mockPulse, console, mockSqsClient, 'mock-queue-url')
+    const { stopPulseScheduling, pulse } = await startTasks(scheduledJobs, mockPulse, console, mockSqsClient, 'mock-queue-url')
+    expect(typeof stopPulseScheduling).toBe('function')
+    expect((await pulse.jobs()).map((j) => j.attrs.name)).toEqual(['Poll for refunds that have been initiated'])
+    await stopPulseScheduling()
   })
 })

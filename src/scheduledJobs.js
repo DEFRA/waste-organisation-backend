@@ -92,7 +92,7 @@ export const startTasks = async () => {
       await pulse.stop()
       logger.info('Pulse stopped')
     }
-    return { stopPulseScheduling }
+    return { stopPulseScheduling, pulse }
   } catch (e) {
     logger.error(`Error defining pulse jobs ${e} - ${e.stack}`)
     return {}
