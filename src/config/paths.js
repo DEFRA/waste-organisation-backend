@@ -1,6 +1,7 @@
 // prettier-ignore
 export const paths = {
   getOrganisations:     '/user/{userId}/organisations',
+  getOrganisationsByDateRange: '/organisations',
   getOrganisation:      '/user/{userId}/organisation/{organisationId}',
   putOrganisation:      '/user/{userId}/organisation/{organisationId}',
   getSpreadsheets:      '/spreadsheet/{organisationId}',
