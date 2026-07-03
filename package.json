@@ -51,7 +51,7 @@
     "hapi-pino": "13.0.0",
     "hapi-pulse": "3.0.0",
     "hapi-swagger": "17.3.2",
-    "joi": "18.2.2",
+    "joi": "18.2.3",
     "jsonwebtoken": "9.0.3",
     "mongo-locks": "3.1.2",
     "mongodb": "6.17.0",
