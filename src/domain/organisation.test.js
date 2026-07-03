@@ -163,7 +163,7 @@ describe('calculate payment period', () => {
     expect(calculateNextPaymentPeriod(testOrganisation, may26).paymentPeriods).toEqual([{ from: october25, to: october26, priceInPence: 100 }])
   })
 
-  test('no initial data, payment window closed', () => {
+  test('no initial data, payment window closed after the period rollover', () => {
     expect(calculateNextPaymentPeriod(testOrganisation, november26).paymentPeriods).toEqual([{ from: october26, to: october27, priceInPence: 100 }])
   })
 
