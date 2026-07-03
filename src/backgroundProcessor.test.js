@@ -12,7 +12,7 @@ import { sendEmail } from './services/notify/index.js'
 import { createLogger } from './common/helpers/logging/logger.js'
 import { paymentCollection } from './repositories/payment.js'
 import { orgCollection } from './repositories/organisation.js'
-import { isPaid } from './domain/payment.js'
+import { isPaid, isRefunded } from './domain/payment.js'
 import { randomUUID } from 'node:crypto'
 
 const logger = createLogger()
@@ -776,6 +776,7 @@ describe('background processor', () => {
       initiatedAt: new Date()
     })
     expect(isPaid(result.payment)).toEqual(true)
+    expect(result.skipDeleteMessage).toEqual(false)
   })
 
   test('should drop paymment message after 3 days', async () => {
@@ -815,5 +816,73 @@ describe('background processor', () => {
     const result = await processPaymentJob({ Body: JSON.stringify({ paymentId, organisationId, initiatedAt: threeDaysAgo }) })
     expect(isPaid(result.payment)).toEqual(false)
     expect(isPaid(result.skipDeleteMessage)).toEqual(false)
+  })
+
+  test('should poll for refunds', async () => {
+    const organisationId = randomUUID()
+    const paymentId = randomUUID()
+    const govPayResponses = [
+      { res: { statusCode: 200 }, payload: { results: [{ payment_id: paymentId }], _links: { next_page: {} } } },
+      {
+        payload: {
+          payment_id: paymentId,
+          amount: 1234,
+          refund_summary: {
+            status: 'success',
+            amount_available: 1234,
+            amount_submitted: 0
+          },
+          state: {
+            status: 'started',
+            finished: false
+          },
+          metadata: {
+            organisationId,
+            organisationName: 'organisation name',
+            servicePeriodEnd: '2027-05-01T00:00:00Z',
+            servicePeriodStart: '2026-05-01T00:00:00Z'
+          }
+        }
+      }
+    ]
+    let reqCount = 0
+    wreckGetMock.mockImplementation(async () => {
+      return govPayResponses[reqCount++]
+    })
+
+    const { dispatchProcessJob, constructMongoClient } = await import('./backgroundProcessor.js')
+    const db = await constructMongoClient()
+    await db
+      .collection(paymentCollection)
+      .insertOne({ paymentId, organisationId, status: 'payment_succeeded', idempotencyKey: randomUUID(), period: '2026/2027' })
+    const processRefundJob = dispatchProcessJob(vi.fn(), db)
+    const message = {
+      refundQuery: 'initiate polling',
+      initiatedAt: '2026-07-02T14:41:43.015Z',
+      job: {
+        _id: '6a455095b06408347685b413',
+        name: 'Poll for refunds that have been initiated',
+        attempts: 4,
+        backoff: { type: 'exponential', delay: 30000 },
+        data: {},
+        endDate: null,
+        priority: 10,
+        repeatInterval: '* * * * *',
+        repeatTimezone: null,
+        shouldSaveResult: false,
+        skipDays: null,
+        startDate: null,
+        finishedCount: 368,
+        lastFinishedAt: '2026-07-02T14:41:00.022Z',
+        runCount: 369,
+        lockedAt: '2026-07-02T14:41:42.976Z',
+        type: 'single',
+        nextRunAt: '2026-07-02T14:42:00.000Z',
+        lastRunAt: '2026-07-02T14:41:43.009Z'
+      }
+    }
+    await processRefundJob({ Body: JSON.stringify(message) })
+    const p = await db.collection(paymentCollection).findOne({ paymentId })
+    expect(isRefunded(p)).toBe(true)
   })
 })

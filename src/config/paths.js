@@ -1,19 +1,19 @@
 // prettier-ignore
 export const paths = {
-  getOrganisations:     '/user/{userId}/organisations',
-  getOrganisationsByDateRange: '/organisations',
-  getOrganisation:      '/user/{userId}/organisation/{organisationId}',
-  putOrganisation:      '/user/{userId}/organisation/{organisationId}',
-  getSpreadsheets:      '/spreadsheet/{organisationId}',
-  getOneSpreadsheet:    '/spreadsheet/{organisationId}/{uploadId}',
-  putSpreadsheet:       '/spreadsheet/{organisationId}/{uploadId}',
-  saveApiCode:          '/organisation/{organisationId}/apiCodes/{apiCode}',
-  createApiCode:        '/organisation/{organisationId}/apiCodes',
-  listApiCodes:         '/organisation/{organisationId}/apiCodes',
-  lookupOrgFromApiCode: '/organisation/{apiCode}',
-  getUploadsByFilename: '/test/spreadsheet/{organisationId}/uploads',
-  payment:              '/organisation/{organisationId}/payment/{paymentId}',
-  initiatePayment:      '/organisation/{organisationId}/initiatePayment'
+  getOrganisations:             '/user/{userId}/organisations',
+  getOrganisationsByDateRange:  '/organisations',
+  getOrganisation:              '/user/{userId}/organisation/{organisationId}',
+  putOrganisation:              '/user/{userId}/organisation/{organisationId}',
+  getSpreadsheets:              '/spreadsheet/{organisationId}',
+  getOneSpreadsheet:            '/spreadsheet/{organisationId}/{uploadId}',
+  putSpreadsheet:               '/spreadsheet/{organisationId}/{uploadId}',
+  saveApiCode:                  '/organisation/{organisationId}/apiCodes/{apiCode}',
+  createApiCode:                '/organisation/{organisationId}/apiCodes',
+  listApiCodes:                 '/organisation/{organisationId}/apiCodes',
+  lookupOrgFromApiCode:         '/organisation/{apiCode}',
+  getUploadsByFilename:         '/test/spreadsheet/{organisationId}/uploads',
+  payment:                      '/organisation/{organisationId}/payment/{paymentId}',
+  initiatePayment:              '/organisation/{organisationId}/initiatePayment'
 }
 
 export const pathTo = (route, params) => {

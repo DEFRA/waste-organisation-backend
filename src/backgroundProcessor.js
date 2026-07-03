@@ -22,7 +22,7 @@ import { sendEmail } from './services/notify/index.js'
 import { bulkImport, bulkUpdate } from './services/bulkImport.js'
 import { TRANSIENT_STATUS_CODES } from './services/httpStatusCodes.js'
 import { validateWasteTrackingIdExists, validateWasteTrackingIdMissing } from './services/spreadsheetImport/transforms.js'
-import { getPaymentStatus } from './services/govPay/index.js'
+import { getPaymentStatus, getRefundsBetween } from './services/govPay/index.js'
 import { updateOrganisationPaymentStatus } from './domain/organisation.js'
 import { updateFromGovPayEvent, hasStatusChanged, isPending } from './domain/payment.js'
 import { updateWithOptimisticLock } from './repositories/index.js'
@@ -193,10 +193,10 @@ export const processSpreadsheetJob = async (s3Client, message) => {
   return { logger: processJobLogger }
 }
 
-const updatePaymentStatus = async (paymentId, organisationId, govPayment, db, logger) => {
+const updatePaymentStatus = async (paymentId, govPayment, db, logger) => {
   let shouldUpdateOrg = false
   let organisation = null
-  const payment = await updateWithOptimisticLock(db.collection(paymentCollection), { paymentId, organisationId }, (dbPayment) => {
+  const payment = await updateWithOptimisticLock(db.collection(paymentCollection), { paymentId }, (dbPayment) => {
     if (dbPayment.status) {
       const p = updateFromGovPayEvent(dbPayment, govPayment, logger)
       shouldUpdateOrg = hasStatusChanged(dbPayment, p)
@@ -206,7 +206,7 @@ const updatePaymentStatus = async (paymentId, organisationId, govPayment, db, lo
     }
   })
   if (shouldUpdateOrg) {
-    organisation = await updateWithOptimisticLock(db.collection(orgCollection), { organisationId }, (org) => {
+    organisation = await updateWithOptimisticLock(db.collection(orgCollection), { organisationId: payment.organisationId }, (org) => {
       return updateOrganisationPaymentStatus(org, payment)
     })
   }
@@ -224,15 +224,32 @@ export const processPaymentJob = (() => {
     const processJobLogger = createLogger(traceId)
     processJobLogger.debug(`Looking for paymentId ${paymentId}, organisationId ${organisationId}, initiatedAt ${initiatedAt}`)
     const govPayment = await getPaymentStatus(paymentId, processJobLogger)
-    const { payment } = await updatePaymentStatus(paymentId, organisationId, govPayment.payload, db, processJobLogger)
+    const { payment } = await updatePaymentStatus(paymentId, govPayment.payload, db, processJobLogger)
     processJobLogger.debug(`Payment ${JSON.stringify(payment)}`)
     return { logger: processJobLogger, payment, skipDeleteMessage: isPending(payment) && !isMessageTooOld(initiatedAt) }
+  }
+})()
+
+export const processRefundJob = (() => {
+  const logger = defaultLogger
+  return async (db, message) => {
+    const lastFinishedAt = new Date(message.job.lastFinishedAt)
+    const now = new Date(message.initiatedAt)
+    logger.info(`fetching refund data between ${lastFinishedAt} and ${now}`)
+    for await (const refund of getRefundsBetween(lastFinishedAt, now, logger)) {
+      const govPayment = await getPaymentStatus(refund.payment_id, logger)
+      await updatePaymentStatus(refund.payment_id, govPayment.payload, db, logger)
+    }
+    return { logger }
   }
 })()
 
 export const dispatchProcessJob = (s3Client, mongoClient) => async (message) => {
   defaultLogger.debug(`Received message ReceiptHandle: ${message.ReceiptHandle} message: ${message.Body}`)
   const m = JSON.parse(message.Body)
+  if (m.refundQuery) {
+    return await processRefundJob(mongoClient, m)
+  }
   if (m.uploadId) {
     return await processSpreadsheetJob(s3Client, m)
   }
