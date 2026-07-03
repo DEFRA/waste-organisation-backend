@@ -89,7 +89,7 @@ export const startTasks = async (jobs) => {
   try {
     const queueUrl = config.get('aws.backgroundProcessQueue')
     // prettier-ignore
-    const mongoUri = config.get('mongo.mongoUrl').replace(/(.*)\//, '$1/' + config.get('mongo.databaseName')) // nosonar
+    const mongoUri = config.get('mongo.mongoUrl').replace(/(.*)\/(admin)?/, '$1/' + config.get('mongo.databaseName')) // nosonar
     const sqsClient = constructSqsClient({
       region: config.get('aws.region'),
       endpoint: config.get('aws.sqsEndpoint')
