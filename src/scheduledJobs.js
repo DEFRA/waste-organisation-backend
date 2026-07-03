@@ -2,6 +2,15 @@ import { Pulse } from '@pulsecron/pulse'
 import { constructSqsClient, sendSqsMessage } from './plugins/sqs.js'
 import { createLogger } from './common/helpers/logging/logger.js'
 import { config } from './config.js'
+import { MongoClient } from 'mongodb'
+
+export const constructMongoClient = async () => {
+  const options = config.get('mongo')
+  const client = await MongoClient.connect(options.mongoUrl, {
+    ...options.mongoOptions
+  })
+  return client.db(options.databaseName)
+}
 
 export const scheduleBackgroundProcess =
   ({ queueUrl, logger, sqsClient }) =>
@@ -24,20 +33,11 @@ export const scheduledJobs = {
   }
 }
 
-const constructPulse = (mongoAddress, logger) => {
+const constructPulse = (mongo, logger) => {
   const time = () => new Date().toTimeString().split(' ')[0]
-  logger.info('Connecting to Pulse ... ' + mongoAddress)
+  logger.info('Connecting to Pulse ... ')
   const pulse = new Pulse(
-    {
-      db: {
-        address: mongoAddress,
-        collection: 'scheduledTasks'
-      },
-      defaultConcurrency: 2,
-      maxConcurrency: 2,
-      processEvery: '300 seconds',
-      resumeOnRestart: true
-    },
+    { mongo, defaultConcurrency: 2, maxConcurrency: 2, processEvery: '300 seconds', resumeOnRestart: true },
     /* v8 ignore start */
     (error, collection) => {
       if (error) {
@@ -89,12 +89,11 @@ export const startTasks = async (jobs) => {
   try {
     const queueUrl = config.get('aws.backgroundProcessQueue')
     // prettier-ignore
-    const mongoUri = config.get('mongo.mongoUrl').replace(/(.*)\/(admin)?/, '$1/' + config.get('mongo.databaseName')) // nosonar
     const sqsClient = constructSqsClient({
       region: config.get('aws.region'),
       endpoint: config.get('aws.sqsEndpoint')
     })
-    const pulse = constructPulse(mongoUri, logger)
+    const pulse = constructPulse(await constructMongoClient(), logger)
     await pulse.start()
     await startJobs(jobs ?? scheduledJobs, pulse, logger, sqsClient, queueUrl)
     const stopPulseScheduling = async () => {
