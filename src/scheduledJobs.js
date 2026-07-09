@@ -4,6 +4,8 @@ import { createLogger } from './common/helpers/logging/logger.js'
 import { config } from './config.js'
 import { MongoClient } from 'mongodb'
 
+import cron from 'node-cron'
+
 export const constructMongoClient = async () => {
   const options = config.get('mongo')
   const client = await MongoClient.connect(options.mongoUrl, {
@@ -15,6 +17,7 @@ export const constructMongoClient = async () => {
 export const scheduleBackgroundProcess =
   ({ queueUrl, logger, sqsClient }) =>
   async (job) => {
+    console.log('Now HERE')
     logger.info(`Starting scheduled job - ${job.attrs.name} - ${JSON.stringify(job)}`)
     const message = {
       refundQuery: 'initiate polling',
@@ -60,6 +63,29 @@ const constructPulse = (mongo, logger) => {
   return pulse
 }
 
+const createTasks = (jobs, logger, sqsClient, queueUrl) => {
+  const tasks = []
+  for (const [key, job] of Object.entries(jobs)) {
+    logger.debug(`node-cron starting ${key} - ${job.schedule}`)
+
+    const task = cron.schedule(
+      job.schedule,
+      async () => {
+        console.log('RUNNING JOB BLAH')
+        console.log(job)
+        await scheduleBackgroundProcess({ sqsClient, queueUrl, logger })
+      },
+      {
+        name: job.name
+      }
+    )
+
+    tasks.push(task)
+  }
+
+  return tasks
+}
+
 const startJobs = async (jobs, pulse, logger, sqsClient, queueUrl) => {
   logger.info('Starting Pulse scheduling...')
   const lockLifetime = 120000 // 2 minutes in ms
@@ -85,6 +111,33 @@ const startJobs = async (jobs, pulse, logger, sqsClient, queueUrl) => {
 }
 
 export const startTasks = async (jobs) => {
+  const logger = createLogger()
+  try {
+    // const queueUrl = config.get('aws.backgroundProcessQueue')
+    // // prettier-ignore
+    // const sqsClient = constructSqsClient({
+    //   region: config.get('aws.region'),
+    //   endpoint: config.get('aws.sqsEndpoint')
+    // })
+    const tasks = createTasks(jobs ?? scheduledJobs, logger)
+    const stopScheduling = async () => {
+      if (!tasks || tasks.length < 1) {
+        return null
+      }
+
+      for (const task of tasks) {
+        await task.stop()
+        logger.info('Cron stopped')
+      }
+    }
+    return { stopScheduling, tasks }
+  } catch (e) {
+    logger.error(`Error defining pulse jobs ${e} - ${e.stack}`)
+    return { error: e }
+  }
+}
+
+export const startTasksOld = async (jobs) => {
   const logger = createLogger()
   try {
     const queueUrl = config.get('aws.backgroundProcessQueue')
