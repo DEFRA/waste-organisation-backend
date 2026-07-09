@@ -18,7 +18,7 @@ export const organisations = [
       validate: {
         query: joi.object({
           startDate: joi.date().iso().required().description('Start of the registration date range (inclusive)'),
-          endDate: joi.date().iso().greater(joi.ref('startDate')).required().description('End of the registration date range (inclusive)')
+          endDate: joi.date().iso().min(joi.ref('startDate')).required().description('End of the registration date range (inclusive; may equal startDate)')
         })
       },
       response: {

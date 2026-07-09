@@ -205,6 +205,16 @@ describe('organisation API', () => {
       expect(result).toEqual([{ organisationId: 'org-0004', dateRegistered: new Date('2025-03-15T09:00:00.000Z'), activeApiCodeCount: 1 }])
     })
 
+    test('accepts the same start and end date, returning orgs registered that day (00:00:00 to 23:59:59 UTC)', async () => {
+      const { result, statusCode } = await getByDateRange({ startDate: '2025-01-20', endDate: '2025-01-20' })
+
+      expect(statusCode).toBe(200)
+      expect(result).toEqual([
+        { organisationId: 'org-0003', dateRegistered: sameDay, activeApiCodeCount: 0 },
+        { organisationId: 'org-0002', dateRegistered: sameDay, activeApiCodeCount: 1 }
+      ])
+    })
+
     test('endDate is inclusive of the whole day', async () => {
       const { result, statusCode } = await getByDateRange({ startDate: '2025-01-15', endDate: '2025-01-20' })
 
@@ -223,7 +233,6 @@ describe('organisation API', () => {
       ['missing startDate', { endDate: '2025-01-31' }],
       ['missing endDate', { startDate: '2025-01-01' }],
       ['endDate before startDate', { startDate: '2025-02-01', endDate: '2025-01-01' }],
-      ['endDate equal to startDate (zero-day range)', { startDate: '2025-01-01', endDate: '2025-01-01' }],
       ['invalid date', { startDate: 'not-a-date', endDate: '2025-01-31' }]
     ])('rejects %s with 400', async (_label, query) => {
       const { statusCode } = await getByDateRange(query)
