@@ -53,6 +53,11 @@ describe('organisation domain', () => {
     expect(enabledOrg.disabledReason).toBe(null)
     expect(disableOrg(enabledOrg).isDisabled).toBe(true)
   })
+
+  test('mergeAndValidate keeps disableAfter null when missing', () => {
+    const organisation = mergeAndValidate(null, { name: ORANISATION_NAME }, ORANISATION_ID, 'user-1')
+    expect(organisation.disableAfter).toBe(null)
+  })
 })
 
 describe('org is enabled', () => {
@@ -239,6 +244,13 @@ describe('updateOrganisationPaymentStatus', () => {
     const updatedOrganisation = updateOrganisationPaymentStatus(initialOrganisation, payment)
     expect(updatedOrganisation).toEqual({ ...initialOrganisation, disabledReason: 'Payment failed' })
     expect(isEnabled(updatedOrganisation)).toBe(false)
+  })
+
+  it('should not move disableAfter backwards for refunded payment when disableAfter is null', () => {
+    const payment = createPayment('refund_succeeded')
+    const initialOrganisation = { organisationId: ORANISATION_ID, name: ORANISATION_NAME, disableAfter: null, isDisabled: false }
+    const updatedOrganisation = updateOrganisationPaymentStatus(initialOrganisation, payment)
+    expect(updatedOrganisation).toEqual(initialOrganisation)
   })
 
   it('should set disabledAfter to last successfull payment', () => {

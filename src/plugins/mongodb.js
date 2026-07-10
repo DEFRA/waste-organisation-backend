@@ -3,6 +3,7 @@ import { LockManager } from 'mongo-locks'
 import { createOrgIndexes } from '../repositories/organisation.js'
 import { createSpreadsheetIndexes } from '../repositories/spreadsheet.js'
 import { createPaymentIndexes } from '../repositories/payment.js'
+import { config } from '../config.js'
 
 export const mongoDb = {
   plugin: {
@@ -23,6 +24,7 @@ export const mongoDb = {
       await createIndexes(db)
 
       await setMissingCreatedAtAndUpdatedAtOrganisationFields(db, server.logger)
+      await setDefaultDisableAfterOrganisationFieldsToNull(db, server.logger)
 
       server.logger.info(`MongoDb connected to ${databaseName}`)
 
@@ -84,5 +86,34 @@ export async function setMissingCreatedAtAndUpdatedAtOrganisationFields(db, logg
     }
   } catch (err) {
     logger.error(`Failed to set missing createdAt and updatedAt Organisation fields: ${err.message}`)
+  }
+}
+
+/**
+ * Finds Organisations with disableAfter set to the configured free-period end
+ * date and sets disableAfter to null.
+ *
+ * This function is idempotent and safe to run on startup.
+ *
+ * @param {Db} db - The Mongo database
+ * @param {Object} logger - The logger
+ *
+ * @returns {Promise<void>}
+ */
+export async function setDefaultDisableAfterOrganisationFieldsToNull(db, logger) {
+  try {
+    const collection = db.collection('organisations')
+    const defaultDisableAfter = config.get('govPay.serviceChargeFreePeriodEnd')
+    const organisations = await collection.find({ disableAfter: defaultDisableAfter }).toArray()
+
+    if (organisations.length > 0) {
+      await Promise.all(
+        organisations.map(({ _id }) => {
+          return collection.updateOne({ _id }, { $set: { disableAfter: null } })
+        })
+      )
+    }
+  } catch (err) {
+    logger.error(`Failed to set default disableAfter Organisation fields to null: ${err.message}`)
   }
 }

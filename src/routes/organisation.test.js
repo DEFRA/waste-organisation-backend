@@ -37,7 +37,7 @@ describe('organisation API', () => {
         name: 'Bob',
         organisationId: '456',
         users: ['123'],
-        disableAfter: new Date('2026-10-01T00:00:00.000Z'),
+        disableAfter: null,
         version: 1
       }
     })
@@ -72,7 +72,7 @@ describe('organisation API', () => {
         name: 'Mr Dabolina',
         organisationId: '456',
         users: ['123', '789'],
-        disableAfter: new Date('2026-10-01T00:00:00.000Z'),
+        disableAfter: null,
         version: 3
       }
     })
@@ -125,7 +125,7 @@ describe('organisation API', () => {
             }
           ],
           users: ['123'],
-          disableAfter: new Date('2026-10-01T00:00:00.000Z'),
+          disableAfter: null,
           createdAt: expect.any(Date),
           updatedAt: expect.any(Date),
           version: expect.anything()
