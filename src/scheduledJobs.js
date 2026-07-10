@@ -104,13 +104,11 @@ export const startTasks = async (jobs) => {
     const db = await constructMongoClient()
     const tasks = await createTasks(jobs ?? scheduledJobs, logger, db, sqsClient, queueUrl)
     const stopScheduling = async () => {
-      if (!tasks || tasks.length < 1) {
-        return null
-      }
-
-      for (const task of tasks) {
-        await task.stop()
-        logger.info('Cron stopped')
+      if (tasks || tasks.length > 0) {
+        for (const task of tasks) {
+          await task.stop()
+          logger.info('Cron stopped')
+        }
       }
 
       return null
