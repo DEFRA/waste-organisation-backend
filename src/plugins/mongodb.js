@@ -3,6 +3,7 @@ import { LockManager } from 'mongo-locks'
 import { createOrgIndexes } from '../repositories/organisation.js'
 import { createSpreadsheetIndexes } from '../repositories/spreadsheet.js'
 import { createPaymentIndexes } from '../repositories/payment.js'
+import { createScheduledTasksIndexes } from '../repositories/scheduleTasks.js'
 
 export const mongoDb = {
   plugin: {
@@ -47,4 +48,5 @@ async function createIndexes(db) {
   await createOrgIndexes(db)
   await createSpreadsheetIndexes(db)
   await createPaymentIndexes(db)
+  await createScheduledTasksIndexes(db)
 }

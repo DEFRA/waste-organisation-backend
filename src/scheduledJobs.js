@@ -1,11 +1,21 @@
-import { Pulse } from '@pulsecron/pulse'
 import { constructSqsClient, sendSqsMessage } from './plugins/sqs.js'
 import { createLogger } from './common/helpers/logging/logger.js'
 import { config } from './config.js'
 import { MongoClient } from 'mongodb'
 
 import cron from 'node-cron'
+import { updateWithOptimisticLock } from './repositories/index.js'
+import { findScheduledTaskByName, scheduledTasksCollection } from './repositories/scheduleTasks.js'
+import { mergeAndValidate } from './domain/scheduledTasks.js'
 
+const claimLock = async (db, lockName) => {
+  try {
+    await db.collection('mongo-locks').insertOne({ _id: lockName, timestamp: new Date() })
+    return true
+  } catch (_) {
+    return false
+  }
+}
 export const constructMongoClient = async () => {
   const options = config.get('mongo')
   const client = await MongoClient.connect(options.mongoUrl, {
@@ -17,8 +27,7 @@ export const constructMongoClient = async () => {
 export const scheduleBackgroundProcess =
   ({ queueUrl, logger, sqsClient }) =>
   async (job) => {
-    console.log('Now HERE')
-    logger.info(`Starting scheduled job - ${job.attrs.name} - ${JSON.stringify(job)}`)
+    logger.info(`Starting scheduled job - ${job.name} - ${JSON.stringify(job)}`)
     const message = {
       refundQuery: 'initiate polling',
       initiatedAt: new Date(),
@@ -36,90 +45,62 @@ export const scheduledJobs = {
   }
 }
 
-const constructPulse = (mongo, logger) => {
+const constructSchedular = (db, logger, jobName, jobSchedule, func) => {
   const time = () => new Date().toTimeString().split(' ')[0]
-  logger.info('Connecting to Pulse ... ')
-  const pulse = new Pulse(
-    { mongo, defaultConcurrency: 2, maxConcurrency: 2, processEvery: '300 seconds', resumeOnRestart: true },
-    /* v8 ignore start */
-    (error, collection) => {
-      if (error) {
-        logger.error(`Pulse Mongo connection error: ${error}`)
-      } else {
-        logger.info(`Pulse connected to collection: ${collection.collectionName}`)
+  const task = cron.schedule(
+    jobSchedule,
+    async () => {
+      const lock = await claimLock(db, jobName)
+      if (!lock) {
+        return
       }
+      logger.info(`Job <${jobName}> starting at ${time()}`)
+      const previousTask = await findScheduledTaskByName(db, jobName)
+      if (previousTask) {
+        await func(previousTask)
+      }
+
+      await updateWithOptimisticLock(db.collection(scheduledTasksCollection), { name: jobName }, (dbTask) => {
+        const newData = mergeAndValidate(dbTask, {
+          name: jobName,
+          runCount: dbTask?.runCount ? dbTask.runCount + 1 : 1,
+          lastFinishedAt: new Date()
+        })
+        return newData
+      })
+      logger.info(`Job <${jobName}> succeeded at ${time()}`)
+    },
+    {
+      name: jobName
     }
   )
-  pulse.on('start', (job) => {
-    logger.info(`Job <${job.attrs.name}> starting at ${time()}`)
+
+  task.on('execution:failed', (ctx) => {
+    logger.error(ctx.execution?.error, `Job <${jobName}> failed at ${time()}`)
   })
-  pulse.on('success', (job) => {
-    logger.info(`Job <${job.attrs.name}> succeeded at ${time()}`)
-  })
-  pulse.on('fail', (error, job) => {
-    logger.error(error, `Job <${job.attrs.name}> failed at ${time()}`)
-  })
-  /* v8 ignore stop */
-  return pulse
+
+  return task
 }
 
-const createTasks = (jobs, logger, sqsClient, queueUrl) => {
+const createTasks = async (jobs, logger, db, sqsClient, queueUrl) => {
   const tasks = []
   for (const [key, job] of Object.entries(jobs)) {
     logger.debug(`node-cron starting ${key} - ${job.schedule}`)
-
-    const task = cron.schedule(
-      job.schedule,
-      async () => {
-        console.log('RUNNING JOB BLAH')
-        console.log(job)
-        await scheduleBackgroundProcess({ sqsClient, queueUrl, logger })
-      },
-      {
-        name: job.name
-      }
-    )
-
-    tasks.push(task)
+    tasks.push(constructSchedular(db, logger, job.name, job.schedule, job.func({ sqsClient, queueUrl, logger })))
   }
-
   return tasks
-}
-
-const startJobs = async (jobs, pulse, logger, sqsClient, queueUrl) => {
-  logger.info('Starting Pulse scheduling...')
-  const lockLifetime = 120000 // 2 minutes in ms
-  const backoffDelay = 30000 // 30 seconds in ms
-  const defaultJobSettings = {
-    lockLifetime,
-    priority: 'high',
-    attempts: 4,
-    backoff: { type: 'exponential', delay: backoffDelay },
-    shouldSaveResult: false
-  }
-  // prettier-ignore
-  for (const j in jobs) { // nosonar
-    logger.debug(`Pulse starting ${j} - ${jobs[j].schedule}`)
-    await pulse.define(
-      jobs[j].name,
-      jobs[j].func({sqsClient, queueUrl, logger}),
-      defaultJobSettings
-    )
-    await pulse.every(jobs[j].schedule, jobs[j].name)
-  }
-  logger.info(`Pulse started and ${Object.keys(jobs)} jobs scheduled`)
 }
 
 export const startTasks = async (jobs) => {
   const logger = createLogger()
   try {
-    // const queueUrl = config.get('aws.backgroundProcessQueue')
-    // // prettier-ignore
-    // const sqsClient = constructSqsClient({
-    //   region: config.get('aws.region'),
-    //   endpoint: config.get('aws.sqsEndpoint')
-    // })
-    const tasks = createTasks(jobs ?? scheduledJobs, logger)
+    const queueUrl = config.get('aws.backgroundProcessQueue')
+    const sqsClient = constructSqsClient({
+      region: config.get('aws.region'),
+      endpoint: config.get('aws.sqsEndpoint')
+    })
+    const db = await constructMongoClient()
+    const tasks = await createTasks(jobs ?? scheduledJobs, logger, db, sqsClient, queueUrl)
     const stopScheduling = async () => {
       if (!tasks || tasks.length < 1) {
         return null
@@ -132,30 +113,7 @@ export const startTasks = async (jobs) => {
     }
     return { stopScheduling, tasks }
   } catch (e) {
-    logger.error(`Error defining pulse jobs ${e} - ${e.stack}`)
-    return { error: e }
-  }
-}
-
-export const startTasksOld = async (jobs) => {
-  const logger = createLogger()
-  try {
-    const queueUrl = config.get('aws.backgroundProcessQueue')
-    // prettier-ignore
-    const sqsClient = constructSqsClient({
-      region: config.get('aws.region'),
-      endpoint: config.get('aws.sqsEndpoint')
-    })
-    const pulse = constructPulse(await constructMongoClient(), logger)
-    await pulse.start()
-    await startJobs(jobs ?? scheduledJobs, pulse, logger, sqsClient, queueUrl)
-    const stopPulseScheduling = async () => {
-      await pulse.stop()
-      logger.info('Pulse stopped')
-    }
-    return { stopPulseScheduling, pulse }
-  } catch (e) {
-    logger.error(`Error defining pulse jobs ${e} - ${e.stack}`)
+    logger.error(`Error defining scheduled jobs ${e} - ${e.stack}`)
     return { error: e }
   }
 }
