@@ -46,11 +46,8 @@ describe('schedulet tasks', () => {
         func: scheduleBackgroundProcess
       }
     }
-    const { stopScheduling, tasks, error } = await startTasks(scheduledJobs)
-    if (error) {
-      console.log('error starting tasks', error)
-    }
-    expect(error).toEqual(undefined)
+    const { stopScheduling, tasks } = await startTasks(scheduledJobs)
+
     expect(typeof stopScheduling).toBe('function')
 
     const task = tasks[0]
@@ -82,11 +79,8 @@ describe('schedulet tasks', () => {
         func: scheduleBackgroundProcess
       }
     }
-    const { stopScheduling, tasks, error } = await startTasks(scheduledJobs)
-    if (error) {
-      console.log('error starting tasks', error)
-    }
-    expect(error).toEqual(undefined)
+    const { stopScheduling, tasks } = await startTasks(scheduledJobs)
+
     expect(typeof stopScheduling).toBe('function')
 
     const task = tasks[0]
@@ -108,11 +102,8 @@ describe('schedulet tasks', () => {
         func: scheduleBackgroundProcess
       }
     }
-    const { stopScheduling, tasks, error } = await startTasks(scheduledJobs)
-    if (error) {
-      console.log('error starting tasks', error)
-    }
-    expect(error).toEqual(undefined)
+    const { stopScheduling, tasks } = await startTasks(scheduledJobs)
+
     expect(typeof stopScheduling).toBe('function')
 
     const task = tasks[0]
@@ -136,11 +127,8 @@ describe('schedulet tasks', () => {
         func: scheduleBackgroundProcess
       }
     }
-    const { stopScheduling, tasks, error } = await startTasks(scheduledJobs)
-    if (error) {
-      console.log('error starting tasks', error)
-    }
-    expect(error).toEqual(undefined)
+    const { stopScheduling, tasks } = await startTasks(scheduledJobs)
+
     expect(typeof stopScheduling).toBe('function')
 
     const task = tasks[0]

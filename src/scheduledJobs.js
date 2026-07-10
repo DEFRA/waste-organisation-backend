@@ -8,11 +8,13 @@ import { updateWithOptimisticLock } from './repositories/index.js'
 import { findScheduledTaskByName, scheduledTasksCollection } from './repositories/scheduleTasks.js'
 import { mergeAndValidate } from './domain/scheduledTasks.js'
 
-const claimLock = async (db, lockName) => {
+const claimLock = async (db, lockName, logger) => {
   try {
     await db.collection('mongo-locks').insertOne({ _id: lockName, timestamp: new Date() })
+    logger.info(`Creating lock - ${lockName}`)
     return true
-  } catch (_) {
+  } catch (error) {
+    logger.error(`Unable to create lock - ${lockName}`, error)
     return false
   }
 }
@@ -50,7 +52,7 @@ const constructSchedular = (db, logger, jobName, jobSchedule, func) => {
   const task = cron.schedule(
     jobSchedule,
     async () => {
-      const lock = await claimLock(db, jobName)
+      const lock = await claimLock(db, jobName, logger)
       if (!lock) {
         return
       }
@@ -110,6 +112,8 @@ export const startTasks = async (jobs) => {
         await task.stop()
         logger.info('Cron stopped')
       }
+
+      return null
     }
     return { stopScheduling, tasks }
   } catch (e) {
