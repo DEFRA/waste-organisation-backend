@@ -86,8 +86,9 @@ export async function* getRefundsBetween(start, end, logger) {
         },
         agent
       })
-      logger.debug(`fetched refunds statusCode: ${res?.statusCode} data: ${payload.results}`)
+
       if (res?.statusCode === SUCCESS) {
+        logger.debug(`fetched refunds statusCode: ${res?.statusCode} data: ${payload.results}`)
         nextUrl = payload?._links?.next_page?.href
         yield* payload.results
       } else {
