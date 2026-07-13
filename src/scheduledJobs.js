@@ -95,6 +95,7 @@ export const startTasks = async (jobs) => {
     })
     const db = await constructMongoClient()
     const locker = new LockManager(db.collection('mongo-locks'))
+    await waitForMongoLocksReady(locker)
     const tasks = await createTasks(jobs ?? scheduledJobs, logger, db, sqsClient, queueUrl, locker)
     const stopScheduling = async () => {
       if (tasks && tasks.length > 0) {
@@ -111,4 +112,45 @@ export const startTasks = async (jobs) => {
     logger.error(`Error defining scheduled jobs ${e} - ${e.stack}`)
     return { error: e }
   }
+}
+
+export async function waitForMongoLocksReady(locker, { timeoutMs = 15000, pollMs = 100 } = {}) {
+  const deadline = Date.now() + timeoutMs
+  let lastError
+
+  while (Date.now() < deadline) {
+    try {
+      const indexes = await locker.collection.indexes()
+
+      const hasActionUnique = indexes.some((i) => i.unique === true && i.key?.action === 1)
+      const hasTtl = indexes.some((i) => i.key?.expiresAt === 1 && i.expireAfterSeconds === 0)
+
+      if (hasActionUnique && hasTtl) {
+        return
+      }
+    } catch (err) {
+      // During startup, collection/index metadata can briefly be unavailable.
+      // Keep polling for known transient states.
+      const codeName = err?.codeName
+      const code = err?.code
+      const message = String(err?.message ?? '')
+
+      const isTransient =
+        codeName === 'NamespaceNotFound' ||
+        code === 26 ||
+        message.includes('ns does not exist') ||
+        message.includes('NamespaceNotFound')
+
+      if (!isTransient) {
+        throw err
+      }
+
+      lastError = err
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, pollMs))
+  }
+
+  const suffix = lastError ? ` Last error: ${lastError.message}` : ''
+  throw new Error(`mongo-locks unique action index was not ready within ${timeoutMs}ms.${suffix}`)
 }
