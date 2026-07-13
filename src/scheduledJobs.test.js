@@ -2,9 +2,9 @@ import { beforeEach, describe, expect } from 'vitest'
 import * as mockMongo from 'vitest-mongodb'
 import { config } from './config.js'
 import { MongoClient } from 'mongodb'
-import { scheduledTasksCollection } from './repositories/scheduleTasks.js'
+import { scheduledTasksCollection } from './repositories/scheduledTasks.js'
 
-describe('schedulet tasks', () => {
+describe('scheduled tasks', () => {
   const mockSqsClient = vi.fn()
   const mockSendMessage = vi.fn()
   let db

@@ -5,7 +5,7 @@ import { MongoClient } from 'mongodb'
 
 import cron from 'node-cron'
 import { updateWithOptimisticLock } from './repositories/index.js'
-import { findScheduledTaskByName, scheduledTasksCollection } from './repositories/scheduleTasks.js'
+import { findScheduledTaskByName, scheduledTasksCollection } from './repositories/scheduledTasks.js'
 import { mergeAndValidate } from './domain/scheduledTasks.js'
 import { LockManager } from 'mongo-locks'
 import { acquireLock } from './plugins/mongo-lock.js'
@@ -39,7 +39,7 @@ export const scheduledJobs = {
   }
 }
 
-const constructSchedular = (db, logger, jobName, jobSchedule, func) => {
+const constructScheduler = (db, logger, jobName, jobSchedule, func) => {
   const time = () => new Date().toTimeString().split(' ')[0]
   const task = cron.schedule(
     jobSchedule,
@@ -80,7 +80,7 @@ const createTasks = async (jobs, logger, db, sqsClient, queueUrl) => {
   const tasks = []
   for (const [key, job] of Object.entries(jobs)) {
     logger.debug(`node-cron starting ${key} - ${job.schedule}`)
-    tasks.push(constructSchedular(db, logger, job.name, job.schedule, job.func({ sqsClient, queueUrl, logger })))
+    tasks.push(constructScheduler(db, logger, job.name, job.schedule, job.func({ sqsClient, queueUrl, logger })))
   }
   return tasks
 }
@@ -96,7 +96,7 @@ export const startTasks = async (jobs) => {
     const db = await constructMongoClient()
     const tasks = await createTasks(jobs ?? scheduledJobs, logger, db, sqsClient, queueUrl)
     const stopScheduling = async () => {
-      if (tasks || tasks.length > 0) {
+      if (tasks && tasks.length > 0) {
         for (const task of tasks) {
           await task.stop()
           logger.info('Cron stopped')
