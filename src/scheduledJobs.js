@@ -135,11 +135,7 @@ export async function waitForMongoLocksReady(locker, { timeoutMs = 15000, pollMs
       const code = err?.code
       const message = String(err?.message ?? '')
 
-      const isTransient =
-        codeName === 'NamespaceNotFound' ||
-        code === 26 ||
-        message.includes('ns does not exist') ||
-        message.includes('NamespaceNotFound')
+      const isTransient = codeName === 'NamespaceNotFound' || code === 26 || message.includes('ns does not exist') || message.includes('NamespaceNotFound')
 
       if (!isTransient) {
         throw err
