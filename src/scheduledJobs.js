@@ -39,12 +39,12 @@ export const scheduledJobs = {
   }
 }
 
-const constructScheduler = (db, logger, jobName, jobSchedule, func) => {
+const constructScheduler = (db, logger, locker, jobName, jobSchedule, func) => {
   const time = () => new Date().toTimeString().split(' ')[0]
   const task = cron.schedule(
     jobSchedule,
     async () => {
-      const lock = await acquireLock(new LockManager(db.collection('mongo-locks')), jobName, logger)
+      const lock = await acquireLock(locker, jobName, logger)
       if (!lock) {
         return
       }
@@ -76,11 +76,11 @@ const constructScheduler = (db, logger, jobName, jobSchedule, func) => {
   return task
 }
 
-const createTasks = async (jobs, logger, db, sqsClient, queueUrl) => {
+const createTasks = async (jobs, logger, db, sqsClient, queueUrl, locker) => {
   const tasks = []
   for (const [key, job] of Object.entries(jobs)) {
     logger.debug(`node-cron starting ${key} - ${job.schedule}`)
-    tasks.push(constructScheduler(db, logger, job.name, job.schedule, job.func({ sqsClient, queueUrl, logger })))
+    tasks.push(constructScheduler(db, logger, locker, job.name, job.schedule, job.func({ sqsClient, queueUrl, logger })))
   }
   return tasks
 }
@@ -94,7 +94,8 @@ export const startTasks = async (jobs) => {
       endpoint: config.get('aws.sqsEndpoint')
     })
     const db = await constructMongoClient()
-    const tasks = await createTasks(jobs ?? scheduledJobs, logger, db, sqsClient, queueUrl)
+    const locker = new LockManager(db.collection('mongo-locks'))
+    const tasks = await createTasks(jobs ?? scheduledJobs, logger, db, sqsClient, queueUrl, locker)
     const stopScheduling = async () => {
       if (tasks && tasks.length > 0) {
         for (const task of tasks) {
