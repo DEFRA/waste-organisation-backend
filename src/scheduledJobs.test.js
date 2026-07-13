@@ -24,6 +24,9 @@ describe('scheduled tasks', () => {
       scheduledTasks = db.collection(scheduledTasksCollection)
 
       await scheduledTasks.deleteMany({})
+
+      const mongoLocks = db.collection('mongo-locks')
+      await mongoLocks.deleteMany({})
     }
     vi.doMock('./plugins/sqs.js', () => ({
       constructSqsClient: () => mockSqsClient,
