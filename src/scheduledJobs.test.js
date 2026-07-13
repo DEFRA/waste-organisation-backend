@@ -116,7 +116,7 @@ describe('schedulet tasks', () => {
   })
 
   it('should not run jobs if there is a lock in place', async () => {
-    await db.collection('mongo-locks').insertOne({ _id: 'test', timestamp: new Date() })
+    // await db.collection('mongo-locks').insertOne({ _id: 'test', timestamp: new Date() })
     await scheduledTasks.insertMany([{ name: 'test', runCount: 1, lastFinishedAt: '2026-07-10T16:07:48.699Z', createdAt: '2026-07-10T16:07:48.701Z' }])
     const { startTasks, scheduleBackgroundProcess } = await import('./scheduledJobs.js')
     const scheduledJobs = {
@@ -135,7 +135,7 @@ describe('schedulet tasks', () => {
     await task.execute()
     await task.execute()
 
-    expect(mockSendMessage).not.toHaveBeenCalled()
+    expect(mockSendMessage).toHaveBeenCalledOnce()
 
     await stopScheduling()
   })

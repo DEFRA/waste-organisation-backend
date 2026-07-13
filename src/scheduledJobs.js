@@ -7,17 +7,9 @@ import cron from 'node-cron'
 import { updateWithOptimisticLock } from './repositories/index.js'
 import { findScheduledTaskByName, scheduledTasksCollection } from './repositories/scheduleTasks.js'
 import { mergeAndValidate } from './domain/scheduledTasks.js'
+import { LockManager } from 'mongo-locks'
+import { acquireLock } from './plugins/mongo-lock.js'
 
-const claimLock = async (db, lockName, logger) => {
-  try {
-    await db.collection('mongo-locks').insertOne({ _id: lockName, timestamp: new Date() })
-    logger.info(`Creating lock - ${lockName}`)
-    return true
-  } catch (error) {
-    logger.error(`Unable to create lock - ${lockName}`, error)
-    return false
-  }
-}
 export const constructMongoClient = async () => {
   const options = config.get('mongo')
   const client = await MongoClient.connect(options.mongoUrl, {
@@ -52,7 +44,7 @@ const constructSchedular = (db, logger, jobName, jobSchedule, func) => {
   const task = cron.schedule(
     jobSchedule,
     async () => {
-      const lock = await claimLock(db, jobName, logger)
+      const lock = await acquireLock(new LockManager(db.collection('mongo-locks')), jobName, logger)
       if (!lock) {
         return
       }
