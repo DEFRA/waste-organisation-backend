@@ -1,5 +1,6 @@
 import joi from 'joi'
 import { paths } from '../config/paths.js'
+import { config } from '../config.js'
 import { mergeAndValidate, ensureAtLeastOneApiCodeExists, orgSchemaWithoutApiCodes, calculateNextPaymentPeriod } from '../domain/organisation.js'
 import { orgCollection, findOrganisationById, findOrganisationsByDateRange } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
@@ -49,9 +50,16 @@ export const organisations = [
       const organisation = await findOrganisationById(request.db, request.params.organisationId)
       if (organisation) {
         if (organisation.users.includes(request.params.userId)) {
+          const organisationWithEffectiveDisableAfter = {
+            ...organisation,
+            disableAfter: organisation.disableAfter ?? config.get('govPay.serviceChargeFreePeriodEnd')
+          }
           return h.response({
             message: 'success',
-            organisation: calculateNextPaymentPeriod(organisation, request?.info?.received ? new Date(request?.info?.received) : new Date())
+            organisation: calculateNextPaymentPeriod(
+              organisationWithEffectiveDisableAfter,
+              request?.info?.received ? new Date(request?.info?.received) : new Date()
+            )
           })
         } else {
           throw boom.forbidden()
