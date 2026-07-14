@@ -67,6 +67,11 @@ describe('background processor', () => {
       }
     }))
 
+    vi.doMock('./plugins/sqs.js', () => ({
+      constructSqsClient: () => vi.fn(),
+      sendSqsMessage: vi.fn()
+    }))
+
     await mockMongo.setup()
     if (globalThis?.__MONGO_URI__) {
       config.set('mongo.mongoUrl', globalThis.__MONGO_URI__)

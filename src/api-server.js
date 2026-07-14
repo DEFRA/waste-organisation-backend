@@ -15,6 +15,7 @@ import { requestTracing } from './common/helpers/request-tracing.js'
 import { setupProxy } from './common/helpers/proxy/setup-proxy.js'
 import { authentication } from './plugins/auth.js'
 import { sqsPlugin } from './plugins/sqs.js'
+import { backgroundTasksPlugin } from './plugins/background-tasks.js'
 
 // prettier-ignore
 export const plugins = {
@@ -36,7 +37,8 @@ export const plugins = {
       queueKey: 'backgroundProcessSqsQueueUrl',
       queueUrl: config.get('aws.backgroundProcessQueue')
     }
-  }
+  },
+  backgroundTasksPlugin
 }
 
 function getSwaggerPlugins() {

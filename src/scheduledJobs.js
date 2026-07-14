@@ -85,7 +85,7 @@ const createTasks = async (jobs, logger, db, sqsClient, queueUrl, locker) => {
   return tasks
 }
 
-export const startTasks = async (jobs) => {
+export const startTasks = async (db, jobs) => {
   const logger = createLogger()
   try {
     const queueUrl = config.get('aws.backgroundProcessQueue')
@@ -93,7 +93,7 @@ export const startTasks = async (jobs) => {
       region: config.get('aws.region'),
       endpoint: config.get('aws.sqsEndpoint')
     })
-    const db = await constructMongoClient()
+    // const db = await constructMongoClient()
     const locker = new LockManager(db.collection('mongo-locks'))
     await waitForMongoLocksReady(locker)
     const tasks = await createTasks(jobs ?? scheduledJobs, logger, db, sqsClient, queueUrl, locker)

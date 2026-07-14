@@ -53,7 +53,7 @@ describe('scheduled tasks handles error', () => {
         func: scheduleBackgroundProcess
       }
     }
-    const { error } = await startTasks(scheduledJobs)
+    const { error } = await startTasks(db, scheduledJobs)
 
     console.log('error', error)
 

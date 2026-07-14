@@ -174,7 +174,7 @@ export const config = convict({
       doc: 'The refund polling cron expression',
       format: String,
       nullable: true,
-      default: '30 3 * * *',
+      default: '*/10 * * * * *',
       env: 'GOVPAY_REFUND_POLLING_SCHEDULE'
     },
     schedulingPollingTaskRetrySleepStep: {

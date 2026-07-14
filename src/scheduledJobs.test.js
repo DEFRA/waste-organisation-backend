@@ -49,7 +49,7 @@ describe('scheduled tasks', () => {
         func: scheduleBackgroundProcess
       }
     }
-    const { stopScheduling, tasks } = await startTasks(scheduledJobs)
+    const { stopScheduling, tasks } = await startTasks(db, scheduledJobs)
 
     expect(typeof stopScheduling).toBe('function')
 
@@ -82,7 +82,7 @@ describe('scheduled tasks', () => {
         func: scheduleBackgroundProcess
       }
     }
-    const { stopScheduling, tasks } = await startTasks(scheduledJobs)
+    const { stopScheduling, tasks } = await startTasks(db, scheduledJobs)
 
     expect(typeof stopScheduling).toBe('function')
 
@@ -105,7 +105,7 @@ describe('scheduled tasks', () => {
         func: scheduleBackgroundProcess
       }
     }
-    const { stopScheduling, tasks } = await startTasks(scheduledJobs)
+    const { stopScheduling, tasks } = await startTasks(db, scheduledJobs)
 
     expect(typeof stopScheduling).toBe('function')
 
