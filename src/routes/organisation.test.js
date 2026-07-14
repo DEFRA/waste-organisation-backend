@@ -37,7 +37,7 @@ describe('organisation API', () => {
         name: 'Bob',
         organisationId: '456',
         users: ['123'],
-        disableAfter: new Date('2026-10-01T00:00:00.000Z'),
+        disableAfter: null,
         version: 1
       }
     })
@@ -72,7 +72,7 @@ describe('organisation API', () => {
         name: 'Mr Dabolina',
         organisationId: '456',
         users: ['123', '789'],
-        disableAfter: new Date('2026-10-01T00:00:00.000Z'),
+        disableAfter: null,
         version: 3
       }
     })
@@ -132,6 +132,32 @@ describe('organisation API', () => {
         }
       })
       expect(statusCode).toBe(200)
+    })
+
+    test('returns default service charge date when stored disableAfter is null', async () => {
+      const nullDisableAfterOrganisationId = randomUUID()
+      await server.db.collection(orgCollection).insertOne({
+        organisationId: nullDisableAfterOrganisationId,
+        name: 'Null Date Org',
+        users: ['123'],
+        disableAfter: null,
+        apiCodes: [{ code: randomUUID(), name: 'API Code 1', isDisabled: false }],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        version: 1
+      })
+
+      const { result, statusCode } = await server.inject({
+        method: 'GET',
+        url: pathTo(paths.getOrganisation, { userId: 123, organisationId: nullDisableAfterOrganisationId }),
+        headers: {
+          'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+        }
+      })
+
+      expect(statusCode).toBe(200)
+      expect(result.message).toBe('success')
+      expect(result.organisation.disableAfter).toEqual(new Date('2026-10-01T00:00:00.000Z'))
     })
 
     test('not found', async () => {

@@ -12,7 +12,7 @@ const validate = (org) => {
 const freePeriodEnd = () => config.get('govPay.serviceChargeFreePeriodEnd')
 
 const defaultOrgValues = (org) => {
-  const disableAfter = org.disableAfter ?? freePeriodEnd()
+  const disableAfter = org.disableAfter ?? null
   return {
     ...org,
     disableAfter
@@ -32,7 +32,7 @@ export const orgSchemaWithoutApiCodes = joi.object({
   isWasteReceiver: joi.boolean(),
   isDisabled: joi.boolean(),
   disabledReason: joi.string().optional().allow(null),
-  disableAfter: joi.date()
+  disableAfter: joi.date().allow(null)
 })
 
 export const orgSchema = orgSchemaWithoutApiCodes.append({
@@ -120,7 +120,7 @@ export const updateOrganisationPaymentStatus = (org, payment) => {
   }
   if (isRefunded(payment)) {
     // Note: only allow refunding the current year - refunds of previous years shouldn't disable the org
-    if (org.disableAfter <= payment.servicePeriodEnd) {
+    if (org.disableAfter != null && org.disableAfter <= payment.servicePeriodEnd) {
       return validate(moveDisableAfterBackwards({ ...org, disabledReason: null }, payment.servicePeriodStart))
     } else {
       return validate(org)
