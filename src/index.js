@@ -11,7 +11,6 @@ process.env.TZ = config.get('bulkUpload.spreadsheetTimezone')
 await startServer(await createServer())
 
 startWorker()
-
 const { stopScheduling } = await startTasks()
 
 process.on('unhandledRejection', (error) => {
