@@ -1,8 +1,14 @@
-import { Pulse } from '@pulsecron/pulse'
 import { constructSqsClient, sendSqsMessage } from './plugins/sqs.js'
 import { createLogger } from './common/helpers/logging/logger.js'
 import { config } from './config.js'
 import { MongoClient } from 'mongodb'
+
+import cron from 'node-cron'
+import { updateWithOptimisticLock } from './repositories/index.js'
+import { findScheduledTaskByName, scheduledTasksCollection } from './repositories/scheduledTasks.js'
+import { mergeAndValidate } from './domain/scheduledTasks.js'
+import { LockManager } from 'mongo-locks'
+import { acquireLock } from './plugins/mongo-lock.js'
 
 export const constructMongoClient = async () => {
   const options = config.get('mongo')
@@ -15,7 +21,7 @@ export const constructMongoClient = async () => {
 export const scheduleBackgroundProcess =
   ({ queueUrl, logger, sqsClient }) =>
   async (job) => {
-    logger.info(`Starting scheduled job - ${job.attrs.name} - ${JSON.stringify(job)}`)
+    logger.info(`Starting scheduled job - ${job.name} - ${JSON.stringify(job)}`)
     const message = {
       refundQuery: 'initiate polling',
       initiatedAt: new Date(),
@@ -33,76 +39,117 @@ export const scheduledJobs = {
   }
 }
 
-const constructPulse = (mongo, logger) => {
+const constructScheduler = (db, logger, locker, jobName, jobSchedule, func) => {
   const time = () => new Date().toTimeString().split(' ')[0]
-  logger.info('Connecting to Pulse ... ')
-  const pulse = new Pulse(
-    { mongo, defaultConcurrency: 2, maxConcurrency: 2, processEvery: '300 seconds', resumeOnRestart: true },
-    /* v8 ignore start */
-    (error, collection) => {
-      if (error) {
-        logger.error(`Pulse Mongo connection error: ${error}`)
-      } else {
-        logger.info(`Pulse connected to collection: ${collection.collectionName}`)
+  const task = cron.schedule(
+    jobSchedule,
+    async () => {
+      const lock = await acquireLock(locker, jobName, logger)
+      if (!lock) {
+        return
       }
+      logger.info(`Job <${jobName}> starting at ${time()}`)
+      const previousTask = await findScheduledTaskByName(db, jobName)
+      if (previousTask) {
+        await func(previousTask)
+      }
+
+      await updateWithOptimisticLock(db.collection(scheduledTasksCollection), { name: jobName }, (dbTask) => {
+        const newData = mergeAndValidate(dbTask, {
+          name: jobName,
+          runCount: dbTask?.runCount ? dbTask.runCount + 1 : 1,
+          lastFinishedAt: new Date()
+        })
+        return newData
+      })
+      logger.info(`Job <${jobName}> succeeded at ${time()}`)
+    },
+    {
+      name: jobName
     }
   )
-  pulse.on('start', (job) => {
-    logger.info(`Job <${job.attrs.name}> starting at ${time()}`)
+
+  task.on('execution:failed', (ctx) => {
+    logger.error(ctx.execution?.error, `Job <${jobName}> failed at ${time()}`)
   })
-  pulse.on('success', (job) => {
-    logger.info(`Job <${job.attrs.name}> succeeded at ${time()}`)
-  })
-  pulse.on('fail', (error, job) => {
-    logger.error(error, `Job <${job.attrs.name}> failed at ${time()}`)
-  })
-  /* v8 ignore stop */
-  return pulse
+
+  return task
 }
 
-const startJobs = async (jobs, pulse, logger, sqsClient, queueUrl) => {
-  logger.info('Starting Pulse scheduling...')
-  const lockLifetime = 120000 // 2 minutes in ms
-  const backoffDelay = 30000 // 30 seconds in ms
-  const defaultJobSettings = {
-    lockLifetime,
-    priority: 'high',
-    attempts: 4,
-    backoff: { type: 'exponential', delay: backoffDelay },
-    shouldSaveResult: false
+const createTasks = async (jobs, logger, db, sqsClient, queueUrl, locker) => {
+  const tasks = []
+  for (const [key, job] of Object.entries(jobs)) {
+    logger.debug(`node-cron starting ${key} - ${job.schedule}`)
+    tasks.push(constructScheduler(db, logger, locker, job.name, job.schedule, job.func({ sqsClient, queueUrl, logger })))
   }
-  // prettier-ignore
-  for (const j in jobs) { // nosonar
-    logger.debug(`Pulse starting ${j} - ${jobs[j].schedule}`)
-    await pulse.define(
-      jobs[j].name,
-      jobs[j].func({sqsClient, queueUrl, logger}),
-      defaultJobSettings
-    )
-    await pulse.every(jobs[j].schedule, jobs[j].name)
-  }
-  logger.info(`Pulse started and ${Object.keys(jobs)} jobs scheduled`)
+  return tasks
 }
 
 export const startTasks = async (jobs) => {
   const logger = createLogger()
   try {
     const queueUrl = config.get('aws.backgroundProcessQueue')
-    // prettier-ignore
     const sqsClient = constructSqsClient({
       region: config.get('aws.region'),
       endpoint: config.get('aws.sqsEndpoint')
     })
-    const pulse = constructPulse(await constructMongoClient(), logger)
-    await pulse.start()
-    await startJobs(jobs ?? scheduledJobs, pulse, logger, sqsClient, queueUrl)
-    const stopPulseScheduling = async () => {
-      await pulse.stop()
-      logger.info('Pulse stopped')
+    const db = await constructMongoClient()
+    const locker = new LockManager(db.collection('mongo-locks'))
+    await waitForMongoLocksReady(locker)
+    const tasks = await createTasks(jobs ?? scheduledJobs, logger, db, sqsClient, queueUrl, locker)
+    const stopScheduling = async () => {
+      if (tasks && tasks.length > 0) {
+        for (const task of tasks) {
+          await task.stop()
+          logger.info('Cron stopped')
+        }
+      }
+
+      return null
     }
-    return { stopPulseScheduling, pulse }
+    return { stopScheduling, tasks }
   } catch (e) {
-    logger.error(`Error defining pulse jobs ${e} - ${e.stack}`)
+    logger.error(`Error defining scheduled jobs ${e} - ${e.stack}`)
     return { error: e }
   }
+}
+
+export async function waitForMongoLocksReady(locker, { timeoutMs = 15000, pollMs = 100 } = {}) {
+  const deadline = Date.now() + timeoutMs
+  let lastError
+
+  while (Date.now() < deadline) {
+    try {
+      const indexes = await locker.collection.indexes()
+
+      const hasActionUnique = indexes.some((i) => i.unique === true && i.key?.action === 1)
+      const hasTtl = indexes.some((i) => i.key?.expiresAt === 1 && i.expireAfterSeconds === 0)
+
+      if (hasActionUnique && hasTtl) {
+        return
+      }
+    } catch (err) {
+      // During startup, collection/index metadata can briefly be unavailable.
+      // Keep polling for known transient states.
+
+      const codeName = err?.codeName
+      const code = err?.code
+      const message = String(err?.message ?? '')
+      const transientErrorCode = 26
+
+      const isTransient =
+        codeName === 'NamespaceNotFound' || code === transientErrorCode || message.includes('ns does not exist') || message.includes('NamespaceNotFound')
+
+      if (!isTransient) {
+        throw err
+      }
+
+      lastError = err
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, pollMs))
+  }
+
+  const suffix = lastError ? ` Last error: ${lastError.message}` : ''
+  throw new Error(`mongo-locks unique action index was not ready within ${timeoutMs}ms.${suffix}`)
 }

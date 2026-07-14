@@ -8,11 +8,10 @@ import { config } from './config.js'
 
 process.env.TZ = config.get('bulkUpload.spreadsheetTimezone')
 
-startWorker()
-
-const { stopPulseScheduling } = await startTasks()
-
 await startServer(await createServer())
+
+startWorker()
+const { stopScheduling } = await startTasks()
 
 process.on('unhandledRejection', (error) => {
   const logger = createLogger()
@@ -22,5 +21,5 @@ process.on('unhandledRejection', (error) => {
 })
 
 process.on('exit', async () => {
-  await stopPulseScheduling()
+  await stopScheduling()
 })
