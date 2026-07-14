@@ -131,11 +131,14 @@ export async function waitForMongoLocksReady(locker, { timeoutMs = 15000, pollMs
     } catch (err) {
       // During startup, collection/index metadata can briefly be unavailable.
       // Keep polling for known transient states.
+
       const codeName = err?.codeName
       const code = err?.code
       const message = String(err?.message ?? '')
+      const transientErrorCode = 26
 
-      const isTransient = codeName === 'NamespaceNotFound' || code === 26 || message.includes('ns does not exist') || message.includes('NamespaceNotFound')
+      const isTransient =
+        codeName === 'NamespaceNotFound' || code === transientErrorCode || message.includes('ns does not exist') || message.includes('NamespaceNotFound')
 
       if (!isTransient) {
         throw err
