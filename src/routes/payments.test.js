@@ -4,7 +4,6 @@ import { orgCollection } from '../repositories/organisation.js'
 import { isEnabled, updateDisableAfter } from '../domain/organisation.js'
 import { paymentCollection } from '../repositories/payment.js'
 import { faker } from '@faker-js/faker'
-import { expect } from 'vitest'
 
 describe('payment API', () => {
   let server
@@ -359,7 +358,7 @@ describe('payment API', () => {
 
     expect(JSON.parse(r2.payload)).toEqual({
       message: 'duplicate payment',
-      payment: { idempotencyKey: expect.any(String) }
+      payment: { paymentId: expect.any(String) }
     })
   })
 })

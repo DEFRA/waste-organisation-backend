@@ -70,7 +70,7 @@ export const idempontentlyInitiatePayment = async (createPayment, findPayments, 
   log.info(`${msg}: ${foundPayments.map((p) => [p._id, p.idempotencyKey, p.paymentId, p.status, p.createAt]).join(' ')}`)
   if (foundPayments.length > 1) {
     await deletePayment(idempotencyKey)
-    return { message: 'duplicate payment', payment: { idempotencyKey: foundPayments[0].idempotencyKey } }
+    return { message: 'duplicate payment', payment: { paymentId: foundPayments[0].paymentId } }
   }
   const { payload, status, statusCode } = await createGovPayment(idempotencyKey)
   if (status === 'success') {
