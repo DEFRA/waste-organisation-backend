@@ -26,6 +26,23 @@ describe('payment domain', () => {
     )
   })
 
+  test('payment status should not update when unknown status', () => {
+    const organisationId = faker.string.uuid()
+    const o = initiatePayment({
+      organisationId,
+      amount: faker.number.int(),
+      description: faker.commerce.productDescription(),
+      returnUrl: faker.internet.url(),
+      metadata: { servicePeriodStart: faker.date.anytime().toISOString(), servicePeriodEnd: faker.date.anytime().toISOString() },
+      reference: faker.string.uuid(),
+      idempotencyKey: faker.string.uuid(),
+      status: 'RANDOM STATUS'
+    })
+
+    const org = updateFromGovPayEvent(o, { state: { status: 'RANDOM STATUS' }, refund_summary: { status: 'RANDOM STATUS' } }, console)
+    expect(org.status).toEqual('payment_in_progress')
+  })
+
   test('payment is updated with new links', () => {
     const organisationId = faker.string.uuid()
     const o = initiatePayment({
