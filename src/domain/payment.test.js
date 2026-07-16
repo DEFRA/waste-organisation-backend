@@ -66,4 +66,29 @@ describe('payment domain', () => {
     const org = updateFromGovPayEvent(o, { _links: fakeLinks, state: { status: 'started' }, refund_summary: { status: 'pending' } }, console)
     expect(org.govPayLinks).toEqual(fakeLinks)
   })
+
+  test('payment is updated with new links', () => {
+    const fakeLinks = {
+      next_url: {
+        href: faker.internet.url(),
+        method: 'GET'
+      }
+    }
+
+    const organisationId = faker.string.uuid()
+    const o = initiatePayment({
+      organisationId,
+      amount: faker.number.int(),
+      description: faker.commerce.productDescription(),
+      returnUrl: faker.internet.url(),
+      metadata: { servicePeriodStart: faker.date.anytime().toISOString(), servicePeriodEnd: faker.date.anytime().toISOString() },
+      reference: faker.string.uuid(),
+      idempotencyKey: faker.string.uuid(),
+      status: 'payment_in_progress',
+      govPayLinks: fakeLinks
+    })
+
+    const org = updateFromGovPayEvent(o, { state: { status: 'started' }, refund_summary: { status: 'pending' } }, console)
+    expect(org.govPayLinks).toEqual(fakeLinks)
+  })
 })
