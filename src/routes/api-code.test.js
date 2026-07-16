@@ -2,18 +2,24 @@ import { beforeEach } from 'vitest'
 import { initialiseServer, WASTE_CLIENT_AUTH_TEST_TOKEN, stopServer } from '../common/helpers/initialse-test-server.js'
 import { paths, pathTo } from '../config/paths.js'
 import { updateApiCode } from '../domain/organisation.js'
+import { faker } from '@faker-js/faker'
+import { config } from '../config.js'
 
 const USER_ID = 123
 const ORGANISATION_ID = 456
 
 describe('api codes', () => {
   let server
+  let initialFreePeriodEnd
 
   beforeAll(async () => {
     server = await initialiseServer()
+    initialFreePeriodEnd = config.get('govPay.serviceChargeFreePeriodEnd')
+    config.set('govPay.serviceChargeFreePeriodEnd', faker.date.future())
   })
 
   afterAll(async () => {
+    config.set('govPay.serviceChargeFreePeriodEnd', initialFreePeriodEnd)
     stopServer(server)
   })
 
@@ -21,6 +27,7 @@ describe('api codes', () => {
     await updateOrganisation(server, USER_ID, ORGANISATION_ID, {
       name: 'Bob',
       isDisabled: false,
+      disableAfter: faker.date.future(),
       apiCodes: [
         {
           code: 'fafde9f0-9d6f-46b3-b4e1-b0133e905637',
@@ -124,6 +131,55 @@ describe('api codes', () => {
     expect(statusCode).toBe(404)
   })
 
+  test('should disable api code when org has not paid', async () => {
+    await updateOrganisation(server, USER_ID, ORGANISATION_ID, {
+      disableAfter: faker.date.past()
+    })
+
+    const r = await createApiCode(server, ORGANISATION_ID, { name: 'Bob', isDisabled: false })
+
+    expect(r.statusCode).toBe(200)
+
+    const apiCode = r.result.code
+    expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
+    const { statusCode, payload } = await server.inject({
+      method: 'GET',
+      url: pathTo(paths.lookupOrgFromApiCode, { apiCode }),
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      }
+    })
+
+    expect(statusCode).toBe(402)
+    expect(JSON.parse(payload)).toEqual({ statusCode: 402, error: 'Payment Required', message: 'Payment Required' })
+  })
+
+  test('should disable api code when disableAfter is null and free trial as passed', async () => {
+    const testDatePast = faker.date.past()
+
+    config.set('govPay.serviceChargeFreePeriodEnd', testDatePast)
+    await updateOrganisation(server, USER_ID, ORGANISATION_ID, {
+      disableAfter: null
+    })
+
+    const r = await createApiCode(server, ORGANISATION_ID, { name: 'Bob', isDisabled: false })
+
+    expect(r.statusCode).toBe(200)
+
+    const apiCode = r.result.code
+    expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
+    const { statusCode, payload } = await server.inject({
+      method: 'GET',
+      url: pathTo(paths.lookupOrgFromApiCode, { apiCode }),
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      }
+    })
+
+    expect(statusCode).toBe(402)
+    expect(JSON.parse(payload)).toEqual({ statusCode: 402, error: 'Payment Required', message: 'Payment Required' })
+  })
+
   test('check validation errors', async () => {
     const r = await createApiCode(server, ORGANISATION_ID, {})
 
@@ -141,6 +197,11 @@ describe('api codes', () => {
   })
 
   test('should resolve org from api code - supporting basic auth', async () => {
+    const testDateFuture = faker.date.future()
+    await updateOrganisation(server, USER_ID, ORGANISATION_ID, {
+      disableAfter: null
+    })
+    config.set('govPay.serviceChargeFreePeriodEnd', testDateFuture)
     const r = await server.inject({
       method: 'POST',
       url: pathTo(paths.createApiCode, {
@@ -161,7 +222,40 @@ describe('api codes', () => {
         'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
       }
     })
-    expect(result.defraCustomerOrganisationId).toEqual('456')
+    expect(result).toEqual({ defraCustomerOrganisationId: '456', metaData: { disableAfter: testDateFuture } })
+    expect(statusCode).toBe(200)
+  })
+
+  test('should resolve org from api code - supporting basic auth - with disableAfter set in future', async () => {
+    const testDateFuture = faker.date.future()
+    const testDatePast = faker.date.past()
+
+    await updateOrganisation(server, USER_ID, ORGANISATION_ID, {
+      disableAfter: testDateFuture
+    })
+
+    config.set('govPay.serviceChargeFreePeriodEnd', testDatePast)
+    const r = await server.inject({
+      method: 'POST',
+      url: pathTo(paths.createApiCode, {
+        organisationId: 456
+      }),
+      headers: {
+        authorization: 'Basic d2FzdGUtbW92ZW1lbnQtZXh0ZXJuYWwtYXBpOjRkNWQ0OGNiLTQ1NmEtNDcwYS04ODE0LWVhZTI3NThiZTkwZA=='
+      },
+      payload: {}
+    })
+    expect(r.statusCode).toBe(200)
+    const apiCode = r.result.code
+    expect(apiCode.toLowerCase()).toEqual(expect.stringMatching(/[0-9a-f-]*/))
+    const { result, statusCode } = await server.inject({
+      method: 'GET',
+      url: pathTo(paths.lookupOrgFromApiCode, { apiCode }),
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      }
+    })
+    expect(result).toEqual({ defraCustomerOrganisationId: '456', metaData: { disableAfter: testDateFuture } })
     expect(statusCode).toBe(200)
   })
 

@@ -1,13 +1,16 @@
 import Boom from '@hapi/boom'
 import joi from 'joi'
 import { paths } from '../config/paths.js'
-import { createApiCode, updateApiCode, apiCodeSchema, isEnabled } from '../domain/organisation.js'
+import { createApiCode, updateApiCode, apiCodeSchema, isEnabled, hasPaid } from '../domain/organisation.js'
 import { findOrganisationByApiCode, findOrganisationById, orgCollection } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
+import { config } from '../config.js'
 
 const logger = createLogger()
+
+const freePeriodEnd = () => config.get('govPay.serviceChargeFreePeriodEnd')
 
 const handleErr = (e) => {
   logger.error(`Error with request: ${e}`)
@@ -37,8 +40,13 @@ export const apiCodeRoutes = [
     handler: async (request, h) => {
       const apiCode = request.params.apiCode
       const org = await findOrganisationByApiCode(request.db, apiCode)
+
+      if (!hasPaid(org)) {
+        throw Boom.paymentRequired()
+      }
+
       if (isEnabled(org) && org?.apiCodes.find(({ code }) => code === apiCode).isDisabled === false) {
-        return h.response({ defraCustomerOrganisationId: org.organisationId })
+        return h.response({ defraCustomerOrganisationId: org.organisationId, metaData: { disableAfter: org.disableAfter || freePeriodEnd() } })
       } else {
         throw Boom.notFound()
       }
