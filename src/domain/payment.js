@@ -112,7 +112,7 @@ const transitionState = (() => {
 
 export const updateFromGovPayEvent = (payment, govPay, logger) => {
   const status = transitionState(payment, govPayStatusToStatus(govPay, logger))
-  return common.validate({ ...payment, ...(status ? { status } : {}) }, paymentSchema)
+  return common.validate({ ...payment, ...(govPay._links ? { govPayLinks: govPay._links } : {}), ...(status ? { status } : {}) }, paymentSchema)
 }
 
 export const isPaid = (payment) => payment?.status === 'payment_succeeded'

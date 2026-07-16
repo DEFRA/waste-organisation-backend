@@ -355,7 +355,11 @@ describe('payment API', () => {
     expect(r1.statusCode).toBe(200)
 
     const r2 = await initiatePayment(server, organisationId, 'organisation name', from, to)
-    expect(r2.payload).toBe('{"message":"duplicate payment"}')
+
+    expect(JSON.parse(r2.payload)).toEqual({
+      message: 'duplicate payment',
+      payment: { paymentId: expect.any(String) }
+    })
   })
 })
 
