@@ -67,7 +67,7 @@ describe('payment domain', () => {
     expect(org.govPayLinks).toEqual(fakeLinks)
   })
 
-  test('payment is updated with new links', () => {
+  test('payment links left the same if not passed', () => {
     const fakeLinks = {
       next_url: {
         href: faker.internet.url(),
