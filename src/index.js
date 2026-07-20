@@ -8,10 +8,13 @@ import { config } from './config.js'
 
 process.env.TZ = config.get('bulkUpload.spreadsheetTimezone')
 
-await startServer(await createServer())
+// WARNING: sets up ssl context as a side effect, required by mongo db connections used in later components
+const server = await createServer()
 
 startWorker()
 const { stopScheduling } = await startTasks()
+
+await startServer(server)
 
 process.on('unhandledRejection', (error) => {
   const logger = createLogger()
