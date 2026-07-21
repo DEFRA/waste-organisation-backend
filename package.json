@@ -89,7 +89,11 @@
     "hapi-pulse": {
       "joi": "18.2.3"
     },
-    "eslint": { "minimatch": { "brace-expansion": "1.1.16" } }
+    "eslint": {
+      "minimatch": {
+        "brace-expansion": "1.1.16"
+      }
+    }
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "4.62.2"
