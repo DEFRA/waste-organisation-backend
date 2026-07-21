@@ -66,15 +66,14 @@ export const lockManager = async (db) => {
 }
 
 export const singletonRunner = (() => {
-  const lockManagers = {}
+  const lockManagers = new WeakMap()
   return async (db, label, logger, func, noLockFunc) => {
     logger.debug(`db ${db.databaseName}`)
-    if (lockManagers[db.databaseName] == null) {
-      lockManagers[db.databaseName] = await lockManager(db)
+    if (lockManagers.get(db) == null) {
+      lockManagers.set(db, await lockManager(db))
     }
-    const lm = lockManagers[db.databaseName]
-    logger.debug(`lock manager ${lm}`)
-    logger.debug(`Acquiring lock for ${label}`)
+    const lm = lockManagers.get(db)
+    logger.debug(`Acquiring lock for ${label} with lock manager ${lm}`)
     const lock = await acquireLock(lm, label, logger)
     if (!lock) {
       if (typeof noLockFunc === 'function') {

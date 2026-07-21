@@ -7,7 +7,7 @@ import cron from 'node-cron'
 import { updateWithOptimisticLock } from './repositories/index.js'
 import { findScheduledTaskByName, scheduledTasksCollection } from './repositories/scheduledTasks.js'
 import { mergeAndValidate } from './domain/scheduledTasks.js'
-import { acquireLock, lockManager } from './plugins/mongo-lock.js'
+import { singletonRunner } from './plugins/mongo-lock.js'
 
 export const constructMongoClient = async () => {
   const options = config.get('mongo')
@@ -38,35 +38,34 @@ export const scheduledJobs = {
   }
 }
 
-const constructScheduler = (db, logger, locker, jobName, jobSchedule, func) => {
+const constructScheduler = (db, logger, jobName, jobSchedule, func) => {
   const time = () => new Date().toTimeString().split(' ')[0]
   const task = cron.schedule(
     jobSchedule,
     async () => {
-      const lock = await acquireLock(locker, jobName, logger)
-      if (!lock) {
-        logger.info(`Job <${jobName}> already running - skipping at ${time()}`)
-        return
-      }
-      try {
-        logger.info(`Job <${jobName}> starting at ${time()}`)
-        const previousTask = await findScheduledTaskByName(db, jobName)
-        if (previousTask) {
-          await func(previousTask)
-        }
+      await singletonRunner(
+        db,
+        jobName,
+        logger,
+        async () => {
+          logger.info(`Job <${jobName}> starting at ${time()}`)
+          const previousTask = await findScheduledTaskByName(db, jobName)
+          if (previousTask) {
+            await func(previousTask)
+          }
 
-        await updateWithOptimisticLock(db.collection(scheduledTasksCollection), { name: jobName }, (dbTask) => {
-          const newData = mergeAndValidate(dbTask, {
-            name: jobName,
-            runCount: dbTask?.runCount ? dbTask.runCount + 1 : 1,
-            lastFinishedAt: new Date()
+          await updateWithOptimisticLock(db.collection(scheduledTasksCollection), { name: jobName }, (dbTask) => {
+            const newData = mergeAndValidate(dbTask, {
+              name: jobName,
+              runCount: dbTask?.runCount ? dbTask.runCount + 1 : 1,
+              lastFinishedAt: new Date()
+            })
+            return newData
           })
-          return newData
-        })
-        logger.info(`Job <${jobName}> succeeded at ${time()}`)
-      } finally {
-        await lock.free()
-      }
+          logger.info(`Job <${jobName}> succeeded at ${time()}`)
+        },
+        (label, logger) => logger.info(`Job <${label}> already running - skipping at ${time()}`)
+      )
     },
     {
       name: jobName
@@ -80,11 +79,11 @@ const constructScheduler = (db, logger, locker, jobName, jobSchedule, func) => {
   return task
 }
 
-const createTasks = async (jobs, logger, db, sqsClient, queueUrl, locker) => {
+const createTasks = async (jobs, logger, db, sqsClient, queueUrl) => {
   const tasks = []
   for (const [key, job] of Object.entries(jobs)) {
     logger.debug(`node-cron starting ${key} - ${job.schedule}`)
-    tasks.push(constructScheduler(db, logger, locker, job.name, job.schedule, job.func({ sqsClient, queueUrl, logger })))
+    tasks.push(constructScheduler(db, logger, job.name, job.schedule, job.func({ sqsClient, queueUrl, logger })))
   }
   return tasks
 }
@@ -98,8 +97,7 @@ export const startTasks = async (jobs) => {
       endpoint: config.get('aws.sqsEndpoint')
     })
     const db = await constructMongoClient()
-    const locker = await lockManager(db)
-    const tasks = await createTasks(jobs ?? scheduledJobs, logger, db, sqsClient, queueUrl, locker)
+    const tasks = await createTasks(jobs ?? scheduledJobs, logger, db, sqsClient, queueUrl)
     const stopScheduling = async () => {
       if (tasks && tasks.length > 0) {
         for (const task of tasks) {
