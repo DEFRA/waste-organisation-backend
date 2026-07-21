@@ -95,14 +95,31 @@ describe('scheduled tasks', () => {
   })
 
   it('should not run jobs if there is a lock in place', async () => {
+    const deferred = () => {
+      let res, rej
+      const promise = new Promise((resolve, reject) => {
+        res = resolve
+        rej = reject
+      })
+      return { promise, resolve: res, reject: rej }
+    }
+
     await scheduledTasks.insertMany([{ name: 'test4', runCount: 1, lastFinishedAt: '2026-07-10T16:07:48.699Z', createdAt: '2026-07-10T16:07:48.701Z' }])
-    const { startTasks, scheduleBackgroundProcess } = await import('./scheduledJobs.js')
+    const { startTasks } = await import('./scheduledJobs.js')
+    let promiseIndex = 0
+    const promises = [deferred(), deferred()]
+    const results = []
     const scheduledJobs = {
       TEST_TASK: {
         enabled: true,
         name: 'test4',
         schedule: '*/10 * * * * *',
-        func: scheduleBackgroundProcess
+        func: () => () => {
+          const p = promises[promiseIndex].promise
+          results.push(promiseIndex)
+          promiseIndex++
+          return p
+        }
       }
     }
     const { stopScheduling, tasks } = await startTasks(scheduledJobs)
@@ -110,10 +127,17 @@ describe('scheduled tasks', () => {
     expect(typeof stopScheduling).toBe('function')
 
     const task = tasks[0]
-    await task.execute()
-    await task.execute()
+    const t1 = task.execute()
+    const t2 = task.execute()
 
-    expect(mockSendMessage).toHaveBeenCalledOnce()
+    promises[0].resolve('fish')
+
+    await t2
+
+    promises[1].resolve('fish2')
+    await t1
+
+    expect(results).toEqual([0])
 
     await stopScheduling()
   })

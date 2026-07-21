@@ -1,5 +1,5 @@
 import { describe, expect } from 'vitest'
-import { waitForMongoLocksReady } from './scheduledJobs.js'
+import { waitForMongoLocksReady } from './plugins/mongo-lock.js'
 
 class TransientError extends Error {
   constructor(message, codeName, code) {

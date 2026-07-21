@@ -7,8 +7,7 @@ import cron from 'node-cron'
 import { updateWithOptimisticLock } from './repositories/index.js'
 import { findScheduledTaskByName, scheduledTasksCollection } from './repositories/scheduledTasks.js'
 import { mergeAndValidate } from './domain/scheduledTasks.js'
-import { LockManager } from 'mongo-locks'
-import { acquireLock } from './plugins/mongo-lock.js'
+import { acquireLock, lockManager } from './plugins/mongo-lock.js'
 
 export const constructMongoClient = async () => {
   const options = config.get('mongo')
@@ -46,23 +45,28 @@ const constructScheduler = (db, logger, locker, jobName, jobSchedule, func) => {
     async () => {
       const lock = await acquireLock(locker, jobName, logger)
       if (!lock) {
+        logger.info(`Job <${jobName}> already running - skipping at ${time()}`)
         return
       }
-      logger.info(`Job <${jobName}> starting at ${time()}`)
-      const previousTask = await findScheduledTaskByName(db, jobName)
-      if (previousTask) {
-        await func(previousTask)
-      }
+      try {
+        logger.info(`Job <${jobName}> starting at ${time()}`)
+        const previousTask = await findScheduledTaskByName(db, jobName)
+        if (previousTask) {
+          await func(previousTask)
+        }
 
-      await updateWithOptimisticLock(db.collection(scheduledTasksCollection), { name: jobName }, (dbTask) => {
-        const newData = mergeAndValidate(dbTask, {
-          name: jobName,
-          runCount: dbTask?.runCount ? dbTask.runCount + 1 : 1,
-          lastFinishedAt: new Date()
+        await updateWithOptimisticLock(db.collection(scheduledTasksCollection), { name: jobName }, (dbTask) => {
+          const newData = mergeAndValidate(dbTask, {
+            name: jobName,
+            runCount: dbTask?.runCount ? dbTask.runCount + 1 : 1,
+            lastFinishedAt: new Date()
+          })
+          return newData
         })
-        return newData
-      })
-      logger.info(`Job <${jobName}> succeeded at ${time()}`)
+        logger.info(`Job <${jobName}> succeeded at ${time()}`)
+      } finally {
+        await lock.free()
+      }
     },
     {
       name: jobName
@@ -94,8 +98,7 @@ export const startTasks = async (jobs) => {
       endpoint: config.get('aws.sqsEndpoint')
     })
     const db = await constructMongoClient()
-    const locker = new LockManager(db.collection('mongo-locks'))
-    await waitForMongoLocksReady(locker)
+    const locker = await lockManager(db)
     const tasks = await createTasks(jobs ?? scheduledJobs, logger, db, sqsClient, queueUrl, locker)
     const stopScheduling = async () => {
       if (tasks && tasks.length > 0) {
@@ -112,44 +115,4 @@ export const startTasks = async (jobs) => {
     logger.error(`Error defining scheduled jobs ${e} - ${e.stack}`)
     return { error: e }
   }
-}
-
-export async function waitForMongoLocksReady(locker, { timeoutMs = 15000, pollMs = 100 } = {}) {
-  const deadline = Date.now() + timeoutMs
-  let lastError
-
-  while (Date.now() < deadline) {
-    try {
-      const indexes = await locker.collection.indexes()
-
-      const hasActionUnique = indexes.some((i) => i.unique === true && i.key?.action === 1)
-      const hasTtl = indexes.some((i) => i.key?.expiresAt === 1 && i.expireAfterSeconds === 0)
-
-      if (hasActionUnique && hasTtl) {
-        return
-      }
-    } catch (err) {
-      // During startup, collection/index metadata can briefly be unavailable.
-      // Keep polling for known transient states.
-
-      const codeName = err?.codeName
-      const code = err?.code
-      const message = String(err?.message ?? '')
-      const transientErrorCode = 26
-
-      const isTransient =
-        codeName === 'NamespaceNotFound' || code === transientErrorCode || message.includes('ns does not exist') || message.includes('NamespaceNotFound')
-
-      if (!isTransient) {
-        throw err
-      }
-
-      lastError = err
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, pollMs))
-  }
-
-  const suffix = lastError ? ` Last error: ${lastError.message}` : ''
-  throw new Error(`mongo-locks unique action index was not ready within ${timeoutMs}ms.${suffix}`)
 }
