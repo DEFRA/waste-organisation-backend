@@ -79,7 +79,7 @@ export const singletonRunner = (() => {
       if (typeof noLockFunc === 'function') {
         noLockFunc(label, logger)
       }
-      return
+      return null
     }
     logger.debug(`Lock for ${label} acquired - running func`)
     try {

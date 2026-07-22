@@ -64,7 +64,7 @@ const constructScheduler = (db, logger, jobName, jobSchedule, func) => {
           })
           logger.info(`Job <${jobName}> succeeded at ${time()}`)
         },
-        (label, logger) => logger.info(`Job <${label}> already running - skipping at ${time()}`)
+        (label, l) => l.info(`Job <${label}> already running - skipping at ${time()}`)
       )
     },
     {

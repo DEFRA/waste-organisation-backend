@@ -53,7 +53,7 @@ async function createIndexes(db) {
 }
 
 export const runDbMigrations = async (db, logger) => {
-  const logMigrationMsg = (label, logger) => logger.warn(`${label} - db migrations not running due to lock`)
+  const logMigrationMsg = (label, l) => l.warn(`${label} - db migrations not running due to lock`)
   await singletonRunner(db, 'db migrations', logger, async () => await migrateDb(db, logger), logMigrationMsg)
 }
 
