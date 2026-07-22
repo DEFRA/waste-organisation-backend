@@ -141,4 +141,27 @@ describe('scheduled tasks', () => {
 
     await stopScheduling()
   })
+
+  it('should free the lock to allow tasks to execute sequentially', async () => {
+    await scheduledTasks.insertMany([{ name: 'test4', runCount: 1, lastFinishedAt: '2026-07-10T16:07:48.699Z', createdAt: '2026-07-10T16:07:48.701Z' }])
+    const { startTasks, scheduleBackgroundProcess } = await import('./scheduledJobs.js')
+    const scheduledJobs = {
+      TEST_TASK: {
+        enabled: true,
+        name: 'test4',
+        schedule: '*/10 * * * * *',
+        func: scheduleBackgroundProcess
+      }
+    }
+    const { stopScheduling, tasks } = await startTasks(scheduledJobs)
+
+    expect(typeof stopScheduling).toBe('function')
+
+    await tasks[0].execute()
+    await tasks[0].execute()
+
+    expect(mockSendMessage).toHaveBeenCalledTimes(2)
+
+    await stopScheduling()
+  })
 })
