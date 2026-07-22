@@ -3,6 +3,7 @@ import * as mockMongo from 'vitest-mongodb'
 import { config } from './config.js'
 import { MongoClient } from 'mongodb'
 import { scheduledTasksCollection } from './repositories/scheduledTasks.js'
+import { setTimeout } from 'timers/promises'
 
 describe('scheduled tasks', () => {
   const mockSqsClient = vi.fn()
@@ -109,12 +110,14 @@ describe('scheduled tasks', () => {
     let promiseIndex = 0
     const promises = [deferred(), deferred()]
     const results = []
+
     const scheduledJobs = {
       TEST_TASK: {
         enabled: true,
         name: 'test4',
-        schedule: '*/10 * * * * *',
+        schedule: '1 1 1 1 1 1', // schedule is not relevant when calling execute directly
         func: () => () => {
+          console.log('running func >>', promiseIndex)
           const p = promises[promiseIndex].promise
           results.push(promiseIndex)
           promiseIndex++
@@ -122,19 +125,24 @@ describe('scheduled tasks', () => {
         }
       }
     }
-    const { stopScheduling, tasks } = await startTasks(scheduledJobs)
+    const { stopScheduling, tasks } = await startTasks(scheduledJobs, console)
 
     expect(typeof stopScheduling).toBe('function')
 
     const task = tasks[0]
     const t1 = task.execute()
-    const t2 = task.execute()
+    while (promiseIndex !== 1) {
+      console.log('waiting for task 1 to acquire the lock so we can start task 2', promiseIndex)
+      await setTimeout(100)
+    }
 
+    // Task 2 - this should return without running the task - to ensure that more than one pod triggered by the same
+    //          clock event only execute the job once
+    await task.execute()
+
+    // allow task 1 to continue
     promises[0].resolve('fish')
-
-    await t2
-
-    promises[1].resolve('fish2')
+    // task one finishes and frees the lock
     await t1
 
     expect(results).toEqual([0])

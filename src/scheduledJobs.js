@@ -88,8 +88,8 @@ const createTasks = async (jobs, logger, db, sqsClient, queueUrl) => {
   return tasks
 }
 
-export const startTasks = async (jobs) => {
-  const logger = createLogger()
+export const startTasks = async (jobs, optionalLogger) => {
+  const logger = optionalLogger || createLogger()
   try {
     const queueUrl = config.get('aws.backgroundProcessQueue')
     const sqsClient = constructSqsClient({
