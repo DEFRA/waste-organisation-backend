@@ -3,7 +3,7 @@ import { createOrgIndexes, setMissingCreatedAtAndUpdatedAtOrganisationFields } f
 import { createSpreadsheetIndexes } from '../repositories/spreadsheet.js'
 import { createPaymentIndexes } from '../repositories/payment.js'
 import { createScheduledTasksIndexes } from '../repositories/scheduledTasks.js'
-import { lockManager, singletonRunner } from './mongo-lock.js'
+import { createLockManager, singletonRunner } from './mongo-lock.js'
 
 export const mongoDb = {
   plugin: {
@@ -18,7 +18,7 @@ export const mongoDb = {
 
       const databaseName = options.databaseName
       const db = client.db(databaseName)
-      const locker = await lockManager(db)
+      const locker = await createLockManager(db)
 
       // Note: DB indexes are created and migrations are done during plugin initialisation
       await createIndexes(db)
