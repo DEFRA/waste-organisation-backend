@@ -131,6 +131,7 @@ describe('scheduled tasks', () => {
 
     const task = tasks[0]
     const t1 = task.execute()
+    // eslint-disable-next-line no-unmodified-loop-condition
     while (promiseIndex !== 1) {
       console.log('waiting for task 1 to acquire the lock so we can start task 2', promiseIndex)
       await setTimeout(100)
