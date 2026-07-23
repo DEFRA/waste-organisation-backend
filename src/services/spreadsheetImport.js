@@ -23,7 +23,13 @@ import {
   updateCellContent as xlUpdateCellContent,
   workbookToByteArray as xlWorkbookToByteArray
 } from './spreadsheetImport/excel.js'
-import { compose, coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems, validateUniqueReference } from './spreadsheetImport/transforms.js'
+import {
+  compose,
+  coerceRegistrationNumberWhenReasonSupplied,
+  validateMovementHasWasteItems,
+  validateUniqueReference,
+  populateWholeItemDisposalCodes
+} from './spreadsheetImport/transforms.js'
 
 const firstRowOfDataInSpreadsheet = 9
 
@@ -163,7 +169,7 @@ const itemWorksheetName = '8. Waste item level'
 export const parseExcelFile = (() => {
   const movementColName = updateData(movementMapping)
   const itemColName = updateData(itemMapping)
-  const transform = compose(coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems)
+  const transform = compose(coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems, populateWholeItemDisposalCodes)
 
   return async (buffer, defraCustomerOrganisationId, logger, validateFn) => {
     const workbook = await readExcelBuffer(buffer)
