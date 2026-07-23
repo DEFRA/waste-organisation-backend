@@ -88,8 +88,9 @@ export const parseDisposalCodes = (() => {
   return (existing, data) => {
     const result = existing ?? []
     const entries = data.split(/;/)
-    if (result.length === 0 && entries.length === 1 && entries[0].match(isCodeRegex)) {
-      return [{ code: cleanCode(entries[0]), weight: 'whole item' }]
+    const e = entries[0]?.trim()
+    if (result.length === 0 && entries.length === 1 && e.match(isCodeRegex)) {
+      return [{ code: cleanCode(e), weight: 'whole item' }]
     } else {
       return result.concat(entries.map(parseDC))
     }
