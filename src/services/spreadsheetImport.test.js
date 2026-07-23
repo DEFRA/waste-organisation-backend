@@ -188,6 +188,32 @@ describe('some unit tests for parsers', () => {
         }
       ]
     })
+
+    expect(
+      populateWholeItemDisposalCodes({
+        yourUniqueReference: 'REF1',
+        wasteItems: [
+          {
+            weight: { amount: 100, isEstimate: true, metric: 'Tonnes' },
+            disposalOrRecoveryCodes: [
+              { code: 'R1', weight: 'whole item' },
+              { code: 'R1', weight: 'whole item' }
+            ]
+          }
+        ]
+      })
+    ).toEqual({
+      yourUniqueReference: 'REF1',
+      wasteItems: [
+        {
+          weight: { amount: 100, isEstimate: true, metric: 'Tonnes' },
+          disposalOrRecoveryCodes: [
+            { code: 'R1', weight: 'whole item' },
+            { code: 'R1', weight: 'whole item' }
+          ]
+        }
+      ]
+    })
   })
 
   test('parseComponentCodes', () => {
