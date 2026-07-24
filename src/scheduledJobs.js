@@ -31,7 +31,7 @@ export const scheduleBackgroundProcess =
 
 export const scheduledJobs = {
   REFUND_POLLING: {
-    enabled: true,
+    enabled: Boolean(config.get('govPay.apiKey')),
     name: 'Poll for refunds that have been initiated',
     schedule: config.get('govPay.refundPollingSchedule'),
     func: scheduleBackgroundProcess
@@ -82,8 +82,12 @@ const constructScheduler = (db, logger, jobName, jobSchedule, func) => {
 const createTasks = async (jobs, logger, db, sqsClient, queueUrl) => {
   const tasks = []
   for (const [key, job] of Object.entries(jobs)) {
-    logger.debug(`node-cron starting ${key} - ${job.schedule}`)
-    tasks.push(constructScheduler(db, logger, job.name, job.schedule, job.func({ sqsClient, queueUrl, logger })))
+    if (job.enabled) {
+      logger.debug(`node-cron starting ${key} - ${job.schedule}`)
+      tasks.push(constructScheduler(db, logger, job.name, job.schedule, job.func({ sqsClient, queueUrl, logger })))
+    } else {
+      logger.debug(`node-cron skiping ${key} (${job.schedule}) because it is disabled`)
+    }
   }
   return tasks
 }
