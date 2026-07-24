@@ -173,4 +173,21 @@ describe('scheduled tasks', () => {
 
     await stopScheduling()
   })
+
+  it('should not create disabled tasks', async () => {
+    const { startTasks, scheduleBackgroundProcess } = await import('./scheduledJobs.js')
+    const scheduledJobs = {
+      TEST_TASK: {
+        enabled: false,
+        name: 'test4',
+        schedule: '*/10 * * * * *',
+        func: scheduleBackgroundProcess
+      }
+    }
+    const { stopScheduling, tasks } = await startTasks(scheduledJobs)
+
+    expect(tasks).toEqual([])
+
+    await stopScheduling()
+  })
 })
