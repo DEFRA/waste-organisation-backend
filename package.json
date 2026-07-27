@@ -64,7 +64,7 @@
     "@faker-js/faker": "10.5.0",
     "@vitest/coverage-v8": "4.1.10",
     "dotenv": "17.4.2",
-    "eslint": "9.39.4",
+    "eslint": "9.39.5",
     "husky": "9.1.7",
     "neostandard": "0.13.0",
     "nodemon": "3.1.14",
@@ -91,8 +91,11 @@
       "joi": "18.2.3"
     },
     "eslint": {
+      "@eslint/config-array": "0.23.5"
+    },
+    "nodemon": {
       "minimatch": {
-        "brace-expansion": "1.1.16"
+        "brace-expansion": "5.0.8"
       }
     }
   },
