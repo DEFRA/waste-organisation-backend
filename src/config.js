@@ -124,7 +124,7 @@ export const config = convict({
       format: String,
       nullable: false,
       env: 'GOVPAY_API_KEY',
-      default: 'test123',
+      default: '',
       sensitive: true
     },
     serviceChargeAmountPence: {
