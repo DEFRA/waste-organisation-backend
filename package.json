@@ -90,9 +90,6 @@
     "hapi-pulse": {
       "joi": "18.2.3"
     },
-    "eslint": {
-      "@eslint/config-array": "0.23.5"
-    },
     "nodemon": {
       "minimatch": {
         "brace-expansion": "5.0.8"
