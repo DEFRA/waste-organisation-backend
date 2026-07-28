@@ -164,7 +164,9 @@ const getWorksheetMeta = (() => {
       itemWorksheetName: '8. Waste item level',
       movementColName: updateData(movementMapping),
       itemColName: updateData(itemMapping),
-      transform: compose(coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems)
+      transform: compose(coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems),
+      movementKeyCols: [3, 4, 5, 6, 7], // nosonar
+      itemKeyCols: [2, 3, 4, 5, 6, 7, 8, 9] // nosonar
     }
   }
   return (workbook) => {
@@ -190,15 +192,15 @@ export const parseExcelFile = (() => {
     }
     const movements = worksheetToArray({
       worksheet: workbook.getWorksheet(worksheetMetadata.movementWorksheetName),
-      keyCols: [3, 4, 5, 6, 7], // nosonar
-      minRow: 8,
+      keyCols: worksheetMetadata.movementKeyCols,
+      minRow: worksheetMetadata.firstRowOfDataInSpreadsheet - 1,
       maxCol: movementMapping.length,
       updateFn: worksheetMetadata.movementColName
     })
     const items = worksheetToArray({
       worksheet: workbook.getWorksheet(worksheetMetadata.itemWorksheetName),
-      keyCols: [2, 3, 4, 5, 6, 7, 8, 9], // nosonar
-      minRow: 8,
+      keyCols: worksheetMetadata.itemKeyCols,
+      minRow: worksheetMetadata.firstRowOfDataInSpreadsheet - 1,
       maxCol: itemMapping.length,
       updateFn: worksheetMetadata.itemColName
     })
