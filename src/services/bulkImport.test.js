@@ -14,6 +14,8 @@ const conf = {
   basicAuth: { username: 'waste-organisations-backend', password: '92fa681e-44b4-4b9c-8f7a-59c117757452' }
 }
 
+const worksheetMetadata = { firstRowOfDataInSpreadsheet: 9, movementWorksheetName: '7. Waste movement level', itemWorksheetName: '8. Waste item level' }
+
 describe.skip('bulk import api calls data - requires service dependencies to be running', () => {
   test('should import some data', { timeout: 50000 }, async () => {
     const { bulkImport } = await import('./bulkImport.js')
@@ -33,7 +35,7 @@ describe.skip('bulk import api calls data - requires service dependencies to be 
     expect(movements.length).toBe(1)
     // const res = await bulkImport(uuidv4().toString(), faker.string.uuid().toString(), console, conf)
     const res = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
-    const coords = wasteTrackingIdsToCoords(movements, rowNumbers, res.movements)
+    const coords = wasteTrackingIdsToCoords(movements, rowNumbers, res.movements, worksheetMetadata)
     expect(coords).toEqual([])
   })
 })
@@ -59,7 +61,7 @@ describe('mock bulk import data', () => {
     expect(errors).toEqual({ items: [], movements: [] })
     expect(hasErrors).toEqual(false)
     const bulkImportResult = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
-    const coords = wasteTrackingIdsToCoords(movements, rowNumbers, bulkImportResult.movements)
+    const coords = wasteTrackingIdsToCoords(movements, rowNumbers, bulkImportResult.movements, worksheetMetadata)
     expect(coords).toEqual({
       '7. Waste movement level': [
         {
@@ -307,7 +309,7 @@ describe('Error transforms bulk import data', () => {
     if (hasErrors) {
       expect({ fileName, errors, movements, rowNumbers, hasErrors }).toBe({})
     }
-    const e = transformBulkApiErrors(movements, rowNumbers, errs)
+    const e = transformBulkApiErrors(movements, rowNumbers, worksheetMetadata, errs)
     expect(e).toEqual(result)
     updateErrors(workbook, e)
     await workbook.xlsx.writeFile(fileName.replace(/xlsx/, 'with-api-errors.xlsx'))

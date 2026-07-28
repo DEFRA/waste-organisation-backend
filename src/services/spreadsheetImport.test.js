@@ -41,7 +41,7 @@ describe('some unit tests for parsers', () => {
           throw new Error('error')
         }
       })
-    ).toThrowError()
+    ).toThrow()
   })
 
   test('parseRegStatements', () => {
@@ -53,20 +53,20 @@ describe('some unit tests for parsers', () => {
           throw new Error('error')
         }
       })
-    ).toThrowError()
+    ).toThrow()
   })
 
   test('parseEstimate', () => {
     expect(parseEstimate(null, String('est'))).toEqual(true)
     expect(parseEstimate(null, 'act')).toEqual(false)
-    expect(() => parseEstimate(null, null)).toThrowError()
+    expect(() => parseEstimate(null, null)).toThrow()
   })
 
   test('parseBoolean', () => {
     expect(parseBoolean(null, String('true'))).toEqual(true)
     expect(parseBoolean(null, false)).toEqual(false)
     expect(parseBoolean(null, { formula: 'FALSE()' })).toEqual(false)
-    expect(() => parseBoolean(null, null)).toThrowError()
+    expect(() => parseBoolean(null, null)).toThrow()
   })
 
   test('parseDisposalCodes', () => {
@@ -138,12 +138,12 @@ describe('some unit tests for parsers', () => {
       { code: 'Arsenic', concentration: 300 },
       { code: 'Chromium', concentration: 0.42 }
     ])
-    expect(() => parseComponentCodes(null, 'ontehu')).toThrowError()
+    expect(() => parseComponentCodes(null, 'ontehu')).toThrow()
   })
 
   test('parseHazCodes', () => {
     expect(parseHazCodes(null, 'HP0120')).toEqual(['HP_120'])
-    expect(() => parseHazCodes(null, null)).toThrowError()
+    expect(() => parseHazCodes(null, null)).toThrow()
   })
 
   test('parseContainerType', () => {
@@ -179,12 +179,12 @@ describe('some unit tests for parsers', () => {
       { concentration: 7.1, name: 'def' }
     ])
     expect(parseComponentNames(null, 'abc=123')).toEqual([{ concentration: 123, name: 'abc' }])
-    expect(() => parseComponentNames(null, 'abc')).toThrowError()
+    expect(() => parseComponentNames(null, 'abc')).toThrow()
   })
 
   test('validateMovementHasWasteItems', () => {
-    expect(() => validateMovementHasWasteItems({ yourUniqueReference: 'fish' })).toThrowError()
-    expect(() => validateMovementHasWasteItems({ yourUniqueReference: 'fish', wasteItems: [] })).toThrowError()
+    expect(() => validateMovementHasWasteItems({ yourUniqueReference: 'fish' })).toThrow()
+    expect(() => validateMovementHasWasteItems({ yourUniqueReference: 'fish', wasteItems: [] })).toThrow()
     expect(validateMovementHasWasteItems({ yourUniqueReference: 'fish', wasteItems: [{}] })).toEqual({ yourUniqueReference: 'fish', wasteItems: [{}] })
   })
 })
@@ -198,7 +198,7 @@ describe('coerceRegistrationNumberWhenReasonSupplied', () => {
 
 describe('validateWasteTrackingIds', () => {
   test('returns errors when wasteTrackingId is missing', () => {
-    expect(() => validateWasteTrackingIdExists({ yourUniqueReference: 'REF2' })).toThrowError('Waste Tracking ID is required')
+    expect(() => validateWasteTrackingIdExists({ yourUniqueReference: 'REF2' })).toThrow('Waste Tracking ID is required')
   })
 
   test('returns movement when all wasteTrackingIds are present', () => {
@@ -209,7 +209,7 @@ describe('validateWasteTrackingIds', () => {
 
 describe('validateNoWasteTrackingIds', () => {
   test('returns errors when wasteTrackingId is present', () => {
-    expect(() => validateWasteTrackingIdMissing({ yourUniqueReference: 'REF2', wasteTrackingId: 'WTID123' })).toThrowError(
+    expect(() => validateWasteTrackingIdMissing({ yourUniqueReference: 'REF2', wasteTrackingId: 'WTID123' })).toThrow(
       'Waste Tracking ID must not be present on a create upload'
     )
   })
@@ -255,12 +255,14 @@ describe('some excel unit tests', () => {
 })
 
 describe('transformBulkApiErrors', () => {
+  const worksheetMetadata = { firstRowOfDataInSpreadsheet: 9, movementWorksheetName: '7. Waste movement level', itemWorksheetName: '8. Waste item level' }
+
   test('distinct should deduplicate identical errors for the same cell', () => {
     const movementData = [{ yourUniqueReference: 'REF1', carrier: { organisationName: 'Carrier Ltd' } }]
     const rowNumbers = { REF1: { movementRow: 9 } }
     const duplicateError = { key: '0.carrier.organisationName', message: '"0.carrier.organisationName" is required' }
 
-    const result = transformBulkApiErrors(movementData, rowNumbers, [duplicateError, duplicateError])
+    const result = transformBulkApiErrors(movementData, rowNumbers, worksheetMetadata, [duplicateError, duplicateError])
     const errors = result['7. Waste movement level']
     expect(errors).toHaveLength(1)
   })
@@ -276,7 +278,7 @@ describe('transformBulkApiErrors', () => {
       }
     ]
 
-    const result = transformBulkApiErrors(movementData, rowNumbers, apiErrors)
+    const result = transformBulkApiErrors(movementData, rowNumbers, worksheetMetadata, apiErrors)
     expect(result).toEqual({
       '7. Waste movement level': [
         {
@@ -318,7 +320,7 @@ describe('transformBulkApiErrors', () => {
       }
     ]
 
-    const result = transformBulkApiErrors(movementData, rowNumbers, apiError)
+    const result = transformBulkApiErrors(movementData, rowNumbers, worksheetMetadata, apiError)
     expect(result).toEqual({
       '8. Waste item level': [
         {
@@ -480,8 +482,9 @@ describe('excel proccessor', () => {
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
     const { workbook, movements, rowNumbers } = await parseExcelFile(buffer, 'org-id', logger)
     const bulkImportResult = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
+    const worksheetMetadata = { firstRowOfDataInSpreadsheet: 9, movementWorksheetName: '7. Waste movement level', itemWorksheetName: '8. Waste item level' }
 
-    const coords = wasteTrackingIdsToCoords(movements, rowNumbers, bulkImportResult.movements)
+    const coords = wasteTrackingIdsToCoords(movements, rowNumbers, bulkImportResult.movements, worksheetMetadata)
     expect(coords).toEqual({
       '7. Waste movement level': [
         {

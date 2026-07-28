@@ -25,8 +25,6 @@ import {
 } from './spreadsheetImport/excel.js'
 import { compose, coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems, validateUniqueReference } from './spreadsheetImport/transforms.js'
 
-const firstRowOfDataInSpreadsheet = 9
-
 const updateData = (cols) => {
   const updateIn = (data, path, v, func) => {
     if (path) {
@@ -51,7 +49,7 @@ const updateData = (cols) => {
   }
 }
 
-const joinWasteItems = (movements, items, defraCustomerOrganisationId, transform) => {
+const joinWasteItems = (movements, items, { firstRowOfDataInSpreadsheet, movementWorksheetName }, defraCustomerOrganisationId, transform) => {
   const is = Object.groupBy(items, (x) => x['yourUniqueReference'])
   const errors = { movements: [], items: [] }
   const wasteTrackingIdCol = 2
@@ -157,9 +155,6 @@ const itemMapping = [
   [['disposalOrRecoveryCodes'], parseDisposalCodes]
 ]
 
-const movementWorksheetName = '7. Waste movement level'
-const itemWorksheetName = '8. Waste item level'
-
 export const parseExcelFile = (() => {
   const movementColName = updateData(movementMapping)
   const itemColName = updateData(itemMapping)
@@ -170,30 +165,37 @@ export const parseExcelFile = (() => {
     if (workbook == null) {
       return { hasErrors: true }
     }
-    if (workbook.getWorksheet(movementWorksheetName) == null || workbook.getWorksheet(itemWorksheetName) == null) {
+    const worksheetMetadata = { firstRowOfDataInSpreadsheet: 9, movementWorksheetName: '7. Waste movement level', itemWorksheetName: '8. Waste item level' }
+    if (workbook.getWorksheet(worksheetMetadata.movementWorksheetName) == null || workbook.getWorksheet(worksheetMetadata.itemWorksheetName) == null) {
       logger.error(`Excel Workbook lacks the correct worksheets: ${workbook.worksheets.map((ws) => ws.name).join(', ')}`)
       return { hasErrors: true }
     }
     const movements = worksheetToArray({
-      worksheet: workbook.getWorksheet(movementWorksheetName),
+      worksheet: workbook.getWorksheet(worksheetMetadata.movementWorksheetName),
       keyCols: [3, 4, 5, 6, 7], // nosonar
       minRow: 8,
       maxCol: movementMapping.length,
       updateFn: movementColName
     })
     const items = worksheetToArray({
-      worksheet: workbook.getWorksheet(itemWorksheetName),
+      worksheet: workbook.getWorksheet(worksheetMetadata.itemWorksheetName),
       keyCols: [2, 3, 4, 5, 6, 7, 8, 9], // nosonar
       minRow: 8,
       maxCol: itemMapping.length,
       updateFn: itemColName
     })
-    const joined = joinWasteItems(movements.elements, items.elements, defraCustomerOrganisationId, compose(validateFn, transform, validateUniqueReference()))
+    const joined = joinWasteItems(
+      movements.elements,
+      items.elements,
+      worksheetMetadata,
+      defraCustomerOrganisationId,
+      compose(validateFn, transform, validateUniqueReference())
+    )
     logger.trace(`joined excel data: ${JSON.stringify(joined, null, 4)}`)
     if (movements.errors.length > 0 || items.errors.length > 0 || joined.errors.items.length > 0 || joined.errors.movements.length > 0) {
       const errors = {
-        [movementWorksheetName]: distinct(movements.errors.concat(joined.errors.movements)),
-        [itemWorksheetName]: distinct(items.errors.concat(joined.errors.items))
+        [worksheetMetadata.movementWorksheetName]: distinct(movements.errors.concat(joined.errors.movements)),
+        [worksheetMetadata.itemWorksheetName]: distinct(items.errors.concat(joined.errors.items))
       }
       xlUpdateErrors(workbook, errors)
       return {
@@ -201,10 +203,11 @@ export const parseExcelFile = (() => {
         errors,
         workbook,
         movements: joined.movements,
-        rowNumbers: joined.rowNumbers
+        rowNumbers: joined.rowNumbers,
+        worksheetMetadata
       }
     } else {
-      return { hasErrors: false, workbook, ...joined }
+      return { hasErrors: false, workbook, worksheetMetadata, ...joined }
     }
   }
 })()
@@ -238,7 +241,7 @@ const errorToCoords = (() => {
     })
   }
 
-  const wasteMovementErr = (movementData, idx, rowNumbers, errKeyPath, error) => {
+  const wasteMovementErr = (movementData, idx, rowNumbers, errKeyPath, error, movementWorksheetName) => {
     const ref = movementData[idx]?.yourUniqueReference
     const msg = cleanErrorMessage(error)
     const colNum = keyPathToColNum(errKeyPath.slice(1), movementMapping)
@@ -249,7 +252,7 @@ const errorToCoords = (() => {
     return cellError(colNum, rowNumbers[ref].movementRow, msg, movementWorksheetName, errorValue)
   }
 
-  const wasteItemErr = (movementData, movementIdx, itemIdx, rowNumbers, errKeyPath, error) => {
+  const wasteItemErr = (movementData, movementIdx, itemIdx, rowNumbers, errKeyPath, error, itemWorksheetName) => {
     const ref = movementData[movementIdx]?.yourUniqueReference
     const msg = cleanErrorMessage(error)
     // prettier-ignore
@@ -264,14 +267,14 @@ const errorToCoords = (() => {
 
   const movementRefCol = 3
 
-  return (movementData, rowNumbers, error) => {
+  return (movementData, rowNumbers, { firstRowOfDataInSpreadsheet, movementWorksheetName, itemWorksheetName }, error) => {
     const errKeyPath = error.key.split('.')
     if (errKeyPath[0].match(/^[0-9]+$/)) {
       let err
       if (errKeyPath[1] === 'wasteItems' && errKeyPath[2].match(/^[0-9]+$/)) {
-        err = wasteItemErr(movementData, errKeyPath[0], errKeyPath[2], rowNumbers, errKeyPath, error)
+        err = wasteItemErr(movementData, errKeyPath[0], errKeyPath[2], rowNumbers, errKeyPath, error, itemWorksheetName)
       } else {
-        err = wasteMovementErr(movementData, errKeyPath[0], rowNumbers, errKeyPath, error)
+        err = wasteMovementErr(movementData, errKeyPath[0], rowNumbers, errKeyPath, error, movementWorksheetName)
       }
       if (err?.coords) {
         return err
@@ -281,10 +284,10 @@ const errorToCoords = (() => {
   }
 })()
 
-export const transformBulkApiErrors = (movementData, rowNumbers, errors) =>
-  Object.groupBy(distinct(errors.map((e) => errorToCoords(movementData, rowNumbers, e))), ({ sheet }) => sheet)
+export const transformBulkApiErrors = (movementData, rowNumbers, worksheetMetadata, errors) =>
+  Object.groupBy(distinct(errors.map((e) => errorToCoords(movementData, rowNumbers, worksheetMetadata, e))), ({ sheet }) => sheet)
 
-export const wasteTrackingIdsToCoords = (movementData, rowNumbers, wasteTrackingIds) => {
+export const wasteTrackingIdsToCoords = (movementData, rowNumbers, wasteTrackingIds, { movementWorksheetName }) => {
   return {
     [movementWorksheetName]: wasteTrackingIds.map(({ wasteTrackingId }, idx) => {
       const { movementRow } = rowNumbers[movementData[idx]['yourUniqueReference']]

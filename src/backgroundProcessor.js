@@ -113,7 +113,7 @@ const processSpreadsheet = async (
   logger.info(`ReferenceNumber: ${referenceNumber} -- Fetching bytes: ${buffer.length}`)
   const isUpdate = uploadType === 'update'
   const validatorFn = isUpdate ? validateWasteTrackingIdExists : validateWasteTrackingIdMissing
-  const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, organisationId, logger, validatorFn)
+  const { hasErrors, workbook, movements, rowNumbers, errors, worksheetMetadata } = await parseExcelFile(buffer, organisationId, logger, validatorFn)
   if (hasErrors) {
     logger.warn(`ReferenceNumber: ${referenceNumber} -- Errors before sending to import API ${JSON.stringify(errors)}`)
     await sendInitialFailedEmail({ s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName, referenceNumber, filename, logger })
@@ -130,7 +130,7 @@ const processSpreadsheet = async (
   if (apiResponse.errors) {
     logger.warn(`ReferenceNumber: ${referenceNumber} -- Errors from import API ${JSON.stringify(apiResponse.errors)}`)
     logger.debug(`ReferenceNumber: ${referenceNumber} -- rowNumbers: ${JSON.stringify(rowNumbers)}`)
-    const errs = transformBulkApiErrors(movements, rowNumbers, apiResponse.errors)
+    const errs = transformBulkApiErrors(movements, rowNumbers, worksheetMetadata, apiResponse.errors)
     logger.debug(`ReferenceNumber: ${referenceNumber} -- Cells to update with errors: ${JSON.stringify(errs)}`)
     updateErrors(workbook, errs)
     const file = await workbookToByteArray(workbook)
@@ -142,7 +142,7 @@ const processSpreadsheet = async (
   if (apiResponse.movements) {
     logger.debug(`ReferenceNumber: ${referenceNumber} -- Movements returned from Bulk API`)
     if (!isUpdate) {
-      const coords = wasteTrackingIdsToCoords(movements, rowNumbers, apiResponse.movements)
+      const coords = wasteTrackingIdsToCoords(movements, rowNumbers, apiResponse.movements, worksheetMetadata)
       logger.debug(`ReferenceNumber: ${referenceNumber} -- Cells to update with waste tracking ids: ${JSON.stringify(coords)}`)
       updateCellContent(workbook, coords)
     }
@@ -157,7 +157,7 @@ const processSpreadsheet = async (
 
 export const processSpreadsheetJob = async (s3Client, message) => {
   const { s3Bucket, s3Key, encryptedEmail, encryptedName, organisationId, uploadId, uploadType, hasError, referenceNumber, filename, traceId } = message
-  const processJobLogger = createLogger(traceId)
+  const processJobLogger = console // createLogger(traceId)
   processJobLogger.info(`Message: ${JSON.stringify(message)}`)
   const decryptedEmail = decrypt(encryptedEmail, config.get('encryptionKey'))
   const decryptedName = decrypt(encryptedName, config.get('encryptionKey'))
