@@ -338,8 +338,10 @@ describe('excel proccessor', () => {
     vi.clearAllMocks()
   })
 
-  const mockWorksheet = (fakeData) => {
-    const fakeRows = [[], [], [], [], [], [], [], []].concat(fakeData)
+  const mockWorksheet = (fakeData, rowPadding = 8) => {
+    const fakeRows = Array.apply(null, Array(rowPadding))
+      .map(() => [])
+      .concat(fakeData)
     return {
       eachRow: (rowCallback) => {
         fakeRows.forEach((r, i) => {
@@ -373,11 +375,13 @@ describe('excel proccessor', () => {
       xlsx: { writeBuffer: async () => buffer, writeFile: async () => null },
       getWorksheet: (wsName) => {
         const w = {
+          bumf: mockWorksheet([[], ['', 'Report receipt of waste', '2', '3']], 0),
           '7. Waste movement level': mockWorksheet(movementData),
           '8. Waste item level': mockWorksheet(itemData)
         }
         return w[wsName]
-      }
+      },
+      worksheets: [{ name: 'bumf' }, { name: '7. Waste movement level' }, { name: '8. Waste item level' }]
     })
   }
 
@@ -535,6 +539,7 @@ describe('excel proccessor', () => {
     })
 
     const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, mockTransform)
+
     expect(hasErrors).toEqual(true)
     expect(mockTransform).toHaveBeenCalled()
     expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
@@ -838,9 +843,10 @@ describe('excel proccessor', () => {
     ]
     vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue({
       xlsx: { writeBuffer: async () => buffer, writeFile: async () => null },
-      worksheets: [{ name: 'renamed - Waste movement level' }, { name: 'renamed - Waste item level' }],
+      worksheets: [{ name: 'bumf' }, { name: 'renamed - Waste movement level' }, { name: 'renamed - Waste item level' }],
       getWorksheet: (wsName) => {
         const w = {
+          bumf: mockWorksheet([['', 'Report receipt of waste']], 1),
           'renamed - Waste movement level': mockWorksheet(movementData),
           'renamed - Waste item level': mockWorksheet(itemData)
         }

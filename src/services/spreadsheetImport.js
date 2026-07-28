@@ -19,6 +19,7 @@ import {
   cellError,
   collectCellErrors,
   worksheetToArray,
+  cellValueText,
   updateErrors as xlUpdateErrors,
   updateCellContent as xlUpdateCellContent,
   workbookToByteArray as xlWorkbookToByteArray
@@ -155,17 +156,34 @@ const itemMapping = [
   [['disposalOrRecoveryCodes'], parseDisposalCodes]
 ]
 
-export const parseExcelFile = (() => {
-  const movementColName = updateData(movementMapping)
-  const itemColName = updateData(itemMapping)
-  const transform = compose(coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems)
+const getWorksheetMeta = (() => {
+  const knownTemplateVersions = {
+    'Report receipt of waste': {
+      firstRowOfDataInSpreadsheet: 9,
+      movementWorksheetName: '7. Waste movement level',
+      itemWorksheetName: '8. Waste item level',
+      movementColName: updateData(movementMapping),
+      itemColName: updateData(itemMapping),
+      transform: compose(coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems)
+    }
+  }
+  return (workbook) => {
+    const templateKey = cellValueText(workbook.getWorksheet(workbook.worksheets[0].name).getRow(1).getCell(1).value)
+    const metadata = knownTemplateVersions[templateKey]
+    if (metadata == null) {
+      throw new Error(`Unknown template key - '${templateKey}' taken from worksheet named '${workbook.worksheets[0].name}'`)
+    }
+    return metadata
+  }
+})()
 
+export const parseExcelFile = (() => {
   return async (buffer, defraCustomerOrganisationId, logger, validateFn) => {
     const workbook = await readExcelBuffer(buffer)
     if (workbook == null) {
       return { hasErrors: true }
     }
-    const worksheetMetadata = { firstRowOfDataInSpreadsheet: 9, movementWorksheetName: '7. Waste movement level', itemWorksheetName: '8. Waste item level' }
+    const worksheetMetadata = getWorksheetMeta(workbook)
     if (workbook.getWorksheet(worksheetMetadata.movementWorksheetName) == null || workbook.getWorksheet(worksheetMetadata.itemWorksheetName) == null) {
       logger.error(`Excel Workbook lacks the correct worksheets: ${workbook.worksheets.map((ws) => ws.name).join(', ')}`)
       return { hasErrors: true }
@@ -175,21 +193,21 @@ export const parseExcelFile = (() => {
       keyCols: [3, 4, 5, 6, 7], // nosonar
       minRow: 8,
       maxCol: movementMapping.length,
-      updateFn: movementColName
+      updateFn: worksheetMetadata.movementColName
     })
     const items = worksheetToArray({
       worksheet: workbook.getWorksheet(worksheetMetadata.itemWorksheetName),
       keyCols: [2, 3, 4, 5, 6, 7, 8, 9], // nosonar
       minRow: 8,
       maxCol: itemMapping.length,
-      updateFn: itemColName
+      updateFn: worksheetMetadata.itemColName
     })
     const joined = joinWasteItems(
       movements.elements,
       items.elements,
       worksheetMetadata,
       defraCustomerOrganisationId,
-      compose(validateFn, transform, validateUniqueReference())
+      compose(validateFn, worksheetMetadata.transform, validateUniqueReference()) // TODO can move validateUniqueReference() into spreadsheet -> metadata call?
     )
     logger.trace(`joined excel data: ${JSON.stringify(joined, null, 4)}`)
     if (movements.errors.length > 0 || items.errors.length > 0 || joined.errors.items.length > 0 || joined.errors.movements.length > 0) {
