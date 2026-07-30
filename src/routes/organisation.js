@@ -88,7 +88,7 @@ export const organisations = [
 
             if (!dbOrg._id) {
               transactionType = 'created'
-              paramOrg = { ...(request?.payload?.initialValues ?? {}), ...paramOrg }
+              paramOrg = { ...request?.payload?.initialValues, ...paramOrg }
             }
 
             const organisationId = request.params.organisationId
