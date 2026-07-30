@@ -7,8 +7,7 @@ import cron from 'node-cron'
 import { updateWithOptimisticLock } from './repositories/index.js'
 import { findScheduledTaskByName, scheduledTasksCollection } from './repositories/scheduledTasks.js'
 import { mergeAndValidate } from './domain/scheduledTasks.js'
-import { LockManager } from 'mongo-locks'
-import { acquireLock } from './plugins/mongo-lock.js'
+import { singletonRunner } from './plugins/mongo-lock.js'
 
 export const constructMongoClient = async () => {
   const options = config.get('mongo')
@@ -32,37 +31,41 @@ export const scheduleBackgroundProcess =
 
 export const scheduledJobs = {
   REFUND_POLLING: {
-    enabled: true,
+    enabled: Boolean(config.get('govPay.apiKey')),
     name: 'Poll for refunds that have been initiated',
     schedule: config.get('govPay.refundPollingSchedule'),
     func: scheduleBackgroundProcess
   }
 }
 
-const constructScheduler = (db, logger, locker, jobName, jobSchedule, func) => {
+const constructScheduler = (db, logger, jobName, jobSchedule, func) => {
   const time = () => new Date().toTimeString().split(' ')[0]
   const task = cron.schedule(
     jobSchedule,
     async () => {
-      const lock = await acquireLock(locker, jobName, logger)
-      if (!lock) {
-        return
-      }
-      logger.info(`Job <${jobName}> starting at ${time()}`)
-      const previousTask = await findScheduledTaskByName(db, jobName)
-      if (previousTask) {
-        await func(previousTask)
-      }
+      await singletonRunner(
+        db,
+        jobName,
+        logger,
+        async () => {
+          logger.info(`Job <${jobName}> starting at ${time()}`)
+          const previousTask = await findScheduledTaskByName(db, jobName)
+          if (previousTask) {
+            await func(previousTask)
+          }
 
-      await updateWithOptimisticLock(db.collection(scheduledTasksCollection), { name: jobName }, (dbTask) => {
-        const newData = mergeAndValidate(dbTask, {
-          name: jobName,
-          runCount: dbTask?.runCount ? dbTask.runCount + 1 : 1,
-          lastFinishedAt: new Date()
-        })
-        return newData
-      })
-      logger.info(`Job <${jobName}> succeeded at ${time()}`)
+          await updateWithOptimisticLock(db.collection(scheduledTasksCollection), { name: jobName }, (dbTask) => {
+            const newData = mergeAndValidate(dbTask, {
+              name: jobName,
+              runCount: dbTask?.runCount ? dbTask.runCount + 1 : 1,
+              lastFinishedAt: new Date()
+            })
+            return newData
+          })
+          logger.info(`Job <${jobName}> succeeded at ${time()}`)
+        },
+        (label, l) => l.info(`Job <${label}> already running - skipping at ${time()}`)
+      )
     },
     {
       name: jobName
@@ -76,17 +79,21 @@ const constructScheduler = (db, logger, locker, jobName, jobSchedule, func) => {
   return task
 }
 
-const createTasks = async (jobs, logger, db, sqsClient, queueUrl, locker) => {
+const createTasks = async (jobs, logger, db, sqsClient, queueUrl) => {
   const tasks = []
   for (const [key, job] of Object.entries(jobs)) {
-    logger.debug(`node-cron starting ${key} - ${job.schedule}`)
-    tasks.push(constructScheduler(db, logger, locker, job.name, job.schedule, job.func({ sqsClient, queueUrl, logger })))
+    if (job.enabled) {
+      logger.debug(`node-cron starting ${key} - ${job.schedule}`)
+      tasks.push(constructScheduler(db, logger, job.name, job.schedule, job.func({ sqsClient, queueUrl, logger })))
+    } else {
+      logger.debug(`node-cron skiping ${key} (${job.schedule}) because it is disabled`)
+    }
   }
   return tasks
 }
 
-export const startTasks = async (jobs) => {
-  const logger = createLogger()
+export const startTasks = async (jobs, optionalLogger) => {
+  const logger = optionalLogger || createLogger()
   try {
     const queueUrl = config.get('aws.backgroundProcessQueue')
     const sqsClient = constructSqsClient({
@@ -94,9 +101,7 @@ export const startTasks = async (jobs) => {
       endpoint: config.get('aws.sqsEndpoint')
     })
     const db = await constructMongoClient()
-    const locker = new LockManager(db.collection('mongo-locks'))
-    await waitForMongoLocksReady(locker)
-    const tasks = await createTasks(jobs ?? scheduledJobs, logger, db, sqsClient, queueUrl, locker)
+    const tasks = await createTasks(jobs ?? scheduledJobs, logger, db, sqsClient, queueUrl)
     const stopScheduling = async () => {
       if (tasks && tasks.length > 0) {
         for (const task of tasks) {
@@ -112,44 +117,4 @@ export const startTasks = async (jobs) => {
     logger.error(`Error defining scheduled jobs ${e} - ${e.stack}`)
     return { error: e }
   }
-}
-
-export async function waitForMongoLocksReady(locker, { timeoutMs = 15000, pollMs = 100 } = {}) {
-  const deadline = Date.now() + timeoutMs
-  let lastError
-
-  while (Date.now() < deadline) {
-    try {
-      const indexes = await locker.collection.indexes()
-
-      const hasActionUnique = indexes.some((i) => i.unique === true && i.key?.action === 1)
-      const hasTtl = indexes.some((i) => i.key?.expiresAt === 1 && i.expireAfterSeconds === 0)
-
-      if (hasActionUnique && hasTtl) {
-        return
-      }
-    } catch (err) {
-      // During startup, collection/index metadata can briefly be unavailable.
-      // Keep polling for known transient states.
-
-      const codeName = err?.codeName
-      const code = err?.code
-      const message = String(err?.message ?? '')
-      const transientErrorCode = 26
-
-      const isTransient =
-        codeName === 'NamespaceNotFound' || code === transientErrorCode || message.includes('ns does not exist') || message.includes('NamespaceNotFound')
-
-      if (!isTransient) {
-        throw err
-      }
-
-      lastError = err
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, pollMs))
-  }
-
-  const suffix = lastError ? ` Last error: ${lastError.message}` : ''
-  throw new Error(`mongo-locks unique action index was not ready within ${timeoutMs}ms.${suffix}`)
 }

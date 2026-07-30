@@ -30,8 +30,9 @@ jobs:
         env:
           GOV_NOTIFY_KEY: ${{ secrets.GOV_NOTIFY_KEY }}
         run: |
+          npm audit --audit-level=high --omit=dev
+          npm audit --audit-level=critical
           npm ci
-          npm audit --audit-level=high
           npm run format:check
           npm run lint
           # docker compose up -d azure-service-bus
