@@ -79,6 +79,43 @@ describe('organisation API', () => {
     expect(statusCode).toBe(200)
   })
 
+  test('Should only set initialValues on create', async () => {
+    const organisationId = '789'
+    const o = () => ({
+      organisation: { name: 'Mr Dabolina', organisationId },
+      urlParams: { userId: 123, organisationId }
+    })
+    const req = async (initialValues) => {
+      const { organisation, urlParams } = o()
+      return await server.inject({
+        method: 'PUT',
+        headers: {
+          'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+        },
+        url: pathTo(paths.putOrganisation, urlParams),
+        payload: { organisation, initialValues }
+      })
+    }
+    const r1 = await req({ isLocalAuthority: true })
+    expect(r1.statusCode).toBe(200)
+    expect(r1.result.organisation.isLocalAuthority).toBe(true)
+    const { result, statusCode } = await req({ isLocalAuthority: false })
+    expect(result).toEqual({
+      message: 'success',
+      organisation: {
+        createdAt: expect.any(Date),
+        updatedAt: expect.any(Date),
+        name: 'Mr Dabolina',
+        organisationId,
+        users: ['123'],
+        disableAfter: null,
+        isLocalAuthority: true,
+        version: 2
+      }
+    })
+    expect(statusCode).toBe(200)
+  })
+
   describe('Should GET org', async () => {
     const organisationId = randomUUID()
     beforeAll(async () => {

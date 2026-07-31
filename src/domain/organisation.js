@@ -32,7 +32,8 @@ export const orgSchemaWithoutApiCodes = joi.object({
   isWasteReceiver: joi.boolean(),
   isDisabled: joi.boolean(),
   disabledReason: joi.string().optional().allow(null),
-  disableAfter: joi.date().allow(null)
+  disableAfter: joi.date().allow(null),
+  isLocalAuthority: joi.boolean().optional()
 })
 
 export const orgSchema = orgSchemaWithoutApiCodes.append({

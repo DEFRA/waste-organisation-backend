@@ -84,8 +84,11 @@ export const organisations = [
           request.db.collection(orgCollection),
           { organisationId: request.params.organisationId },
           (dbOrg) => {
+            let paramOrg = request?.payload?.organisation
+
             if (!dbOrg._id) {
               transactionType = 'created'
+              paramOrg = { ...request?.payload?.initialValues, ...paramOrg }
             }
 
             const organisationId = request.params.organisationId
@@ -95,7 +98,7 @@ export const organisations = [
               {
                 organisationId,
                 userId,
-                ...request?.payload?.organisation
+                ...paramOrg
               },
               organisationId,
               userId
