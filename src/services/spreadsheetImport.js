@@ -24,7 +24,13 @@ import {
   updateCellContent as xlUpdateCellContent,
   workbookToByteArray as xlWorkbookToByteArray
 } from './spreadsheetImport/excel.js'
-import { compose, coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems, validateUniqueReference } from './spreadsheetImport/transforms.js'
+import {
+  compose,
+  coerceRegistrationNumberWhenReasonSupplied,
+  validateMovementHasWasteItems,
+  validateUniqueReference,
+  populateWholeItemDisposalCodes
+} from './spreadsheetImport/transforms.js'
 
 const updateData = (cols) => {
   const updateIn = (data, path, v, func) => {
@@ -164,7 +170,7 @@ const getWorksheetMeta = (() => {
       itemWorksheetName: '8. Waste item level',
       movementColName: updateData(movementMapping),
       itemColName: updateData(itemMapping),
-      transform: compose(coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems),
+      transform: compose(coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems, populateWholeItemDisposalCodes),
       movementKeyCols: [3, 4, 5, 6, 7], // nosonar
       itemKeyCols: [2, 3, 4, 5, 6, 7, 8, 9] // nosonar
     }

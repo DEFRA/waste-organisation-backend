@@ -42,6 +42,24 @@ export const validateUniqueReference = () => {
   }
 }
 
+export const populateWholeItemDisposalCodes = (movement) => {
+  const wasteItems =
+    movement?.wasteItems?.map((i) => {
+      if (i?.disposalOrRecoveryCodes?.length === 1) {
+        const disposalOrRecoveryCodes = i.disposalOrRecoveryCodes.map((c) => {
+          if (c.weight === `whole item`) {
+            c.weight = i.weight
+          }
+          return c
+        })
+        return { ...i, disposalOrRecoveryCodes }
+      } else {
+        return i
+      }
+    }) ?? []
+  return { ...movement, wasteItems }
+}
+
 const flattenErrors = (e) => {
   if (e.collectedErrors) {
     return e.collectedErrors.flatMap(flattenErrors)

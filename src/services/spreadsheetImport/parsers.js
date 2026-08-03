@@ -71,12 +71,14 @@ export const parseBoolean = (() => {
 
 export const parseDisposalCodes = (() => {
   const metricConversions = { grams: 'Grams', kilograms: 'Kilograms', tonnes: 'Tonnes', g: 'Grams', kg: 'Kilograms', T: 'Tonnes' }
+  const isCodeRegex = /^([A-Z])([0_ ]*)([1-9][0-9]*)$/
+  const cleanCode = (codeStr) => codeStr.replace(isCodeRegex, '$1$3')
   const parseDC = (el) => {
     const [codeStr, amountStr, metricStr, est] = el.split(/=/).map((x) => x.trim())
     if (est) {
       const isEstimate = parseEstimate(null, est)
       const amount = amountStr?.match(/^[0-9,.]+$/) ? Number(amountStr.replaceAll(/,/g, '')) : amountStr
-      const code = codeStr.replace(/^([A-Z])([0_ ]*)([1-9][0-9]*)$/, '$1$3')
+      const code = cleanCode(codeStr)
       const metric = metricConversions[metricStr?.toLowerCase()] ?? metricStr
       return { code, weight: { metric, amount, isEstimate } }
     } else {
@@ -85,7 +87,13 @@ export const parseDisposalCodes = (() => {
   }
   return (existing, data) => {
     const result = existing ?? []
-    return result.concat(data.split(/;/).map(parseDC))
+    const entries = data.split(/;/)
+    const e = entries[0]?.trim()
+    if (result.length === 0 && entries.length === 1 && e.match(isCodeRegex)) {
+      return [{ code: cleanCode(e), weight: 'whole item' }]
+    } else {
+      return result.concat(entries.map(parseDC))
+    }
   }
 })()
 

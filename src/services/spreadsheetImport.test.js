@@ -18,7 +18,8 @@ import {
   coerceRegistrationNumberWhenReasonSupplied,
   validateMovementHasWasteItems,
   validateWasteTrackingIdExists,
-  validateWasteTrackingIdMissing
+  validateWasteTrackingIdMissing,
+  populateWholeItemDisposalCodes
 } from './spreadsheetImport/transforms.js'
 import { expect } from 'vitest'
 import * as excelImportModule from './spreadsheetImport/excel.js'
@@ -110,6 +111,24 @@ describe('some unit tests for parsers', () => {
         }
       }
     ])
+    expect(parseDisposalCodes(null, 'R01 = 10,000.95 = Tonnes = Est; R02 = 10,000.95 = Tonnes = Est')).toEqual([
+      {
+        code: 'R1',
+        weight: {
+          amount: 10000.95,
+          isEstimate: true,
+          metric: 'Tonnes'
+        }
+      },
+      {
+        code: 'R2',
+        weight: {
+          amount: 10000.95,
+          isEstimate: true,
+          metric: 'Tonnes'
+        }
+      }
+    ])
     expect(parseDisposalCodes(null, 'R01 = fish = Tonnes = Est')).toEqual([
       {
         code: 'R1',
@@ -120,6 +139,81 @@ describe('some unit tests for parsers', () => {
         }
       }
     ])
+  })
+
+  test('parseDisposalCodes with defaults', () => {
+    expect(parseDisposalCodes(null, 'R_ 01')).toEqual([
+      {
+        code: 'R1',
+        weight: 'whole item'
+      }
+    ])
+    expect(() => parseDisposalCodes(null, 'R01; R02')).toThrow(/Cannot parse disposal.*/)
+    expect(
+      populateWholeItemDisposalCodes({
+        yourUniqueReference: 'REF1',
+        wasteItems: [
+          {
+            weight: { amount: 100, isEstimate: true, metric: 'Tonnes' },
+            disposalOrRecoveryCodes: [{ code: 'R1', weight: 'whole item' }]
+          }
+        ]
+      })
+    ).toEqual({
+      yourUniqueReference: 'REF1',
+      wasteItems: [
+        {
+          weight: { amount: 100, isEstimate: true, metric: 'Tonnes' },
+          disposalOrRecoveryCodes: [{ code: 'R1', weight: { amount: 100, isEstimate: true, metric: 'Tonnes' } }]
+        }
+      ]
+    })
+
+    expect(
+      populateWholeItemDisposalCodes({
+        yourUniqueReference: 'REF1',
+        wasteItems: [
+          {
+            weight: { amount: 100, isEstimate: true, metric: 'Tonnes' },
+            disposalOrRecoveryCodes: [{ code: 'R1', weight: {} }]
+          }
+        ]
+      })
+    ).toEqual({
+      yourUniqueReference: 'REF1',
+      wasteItems: [
+        {
+          weight: { amount: 100, isEstimate: true, metric: 'Tonnes' },
+          disposalOrRecoveryCodes: [{ code: 'R1', weight: {} }]
+        }
+      ]
+    })
+
+    expect(
+      populateWholeItemDisposalCodes({
+        yourUniqueReference: 'REF1',
+        wasteItems: [
+          {
+            weight: { amount: 100, isEstimate: true, metric: 'Tonnes' },
+            disposalOrRecoveryCodes: [
+              { code: 'R1', weight: 'whole item' },
+              { code: 'R1', weight: 'whole item' }
+            ]
+          }
+        ]
+      })
+    ).toEqual({
+      yourUniqueReference: 'REF1',
+      wasteItems: [
+        {
+          weight: { amount: 100, isEstimate: true, metric: 'Tonnes' },
+          disposalOrRecoveryCodes: [
+            { code: 'R1', weight: 'whole item' },
+            { code: 'R1', weight: 'whole item' }
+          ]
+        }
+      ]
+    })
   })
 
   test('parseComponentCodes', () => {
@@ -645,7 +739,7 @@ describe('excel proccessor', () => {
           'HP14',
           '',
           'PROVIDED_WITH_WASTE',
-          'R13'
+          'R13;R14'
         ],
         [
           '',
@@ -690,17 +784,12 @@ describe('excel proccessor', () => {
         },
         {
           coords: [18, 9],
-          errorValue: 'R13',
+          errorValue: 'R13;R14',
           message: 'Cannot parse disposal / recovery codes (R13)'
         },
         {
           coords: [2, 10],
           message: 'Please provide a value'
-        },
-        {
-          coords: [18, 10],
-          errorValue: 'D15',
-          message: 'Cannot parse disposal / recovery codes (D15)'
         }
       ]
     })
@@ -801,7 +890,7 @@ describe('excel proccessor', () => {
           'N/H',
           '',
           'PROVIDED_WITH_WASTE',
-          'D15'
+          'D15qqq'
         ]
       ]
     )
@@ -821,14 +910,9 @@ describe('excel proccessor', () => {
       ],
       '8. Waste item level': [
         {
-          coords: [18, 9],
-          errorValue: 'R13',
-          message: 'Cannot parse disposal / recovery codes (R13)'
-        },
-        {
           coords: [18, 10],
-          errorValue: 'D15',
-          message: 'Cannot parse disposal / recovery codes (D15)'
+          errorValue: 'D15qqq',
+          message: 'Cannot parse disposal / recovery codes (D15qqq)'
         }
       ]
     })
