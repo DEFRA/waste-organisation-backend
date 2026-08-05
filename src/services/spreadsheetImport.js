@@ -163,25 +163,62 @@ const itemMapping = [
 ]
 
 const getWorksheetMeta = (() => {
+  // TODO move 'yourUniqueReference' into here?
   const knownTemplateVersions = {
     'Report receipt of waste': {
-      firstRowOfDataInSpreadsheet: 9,
-      movementWorksheetName: '7. Waste movement level',
-      itemWorksheetName: '8. Waste item level',
-      movementColName: updateData(movementMapping),
-      itemColName: updateData(itemMapping),
-      transform: compose(coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems, populateWholeItemDisposalCodes),
-      movementKeyCols: [3, 4, 5, 6, 7], // nosonar
-      itemKeyCols: [2, 3, 4, 5, 6, 7, 8, 9] // nosonar
-    }
+      worksheets: {
+        '7. Waste movement level': {
+          target: 'movements',
+          firstRowOfData: 9,
+          worksheetName: '7. Waste movement level',
+          updateFn: updateData(movementMapping),
+          maxCol: movementMapping.length,
+          keyCols: [3, 4, 5, 6, 7] // nosonar
+        },
+        '8. Waste item level': {
+          target: 'items',
+          firstRowOfData: 9,
+          worksheetName: '8. Waste item level',
+          updateFn: updateData(itemMapping),
+          maxCol: itemMapping.length,
+          keyCols: [2, 3, 4, 5, 6, 7, 8, 9] // nosonar
+        }
+      },
+      joins: [{}],
+      transform: (validateFn) =>
+        compose(
+          validateFn,
+          coerceRegistrationNumberWhenReasonSupplied,
+          validateMovementHasWasteItems,
+          populateWholeItemDisposalCodes,
+          validateUniqueReference()
+        ),
+      errors: { '7. Waste movement level': 1, '8. Waste item level': 1 },
+      copyFromResult: [{ source: ['wasteTrackingId'], target: { worksheetName: '7. Waste movement level', col: 2 } }],
+      version: '1'
+    },
+    'Report receipt of waste v1.2': {}
   }
-  return (workbook) => {
+  return (workbook, validateFn, logger) => {
     const templateKey = cellValueText(workbook.getWorksheet(workbook.worksheets[0].name).getRow(1).getCell(1).value)
     const metadata = knownTemplateVersions[templateKey]
     if (metadata == null) {
-      throw new Error(`Unknown template key - '${templateKey}' taken from worksheet named '${workbook.worksheets[0].name}'`)
+      logger.error(
+        `Unknown template key - '${templateKey}' taken from worksheet named '${workbook.worksheets[0].name}'` +
+          ` with worksheets: ${workbook.worksheets.map((ws) => ws.name).join(', ')}`
+      )
+      return null
     }
-    return metadata
+    if (Object.keys(metadata.worksheets).some((w) => workbook.getWorksheet(w) == null)) {
+      logger.error(`Excel Workbook lacks the correct worksheets: ${workbook.worksheets.map((ws) => ws.name).join(', ')}`)
+      return null
+    } else {
+      logger.info(
+        `Selecting template version ${metadata.version} from template key ${templateKey}` +
+          ` with worksheets: ${workbook.worksheets.map((ws) => ws.name).join(', ')}`
+      )
+    }
+    return { ...metadata, transform: metadata.transform(validateFn) }
   }
 })()
 
@@ -191,39 +228,40 @@ export const parseExcelFile = (() => {
     if (workbook == null) {
       return { hasErrors: true }
     }
-    const worksheetMetadata = getWorksheetMeta(workbook)
-    if (workbook.getWorksheet(worksheetMetadata.movementWorksheetName) == null || workbook.getWorksheet(worksheetMetadata.itemWorksheetName) == null) {
-      logger.error(`Excel Workbook lacks the correct worksheets: ${workbook.worksheets.map((ws) => ws.name).join(', ')}`)
+    const worksheetMetadata = getWorksheetMeta(workbook, validateFn, logger)
+    if (worksheetMetadata == null) {
       return { hasErrors: true }
     }
-    const movements = worksheetToArray({
-      worksheet: workbook.getWorksheet(worksheetMetadata.movementWorksheetName),
-      keyCols: worksheetMetadata.movementKeyCols,
-      minRow: worksheetMetadata.firstRowOfDataInSpreadsheet - 1,
-      maxCol: movementMapping.length,
-      updateFn: worksheetMetadata.movementColName
-    })
-    const items = worksheetToArray({
-      worksheet: workbook.getWorksheet(worksheetMetadata.itemWorksheetName),
-      keyCols: worksheetMetadata.itemKeyCols,
-      minRow: worksheetMetadata.firstRowOfDataInSpreadsheet - 1,
-      maxCol: itemMapping.length,
-      updateFn: worksheetMetadata.itemColName
-    })
+    const flatData = Object.values(worksheetMetadata.worksheets).reduce((result, metadata) => {
+      result[metadata.target] = worksheetToArray({
+        worksheet: workbook.getWorksheet(metadata.worksheetName),
+        minRow: metadata.firstRowOfData - 1,
+        ...metadata
+      })
+      return result
+    }, {})
+    console.log('flatData: ', JSON.stringify(flatData, null, 4))
     const joined = joinWasteItems(
-      movements.elements,
-      items.elements,
+      flatData.movements.elements,
+      flatData.items.elements,
       worksheetMetadata,
       defraCustomerOrganisationId,
-      compose(validateFn, worksheetMetadata.transform, validateUniqueReference()) // TODO can move validateUniqueReference() into spreadsheet -> metadata call?
+      worksheetMetadata.transform
     )
     logger.trace(`joined excel data: ${JSON.stringify(joined, null, 4)}`)
-    if (movements.errors.length > 0 || items.errors.length > 0 || joined.errors.items.length > 0 || joined.errors.movements.length > 0) {
-      const errors = {
-        [worksheetMetadata.movementWorksheetName]: distinct(movements.errors.concat(joined.errors.movements)),
-        [worksheetMetadata.itemWorksheetName]: distinct(items.errors.concat(joined.errors.items))
-      }
-      xlUpdateErrors(workbook, errors)
+    console.log(
+      '>>',
+      flatData.movements.errors.length > 0,
+      flatData.items.errors.length > 0,
+      joined.errors.items.length > 0,
+      joined.errors.movements.length > 0
+    )
+    if (flatData.movements.errors.length > 0 || flatData.items.errors.length > 0 || joined.errors.items.length > 0 || joined.errors.movements.length > 0) {
+      const errors = Object.values(worksheetMetadata.worksheets).reduce((errs, metadata) => {
+        errs[metadata.worksheetName] = distinct(flatData[metadata.target].errors.concat(joined.errors[metadata.target]))
+        return errs
+      }, {})
+      xlUpdateErrors(workbook, errors, worksheetMetadata)
       return {
         hasErrors: true,
         errors,
@@ -313,22 +351,25 @@ const errorToCoords = (() => {
 export const transformBulkApiErrors = (movementData, rowNumbers, worksheetMetadata, errors) =>
   Object.groupBy(distinct(errors.map((e) => errorToCoords(movementData, rowNumbers, worksheetMetadata, e))), ({ sheet }) => sheet)
 
-export const wasteTrackingIdsToCoords = (movementData, rowNumbers, wasteTrackingIds, { movementWorksheetName }) => {
-  return {
-    [movementWorksheetName]: wasteTrackingIds.map(({ wasteTrackingId }, idx) => {
-      const { movementRow } = rowNumbers[movementData[idx]['yourUniqueReference']]
-      return {
-        coords: [2, movementRow],
-        value: wasteTrackingId,
-        sheet: movementWorksheetName
-      }
-    })
-  }
-}
+export const wasteTrackingIdsToCoords = (() => {
+  const getIn = (obj, path) => path.reduce((x, k) => x && x[k], obj)
+  return (movementData, rowNumbers, apiResultData, { copyFromResult }) =>
+    copyFromResult.flatMap(({ source, target }) => ({
+      [target.worksheetName]: apiResultData.map((obj, idx) => {
+        const wasteTrackingId = getIn(obj, source)
+        const { movementRow } = rowNumbers[movementData[idx]['yourUniqueReference']]
+        return {
+          coords: [target.col, movementRow],
+          value: wasteTrackingId,
+          sheet: target.worksheetName
+        }
+      })
+    }))
+})()
 
 // alias these function so I don't have to refactor everthing at once
-export const updateErrors = (worksheet, coords, message) => {
-  return xlUpdateErrors(worksheet, coords, message)
+export const updateErrors = (worksheet, coords, worksheetMetadata) => {
+  return xlUpdateErrors(worksheet, coords, worksheetMetadata)
 }
 export const updateCellContent = (workbook, cellsAndValues) => {
   return xlUpdateCellContent(workbook, cellsAndValues)

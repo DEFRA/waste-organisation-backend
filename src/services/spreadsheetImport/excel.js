@@ -112,11 +112,11 @@ export const updateErrors = (() => {
                     'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK']
   const coordsToCellName = (coords) => ` (${colNames[coords[0] - 1]}${coords[1]})`
 
-  const updateCell = (worksheet, coords, message) => {
+  const updateCell = (worksheet, coords, message, errCol) => {
     const [colNumber, rowNumber] = coords
     const row = worksheet.getRow(rowNumber)
     const cell = row.getCell(colNumber)
-    const errorCell = row.getCell(1)
+    const errorCell = row.getCell(errCol)
     if (errorCell) {
       errorCell.value = appendMessageToCell(errorCell, message + coordsToCellName(coords), font)
     }
@@ -127,11 +127,18 @@ export const updateErrors = (() => {
       cell.value = { richText: [{ font, text: 'Please provide a value' }] }
     }
   }
-  return (workbook, cellsAndMessages) => {
+  return (workbook, cellsAndMessages, worksheetMetadata) => {
     for (const worksheetName of Object.keys(cellsAndMessages)) {
       const worksheet = workbook.getWorksheet(worksheetName)
-      for (const { coords, message } of cellsAndMessages[worksheetName]) {
-        updateCell(worksheet, coords, message)
+      if (worksheet) {
+        for (const { coords, message } of cellsAndMessages[worksheetName]) {
+          updateCell(worksheet, coords, message, worksheetMetadata?.errors[worksheetName] ?? 1)
+        }
+      } else {
+        console.log(
+          `Cannot update errors - worksheet not fonud "${worksheetName}" not in ${workbook.worksheets.map((ws) => ws.name).join(', ')}`,
+          JSON.stringify(cellsAndMessages)
+        )
       }
     }
     return workbook
@@ -149,8 +156,15 @@ export const updateCellContent = (() => {
   return (workbook, cellsAndValues) => {
     for (const worksheetName of Object.keys(cellsAndValues)) {
       const worksheet = workbook.getWorksheet(worksheetName)
-      for (const { coords, value } of cellsAndValues[worksheetName]) {
-        updateCell(worksheet, coords, value)
+      if (worksheet) {
+        for (const { coords, value } of cellsAndValues[worksheetName]) {
+          updateCell(worksheet, coords, value)
+        }
+      } else {
+        console.log(
+          `Cannot update cell content - worksheet not fonud "${worksheetName}" not in ${workbook.worksheets.map((ws) => ws.name).join(', ')}`,
+          JSON.stringify(cellsAndValues)
+        )
       }
     }
     return workbook

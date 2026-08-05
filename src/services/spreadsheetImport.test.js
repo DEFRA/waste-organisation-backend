@@ -578,9 +578,8 @@ describe('excel proccessor', () => {
 
   test('should write waste tracking ids', { timeout: 50000 }, async () => {
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-    const { workbook, movements, rowNumbers } = await parseExcelFile(buffer, 'org-id', logger)
+    const { workbook, movements, rowNumbers, worksheetMetadata } = await parseExcelFile(buffer, 'org-id', logger)
     const bulkImportResult = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
-    const worksheetMetadata = { firstRowOfDataInSpreadsheet: 9, movementWorksheetName: '7. Waste movement level', itemWorksheetName: '8. Waste item level' }
 
     const coords = wasteTrackingIdsToCoords(movements, rowNumbers, bulkImportResult.movements, worksheetMetadata)
     expect(coords).toEqual({
@@ -766,33 +765,37 @@ describe('excel proccessor', () => {
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
     const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, validateWasteTrackingIdMissing)
     expect(hasErrors).toEqual(true)
-    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
-      '7. Waste movement level': [
-        {
-          coords: [3, 9],
-          message: 'Please provide a value'
-        },
-        {
-          coords: [3, 10],
-          message: 'Please provide a value'
-        }
-      ],
-      '8. Waste item level': [
-        {
-          coords: [2, 9],
-          message: 'Please provide a value'
-        },
-        {
-          coords: [18, 9],
-          errorValue: 'R13;R14',
-          message: 'Cannot parse disposal / recovery codes (R13)'
-        },
-        {
-          coords: [2, 10],
-          message: 'Please provide a value'
-        }
-      ]
-    })
+    expect(mockUpdateErrors).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        '7. Waste movement level': [
+          {
+            coords: [3, 9],
+            message: 'Please provide a value'
+          },
+          {
+            coords: [3, 10],
+            message: 'Please provide a value'
+          }
+        ],
+        '8. Waste item level': [
+          {
+            coords: [2, 9],
+            message: 'Please provide a value'
+          },
+          {
+            coords: [18, 9],
+            errorValue: 'R13;R14',
+            message: 'Cannot parse disposal / recovery codes (R13)'
+          },
+          {
+            coords: [2, 10],
+            message: 'Please provide a value'
+          }
+        ]
+      },
+      expect.anything()
+    )
   })
 
   test("should validate that yourUniqueReference's are unique for waste movements", async () => {
@@ -897,25 +900,29 @@ describe('excel proccessor', () => {
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
     const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, validateWasteTrackingIdMissing)
     expect(hasErrors).toEqual(true)
-    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
-      '7. Waste movement level': [
-        {
-          coords: [3, 10],
-          message: 'Duplicate reference'
-        },
-        {
-          coords: [3, 10],
-          message: 'No waste items for unique reference'
-        }
-      ],
-      '8. Waste item level': [
-        {
-          coords: [18, 10],
-          errorValue: 'D15qqq',
-          message: 'Cannot parse disposal / recovery codes (D15qqq)'
-        }
-      ]
-    })
+    expect(mockUpdateErrors).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        '7. Waste movement level': [
+          {
+            coords: [3, 10],
+            message: 'Duplicate reference'
+          },
+          {
+            coords: [3, 10],
+            message: 'No waste items for unique reference'
+          }
+        ],
+        '8. Waste item level': [
+          {
+            coords: [18, 10],
+            errorValue: 'D15qqq',
+            message: 'Cannot parse disposal / recovery codes (D15qqq)'
+          }
+        ]
+      },
+      expect.anything()
+    )
   })
 
   test('should have errors when worksheets are missing', { timeout: 100000 }, async () => {
@@ -959,15 +966,19 @@ describe('excel proccessor', () => {
 
     const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger)
     expect(hasErrors).toEqual(true)
-    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
-      '7. Waste movement level': [
-        {
-          coords: [3, 9],
-          message: 'No movements recognised',
-          sheet: '7. Waste movement level'
-        }
-      ],
-      '8. Waste item level': []
-    })
+    expect(mockUpdateErrors).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        '7. Waste movement level': [
+          {
+            coords: [3, 9],
+            message: 'No movements recognised',
+            sheet: '7. Waste movement level'
+          }
+        ],
+        '8. Waste item level': []
+      },
+      expect.anything()
+    )
   })
 })

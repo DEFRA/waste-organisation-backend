@@ -132,7 +132,7 @@ const processSpreadsheet = async (
     logger.debug(`ReferenceNumber: ${referenceNumber} -- rowNumbers: ${JSON.stringify(rowNumbers)}`)
     const errs = transformBulkApiErrors(movements, rowNumbers, worksheetMetadata, apiResponse.errors)
     logger.debug(`ReferenceNumber: ${referenceNumber} -- Cells to update with errors: ${JSON.stringify(errs)}`)
-    updateErrors(workbook, errs)
+    updateErrors(workbook, errs, worksheetMetadata)
     const file = await workbookToByteArray(workbook)
     await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
     await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file, referenceNumber, filename })

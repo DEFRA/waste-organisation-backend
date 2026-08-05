@@ -534,15 +534,19 @@ describe('background processor', () => {
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
     await processSpreadsheetJob(s3Client, JSON.parse(createMessage.Body))
 
-    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
-      '7. Waste movement level': [
-        {
-          coords: [2, 9],
-          message: 'Waste Tracking ID must not be present on a create upload'
-        }
-      ],
-      '8. Waste item level': []
-    })
+    expect(mockUpdateErrors).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        '7. Waste movement level': [
+          {
+            coords: [2, 9],
+            message: 'Waste Tracking ID must not be present on a create upload'
+          }
+        ],
+        '8. Waste item level': []
+      },
+      expect.anything()
+    )
     expect(mockBulkImport).not.toHaveBeenCalled()
     expect(mockSendFailed).toHaveBeenCalled()
   })
@@ -587,15 +591,19 @@ describe('background processor', () => {
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
     await processSpreadsheetJob(s3Client, JSON.parse(updateMessage.Body))
 
-    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
-      '7. Waste movement level': [
-        {
-          coords: [2, 9],
-          message: 'Waste Tracking ID is required'
-        }
-      ],
-      '8. Waste item level': []
-    })
+    expect(mockUpdateErrors).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        '7. Waste movement level': [
+          {
+            coords: [2, 9],
+            message: 'Waste Tracking ID is required'
+          }
+        ],
+        '8. Waste item level': []
+      },
+      expect.anything()
+    )
     expect(mockBulkUpdate).not.toHaveBeenCalled()
     expect(mockSendFailed).toHaveBeenCalled()
   })

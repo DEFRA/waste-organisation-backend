@@ -14,8 +14,6 @@ const conf = {
   basicAuth: { username: 'waste-organisations-backend', password: '92fa681e-44b4-4b9c-8f7a-59c117757452' }
 }
 
-const worksheetMetadata = { firstRowOfDataInSpreadsheet: 9, movementWorksheetName: '7. Waste movement level', itemWorksheetName: '8. Waste item level' }
-
 describe.skip('bulk import api calls data - requires service dependencies to be running', () => {
   test('should import some data', { timeout: 50000 }, async () => {
     const { bulkImport } = await import('./bulkImport.js')
@@ -31,7 +29,7 @@ describe.skip('bulk import api calls data - requires service dependencies to be 
   test.skip('should update waste tracking IDs', { timeout: 50000 }, async () => {
     // const { bulkImport } = await import('./bulkImport.js')
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-    const { rowNumbers, movements } = await parseExcelFile(buffer, faker.string.uuid(), console)
+    const { rowNumbers, movements, worksheetMetadata } = await parseExcelFile(buffer, faker.string.uuid(), console)
     expect(movements.length).toBe(1)
     // const res = await bulkImport(uuidv4().toString(), faker.string.uuid().toString(), console, conf)
     const res = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
@@ -56,7 +54,7 @@ describe('mock bulk import data', () => {
   test('should update waste tracking IDs', { timeout: 50000 }, async () => {
     // const { bulkImport } = await import('./bulkImport.js')
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-    const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, faker.string.uuid(), logger)
+    const { hasErrors, workbook, movements, rowNumbers, errors, worksheetMetadata } = await parseExcelFile(buffer, faker.string.uuid(), logger)
     expect(movements.length).toBe(1)
     expect(errors).toEqual({ items: [], movements: [] })
     expect(hasErrors).toEqual(false)
@@ -71,7 +69,7 @@ describe('mock bulk import data', () => {
         }
       ]
     })
-    updateCellContent(workbook, coords)
+    updateCellContent(workbook, coords, worksheetMetadata)
   })
 
   test('should import some data', { timeout: 100000 }, async () => {
@@ -305,13 +303,17 @@ describe('Error transforms bulk import data', () => {
     ]
   ])('should convert error messages from data import', { timeout: 100000 }, async (fileName, errs, result) => {
     const buffer = await fs.readFile(fileName)
-    const { workbook, hasErrors, movements, rowNumbers, errors } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44', logger)
+    const { workbook, hasErrors, movements, rowNumbers, errors, worksheetMetadata } = await parseExcelFile(
+      buffer,
+      '8194cecf-da10-4698-aaaf-f06d2e54ac44',
+      logger
+    )
     if (hasErrors) {
       expect({ fileName, errors, movements, rowNumbers, hasErrors }).toBe({})
     }
     const e = transformBulkApiErrors(movements, rowNumbers, worksheetMetadata, errs)
     expect(e).toEqual(result)
-    updateErrors(workbook, e)
+    updateErrors(workbook, e, { errorCol: 1 })
     await workbook.xlsx.writeFile(fileName.replace(/xlsx/, 'with-api-errors.xlsx'))
   })
 })
