@@ -160,61 +160,6 @@ const distinct = (xs) => {
   })
 }
 
-const movementMapping = [
-  [],
-  [],
-  [['wasteTrackingId'], parseToString],
-  [['yourUniqueReference'], requiredString],
-  [['receiver', 'siteName'], parseToString],
-  [['receipt', 'address', 'fullAddress'], parseToString],
-  [['receipt', 'address', 'postcode'], parseToString],
-  [['receiver', 'authorisationNumber'], parseToString],
-  [['receiver', 'regulatoryPositionStatements'], parseRegStatements],
-  [['receiver', 'emailAddress'], parseToString],
-  [['receiver', 'phoneNumber'], parseToString],
-  [['dateTimeReceived'], correctDateTimezone],
-  [['hazardousWasteConsignmentCode'], parseToString],
-  [['reasonForNoConsignmentCode'], parseToString],
-  [['specialHandlingRequirements'], parseToString],
-  [['carrier', 'registrationNumber'], parseToString],
-  [['carrier', 'reasonForNoRegistrationNumber'], parseToString],
-  [['carrier', 'organisationName'], parseToString],
-  [['carrier', 'address', 'fullAddress'], parseToString],
-  [['carrier', 'address', 'postcode'], parseToString],
-  [['carrier', 'emailAddress'], parseToString],
-  [['carrier', 'phoneNumber'], parseToString],
-  [['carrier', 'meansOfTransport'], parseTitleCase],
-  [['carrier', 'vehicleRegistration'], parseToString],
-  [['brokerOrDealer', 'organisationName'], parseToString],
-  [['brokerOrDealer', 'address', 'fullAddress'], parseToString],
-  [['brokerOrDealer', 'address', 'postcode'], parseToString],
-  [['brokerOrDealer', 'emailAddress'], parseToString],
-  [['brokerOrDealer', 'phoneNumber'], parseToString],
-  [['brokerOrDealer', 'registrationNumber'], parseToString]
-]
-
-const itemMapping = [
-  [],
-  [],
-  [['yourUniqueReference'], requiredString],
-  [['ewcCodes'], parseEWCCodes],
-  [['wasteDescription'], parseToString],
-  [['physicalForm'], parseTitleCase],
-  [['numberOfContainers'], parseToNumber],
-  [['typeOfContainers'], parseContainerType],
-  [['weight', 'metric'], parseTitleCase],
-  [['weight', 'amount'], parseToNumber],
-  [['weight', 'isEstimate'], parseEstimate],
-  [['containsPops'], parseBoolean],
-  [['pops', 'components'], parseComponentCodes],
-  [['pops', 'sourceOfComponents'], parseToString],
-  [['containsHazardous'], parseBoolean],
-  [['hazardous', 'hazCodes'], parseHazCodes],
-  [['hazardous', 'components'], parseComponentNames],
-  [['hazardous', 'sourceOfComponents'], parseToString],
-  [['disposalOrRecoveryCodes'], parseDisposalCodes]
-]
-
 export const getWorksheetMeta = (() => {
   // TODO move 'yourUniqueReference' into here?
   const knownTemplateVersions = {
@@ -224,7 +169,6 @@ export const getWorksheetMeta = (() => {
           target: 'movements',
           firstRowOfData: 9,
           worksheetName: '7. Waste movement level',
-          maxCol: movementMapping.length,
           mapping: [
             [],
             [],
@@ -263,7 +207,6 @@ export const getWorksheetMeta = (() => {
           target: 'items',
           firstRowOfData: 9,
           worksheetName: '8. Waste item level',
-          maxCol: itemMapping.length,
           mapping: [
             [],
             [],
@@ -323,6 +266,7 @@ export const getWorksheetMeta = (() => {
   const constructUpdateFns = (md) =>
     Object.keys(md.worksheets).reduce((m, k) => {
       m.worksheets[k].updateFn = updateData(m.worksheets[k].mapping)
+      m.worksheets[k].maxCol = m.worksheets[k].mapping.length
       if (m.worksheets[k].keyCols == null) {
         m.worksheets[k].keyCols = m.worksheets[k].mapping.map((c, i) => (c.length > 0 ? i : null)).filter((x) => x)
       }
@@ -433,7 +377,7 @@ const errorToCoords = (() => {
     })
   }
 
-  const wasteMovementErr = (movementData, idx, rowNumbers, errKeyPath, error, movementWorksheetName, joinKey) => {
+  const wasteMovementErr = (movementData, idx, rowNumbers, errKeyPath, error, movementWorksheetName, joinKey, movementMapping) => {
     const ref = getIn(movementData[idx], joinKey)
     const msg = cleanErrorMessage(error)
     const colNum = keyPathToColNum(errKeyPath.slice(1), movementMapping)
@@ -446,7 +390,7 @@ const errorToCoords = (() => {
     return cellError(colNum, rowNumbers[ref].movementRow, msg, movementWorksheetName, errorValue)
   }
 
-  const wasteItemErr = (movementData, movementIdx, itemIdx, rowNumbers, errKeyPath, error, itemWorksheetName, joinKey) => {
+  const wasteItemErr = (movementData, movementIdx, itemIdx, rowNumbers, errKeyPath, error, itemWorksheetName, joinKey, itemMapping) => {
     // const ref = movementData[movementIdx]?.yourUniqueReference
     const ref = getIn(movementData[movementIdx], joinKey)
     const msg = cleanErrorMessage(error)
@@ -479,7 +423,17 @@ const errorToCoords = (() => {
         }
         if (errKeyPath[1] === errTarget.target[0] && errKeyPath[2].match(/^[0-9]+$/)) {
           console.log(`errorToCoords item >>>> ${JSON.stringify(errTarget)}`)
-          return wasteItemErr(movementData, errKeyPath[0], errKeyPath[2], rowNumbers, errKeyPath, error, errTarget.worksheetName, errTarget.joinKey)
+          return wasteItemErr(
+            movementData,
+            errKeyPath[0],
+            errKeyPath[2],
+            rowNumbers,
+            errKeyPath,
+            error,
+            errTarget.worksheetName,
+            errTarget.joinKey,
+            worksheets[errTarget.worksheetName].mapping
+          )
         } else {
           // console.log(`errorToCoords movement >>>> ${JSON.stringify(errTarget)}`)
           console.log(
@@ -487,7 +441,16 @@ const errorToCoords = (() => {
             JSON.stringify({ movementData, first_errKeyPath: errKeyPath[0], rowNumbers, errKeyPath, error, errTarget, defaultErrorWorksheet }, null, 4)
           )
           if (Array.isArray(errTarget.target) && errTarget.target.length === 0) {
-            const e = wasteMovementErr(movementData, errKeyPath[0], rowNumbers, errKeyPath, error, errTarget.worksheetName, errTarget.joinKey)
+            const e = wasteMovementErr(
+              movementData,
+              errKeyPath[0],
+              rowNumbers,
+              errKeyPath,
+              error,
+              errTarget.worksheetName,
+              errTarget.joinKey,
+              worksheets[errTarget.worksheetName].mapping
+            )
             console.log(JSON.stringify({ e }))
             return e
           }
