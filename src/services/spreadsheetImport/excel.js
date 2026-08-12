@@ -132,6 +132,7 @@ export const updateErrors = (() => {
       const worksheet = workbook.getWorksheet(worksheetName)
       if (worksheet) {
         for (const { coords, message } of cellsAndMessages[worksheetName]) {
+          console.log('worksheetMetadata ::: ', JSON.stringify(worksheetMetadata, null, 4))
           updateCell(worksheet, coords, message, worksheetMetadata?.errors[worksheetName] ?? 1)
         }
       } else {

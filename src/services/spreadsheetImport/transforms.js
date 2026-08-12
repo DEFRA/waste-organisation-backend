@@ -7,14 +7,18 @@ export const coerceRegistrationNumberWhenReasonSupplied = (movement) => {
 
 export const validateWasteTrackingIdExists = (movement) => {
   if (!movement.wasteTrackingId) {
-    throw new Error('Waste Tracking ID is required')
+    const e = new Error('Waste Tracking ID is required')
+    e.colNumber = 2 // TODO get this from the worksheetMetadata
+    throw e
   }
   return movement
 }
 
 export const validateWasteTrackingIdMissing = (movement) => {
   if (movement.wasteTrackingId) {
-    throw new Error('Waste Tracking ID must not be present on a create upload')
+    const e = new Error('Waste Tracking ID must not be present on a create upload')
+    e.colNumber = 2 // TODO get this from the worksheetMetadata
+    throw e
   }
   return movement
 }
@@ -22,7 +26,7 @@ export const validateWasteTrackingIdMissing = (movement) => {
 export const validateMovementHasWasteItems = (movement) => {
   if (movement.yourUniqueReference && (!Array.isArray(movement.wasteItems) || movement.wasteItems.length <= 0)) {
     const e = new Error('No waste items for unique reference')
-    e.colNumber = 3
+    e.colNumber = 3 // TODO get this from the worksheetMetadata
     throw e
   }
   return movement
@@ -33,7 +37,7 @@ export const validateUniqueReference = () => {
   return (movement) => {
     if (movement.yourUniqueReference && seenUniqueRefs.has(movement.yourUniqueReference)) {
       const e = new Error('Duplicate reference')
-      e.colNumber = 3
+      e.colNumber = 3 // TODO get this from the worksheetMetadata
       throw e
     } else {
       seenUniqueRefs.add(movement.yourUniqueReference)

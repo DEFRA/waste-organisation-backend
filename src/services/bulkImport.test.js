@@ -313,7 +313,7 @@ describe('Error transforms bulk import data', () => {
     }
     const e = transformBulkApiErrors(movements, rowNumbers, worksheetMetadata, errs)
     expect(e).toEqual(result)
-    updateErrors(workbook, e, { errorCol: 1 })
+    updateErrors(workbook, e, worksheetMetadata)
     await workbook.xlsx.writeFile(fileName.replace(/xlsx/, 'with-api-errors.xlsx'))
   })
 })

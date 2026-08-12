@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises'
-import { parseExcelFile, transformBulkApiErrors, updateCellContent, wasteTrackingIdsToCoords } from './spreadsheetImport.js'
+import { getWorksheetMeta, parseExcelFile, transformBulkApiErrors, updateCellContent, wasteTrackingIdsToCoords } from './spreadsheetImport.js'
 import {
   parseBoolean,
   parseComponentCodes,
@@ -348,8 +348,53 @@ describe('some excel unit tests', () => {
   })
 })
 
+const mockWorksheet = (fakeData, rowPadding = 8) => {
+  const fakeRows = Array.apply(null, Array(rowPadding))
+    .map(() => [])
+    .concat(fakeData)
+  return {
+    eachRow: (rowCallback) => {
+      fakeRows.forEach((r, i) => {
+        const row = {
+          getCell: (col) => {
+            return { value: r[col - 1] }
+          },
+          eachCell: (cellCallback) => {
+            r.forEach((c, j) => {
+              cellCallback({ value: c }, j + 1)
+            })
+          }
+        }
+        rowCallback(row, i + 1)
+      })
+    },
+    getRow: (rowNumber) => ({
+      getCell: (colNumber) => {
+        const row = fakeRows[rowNumber]
+        const text = colNumber < row?.length ? row[colNumber] : ''
+        return {
+          value: { richText: [{ text }] }
+        }
+      }
+    })
+  }
+}
+
+const mockWorkbook = (buffer, movementData, itemData) => ({
+  xlsx: { writeBuffer: async () => buffer, writeFile: async () => null },
+  getWorksheet: (wsName) => {
+    const w = {
+      bumf: mockWorksheet([[], ['', 'Report receipt of waste', '2', '3']], 0),
+      '7. Waste movement level': mockWorksheet(movementData),
+      '8. Waste item level': mockWorksheet(itemData)
+    }
+    return w[wsName]
+  },
+  worksheets: [{ name: 'bumf' }, { name: '7. Waste movement level' }, { name: '8. Waste item level' }]
+})
+
 describe('transformBulkApiErrors', () => {
-  const worksheetMetadata = { firstRowOfDataInSpreadsheet: 9, movementWorksheetName: '7. Waste movement level', itemWorksheetName: '8. Waste item level' }
+  const worksheetMetadata = getWorksheetMeta(mockWorkbook(null, [], []), (x) => x, console)
 
   test('distinct should deduplicate identical errors for the same cell', () => {
     const movementData = [{ yourUniqueReference: 'REF1', carrier: { organisationName: 'Carrier Ltd' } }]
@@ -428,56 +473,12 @@ describe('transformBulkApiErrors', () => {
 })
 
 describe('excel proccessor', () => {
+  const setupMockWorkbook = (buffer, movementData, itemData) =>
+    vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue(mockWorkbook(buffer, movementData, itemData))
+
   beforeEach(() => {
     vi.clearAllMocks()
   })
-
-  const mockWorksheet = (fakeData, rowPadding = 8) => {
-    const fakeRows = Array.apply(null, Array(rowPadding))
-      .map(() => [])
-      .concat(fakeData)
-    return {
-      eachRow: (rowCallback) => {
-        fakeRows.forEach((r, i) => {
-          const row = {
-            getCell: (col) => {
-              return { value: r[col - 1] }
-            },
-            eachCell: (cellCallback) => {
-              r.forEach((c, j) => {
-                cellCallback({ value: c }, j + 1)
-              })
-            }
-          }
-          rowCallback(row, i + 1)
-        })
-      },
-      getRow: (rowNumber) => ({
-        getCell: (colNumber) => {
-          const row = fakeRows[rowNumber]
-          const text = colNumber < row?.length ? row[colNumber] : ''
-          return {
-            value: { richText: [{ text }] }
-          }
-        }
-      })
-    }
-  }
-
-  const mockWorkbook = (buffer, movementData, itemData) => {
-    vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue({
-      xlsx: { writeBuffer: async () => buffer, writeFile: async () => null },
-      getWorksheet: (wsName) => {
-        const w = {
-          bumf: mockWorksheet([[], ['', 'Report receipt of waste', '2', '3']], 0),
-          '7. Waste movement level': mockWorksheet(movementData),
-          '8. Waste item level': mockWorksheet(itemData)
-        }
-        return w[wsName]
-      },
-      worksheets: [{ name: 'bumf' }, { name: '7. Waste movement level' }, { name: '8. Waste item level' }]
-    })
-  }
 
   test('should reject not excel files', async () => {
     const { hasErrors, workbook } = await parseExcelFile(Buffer.from('fish'), 'org-id', logger)
@@ -616,7 +617,7 @@ describe('excel proccessor', () => {
 
   test('should write errors buffer', { timeout: 100000 }, async () => {
     const buffer = Buffer.from('test xl file')
-    mockWorkbook(
+    setupMockWorkbook(
       buffer,
       [['', 'waste tracking id', 'REF1', '']],
       [
@@ -635,15 +636,19 @@ describe('excel proccessor', () => {
 
     expect(hasErrors).toEqual(true)
     expect(mockTransform).toHaveBeenCalled()
-    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
-      '7. Waste movement level': [{ coords: [33, 9], message: 'test error' }],
-      '8. Waste item level': [{ coords: [2, 10], message: 'No waste movements for unique reference' }]
-    })
+    expect(mockUpdateErrors).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        '7. Waste movement level': [{ coords: [33, 9], message: 'test error' }],
+        '8. Waste item level': [{ coords: [2, 10], message: 'No waste movements for unique reference' }]
+      },
+      expect.anything()
+    )
   })
 
   test('should validate that the "yourUniqueReference" field is provided', { timeout: 50000 }, async () => {
     const buffer = Buffer.from('test xl file')
-    mockWorkbook(
+    setupMockWorkbook(
       buffer,
       [['', '', '', 'company name', '', '', '']],
       [
@@ -654,18 +659,22 @@ describe('excel proccessor', () => {
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
     const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, validateWasteTrackingIdMissing)
     expect(hasErrors).toEqual(true)
-    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
-      '7. Waste movement level': [{ coords: [3, 9], message: 'Please provide a value' }],
-      '8. Waste item level': [
-        { coords: [2, 9], message: 'Please provide a value' },
-        { coords: [2, 10], message: 'Please provide a value' }
-      ]
-    })
+    expect(mockUpdateErrors).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        '7. Waste movement level': [{ coords: [3, 9], message: 'Please provide a value' }],
+        '8. Waste item level': [
+          { coords: [2, 9], message: 'Please provide a value' },
+          { coords: [2, 10], message: 'Please provide a value' }
+        ]
+      },
+      expect.anything()
+    )
   })
 
   test("should validate that yourUniqueReference's are provided for waste movements", async () => {
     const buffer = Buffer.from('test xl file')
-    mockWorkbook(
+    setupMockWorkbook(
       buffer,
       [
         [
@@ -800,7 +809,7 @@ describe('excel proccessor', () => {
 
   test("should validate that yourUniqueReference's are unique for waste movements", async () => {
     const buffer = Buffer.from('test xl file')
-    mockWorkbook(
+    setupMockWorkbook(
       buffer,
       [
         [
@@ -960,7 +969,7 @@ describe('excel proccessor', () => {
 
   test('should have errors when there is no data', { timeout: 100000 }, async () => {
     const buffer = Buffer.from('test xl file')
-    mockWorkbook(buffer, [], [])
+    setupMockWorkbook(buffer, [], [])
 
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
 
