@@ -80,62 +80,72 @@ const joinWasteItems = (flatData, worksheetMetadata, defraCustomerOrganisationId
   const errorWorksheet = worksheetMetadata.worksheets[worksheetMetadata.defaultErrorWorksheet]
   const errors = {}
   const rowNumbers = {}
-  return worksheetMetadata.joins.reduce((data, { joinKey, keys, target, rowNames }) => {
-    // TODO joinKey is an array??
-    const [intoKey, fromKey] = keys
-    keys.reduce((e, k) => {
-      if (e[k] == null) {
-        e[k] = []
-      }
-      return e
-    }, errors)
-    const is = Object.groupBy(data[fromKey].elements, (x) => getIn(x, joinKey))
-    // TODO do we need wasteTrackingIdCol if the validation func knows the right col??
-    const wasteTrackingIdCol = 2
-    const itemRefCol = 2 // TODO are itemRefCol and movementRefCol retrievable from worksheetMetadata?
-    const movementRefCol = 3
-    for (let i = 0; i < data[intoKey].elements.length; i++) {
-      const r = getIn(data[intoKey].elements[i], joinKey)
-      rowNumbers[r] = { [rowNames[0]]: data[intoKey].elements[i]['--rowNumber'], [rowNames[1]]: [] }
-      if (r && is[r] && is[r].length > 0) {
-        data[intoKey].elements[i].submittingOrganisation = { defraCustomerOrganisationId }
-        updateIn(
-          data[intoKey].elements[i],
-          target,
-          is[r].map((x) => {
-            rowNumbers[r][rowNames[1]].push(x['--rowNumber'])
-            delete x['--rowNumber']
-            deleteLeaf(x, joinKey)
-            return x
-          })
-        )
-      }
-      // WARNING: mutabliy updates movements array from supplied transform
-      collectCellErrors(
-        errors[intoKey], // TODO this isn't right
-        () => (data[intoKey].elements[i] = transform(data[intoKey].elements[i])),
-        null,
-        [wasteTrackingIdCol, data[intoKey].elements[i]['--rowNumber']],
-        {}
-      ) // nosonar
-      delete data[intoKey].elements[i]['--rowNumber']
-      if (r) {
-        delete is[r]
-      }
-    }
-    if (data[intoKey].elements.length === 0) {
-      errors[intoKey].push(cellError(movementRefCol, errorWorksheet.firstRowOfData, 'No movements recognised', errorWorksheet.worksheetName))
-    }
-    if (Object.keys(is).length > 0) {
-      for (const i of Object.values(is).flatMap((x) => x)) {
-        if (getIn(i, joinKey)) {
-          errors.items.push(cellError(itemRefCol, i['--rowNumber'], 'No waste movements for unique reference'))
+  if (Array.isArray(worksheetMetadata.joins) && worksheetMetadata.joins.length > 0) {
+    return worksheetMetadata.joins.reduce((data, { joinKey, keys, target, rowNames }) => {
+      // TODO joinKey is an array??
+      const [intoKey, fromKey] = keys
+      keys.reduce((e, k) => {
+        if (e[k] == null) {
+          e[k] = []
+        }
+        return e
+      }, errors)
+      const is = Object.groupBy(data[fromKey].elements, (x) => getIn(x, joinKey))
+      // TODO do we need wasteTrackingIdCol if the validation func knows the right col??
+      const itemRefCol = 2 // TODO are itemRefCol and movementRefCol retrievable from worksheetMetadata?
+      const movementRefCol = 3
+      for (let i = 0; i < data[intoKey].elements.length; i++) {
+        const r = getIn(data[intoKey].elements[i], joinKey)
+        rowNumbers[r] = { [rowNames[0]]: data[intoKey].elements[i]['--rowNumber'], [rowNames[1]]: [] }
+        if (r && is[r] && is[r].length > 0) {
+          data[intoKey].elements[i].submittingOrganisation = { defraCustomerOrganisationId }
+          updateIn(
+            data[intoKey].elements[i],
+            target,
+            is[r].map((x) => {
+              rowNumbers[r][rowNames[1]].push(x['--rowNumber'])
+              delete x['--rowNumber']
+              deleteLeaf(x, joinKey)
+              return x
+            })
+          )
+        }
+        // WARNING: mutabliy updates movements array from supplied transform
+        collectCellErrors(
+          errors[intoKey], // TODO this isn't right??
+          () => (data[intoKey].elements[i] = transform(data[intoKey].elements[i])),
+          null,
+          [null, data[intoKey].elements[i]['--rowNumber']],
+          {}
+        ) // nosonar
+        delete data[intoKey].elements[i]['--rowNumber']
+        if (r) {
+          delete is[r]
         }
       }
-    }
-    console.log(`>>>>>> ${intoKey} # ${Object.keys(data)}`)
-    return { ...data, [intoKey]: data[intoKey].elements, errors, rowNumbers }
-  }, flatData)
+      if (data[intoKey].elements.length === 0) {
+        errors[intoKey].push(cellError(movementRefCol, errorWorksheet.firstRowOfData, 'No movements recognised', errorWorksheet.worksheetName))
+      }
+      if (Object.keys(is).length > 0) {
+        for (const i of Object.values(is).flatMap((x) => x)) {
+          if (getIn(i, joinKey)) {
+            errors.items.push(cellError(itemRefCol, i['--rowNumber'], 'No waste movements for unique reference'))
+          }
+        }
+      }
+      console.log(`>>>>>> ${intoKey} # ${Object.keys(data)}`)
+      return { ...data, [intoKey]: data[intoKey].elements, errors, rowNumbers }
+    }, flatData)
+  } else {
+    console.log('.... TODO no joins not currently implemented')
+    return flatData
+    // return Object.keys(flatData).reduce((data, key) => {
+    //   if (errors[key] == null) {
+    //     errors[key] = []
+    //   }
+    //   return data
+    // }, flatData)
+  }
 }
 
 const distinct = (xs) => {
@@ -214,16 +224,67 @@ export const getWorksheetMeta = (() => {
           target: 'movements',
           firstRowOfData: 9,
           worksheetName: '7. Waste movement level',
-          updateFn: updateData(movementMapping),
           maxCol: movementMapping.length,
+          mapping: [
+            [],
+            [],
+            [['wasteTrackingId'], parseToString],
+            [['yourUniqueReference'], requiredString],
+            [['receiver', 'siteName'], parseToString],
+            [['receipt', 'address', 'fullAddress'], parseToString],
+            [['receipt', 'address', 'postcode'], parseToString],
+            [['receiver', 'authorisationNumber'], parseToString],
+            [['receiver', 'regulatoryPositionStatements'], parseRegStatements],
+            [['receiver', 'emailAddress'], parseToString],
+            [['receiver', 'phoneNumber'], parseToString],
+            [['dateTimeReceived'], correctDateTimezone],
+            [['hazardousWasteConsignmentCode'], parseToString],
+            [['reasonForNoConsignmentCode'], parseToString],
+            [['specialHandlingRequirements'], parseToString],
+            [['carrier', 'registrationNumber'], parseToString],
+            [['carrier', 'reasonForNoRegistrationNumber'], parseToString],
+            [['carrier', 'organisationName'], parseToString],
+            [['carrier', 'address', 'fullAddress'], parseToString],
+            [['carrier', 'address', 'postcode'], parseToString],
+            [['carrier', 'emailAddress'], parseToString],
+            [['carrier', 'phoneNumber'], parseToString],
+            [['carrier', 'meansOfTransport'], parseTitleCase],
+            [['carrier', 'vehicleRegistration'], parseToString],
+            [['brokerOrDealer', 'organisationName'], parseToString],
+            [['brokerOrDealer', 'address', 'fullAddress'], parseToString],
+            [['brokerOrDealer', 'address', 'postcode'], parseToString],
+            [['brokerOrDealer', 'emailAddress'], parseToString],
+            [['brokerOrDealer', 'phoneNumber'], parseToString],
+            [['brokerOrDealer', 'registrationNumber'], parseToString]
+          ],
           keyCols: [3, 4, 5, 6, 7] // nosonar
         },
         '8. Waste item level': {
           target: 'items',
           firstRowOfData: 9,
           worksheetName: '8. Waste item level',
-          updateFn: updateData(itemMapping),
           maxCol: itemMapping.length,
+          mapping: [
+            [],
+            [],
+            [['yourUniqueReference'], requiredString],
+            [['ewcCodes'], parseEWCCodes],
+            [['wasteDescription'], parseToString],
+            [['physicalForm'], parseTitleCase],
+            [['numberOfContainers'], parseToNumber],
+            [['typeOfContainers'], parseContainerType],
+            [['weight', 'metric'], parseTitleCase],
+            [['weight', 'amount'], parseToNumber],
+            [['weight', 'isEstimate'], parseEstimate],
+            [['containsPops'], parseBoolean],
+            [['pops', 'components'], parseComponentCodes],
+            [['pops', 'sourceOfComponents'], parseToString],
+            [['containsHazardous'], parseBoolean],
+            [['hazardous', 'hazCodes'], parseHazCodes],
+            [['hazardous', 'components'], parseComponentNames],
+            [['hazardous', 'sourceOfComponents'], parseToString],
+            [['disposalOrRecoveryCodes'], parseDisposalCodes]
+          ],
           keyCols: [2, 3, 4, 5, 6, 7, 8, 9] // nosonar
         }
       },
@@ -245,17 +306,29 @@ export const getWorksheetMeta = (() => {
   }
 
   const constructErrorMatchers = (md) => {
+    const worksheetsByTarget = (m) => Object.groupBy(Object.values(m.worksheets), ({ target }) => target)
     return md.joins.reduce(
       (m, join) => {
-        const leftWs = Object.values(m.worksheets).filter(({ target }) => target === join.keys[1])
+        const ws = worksheetsByTarget(m)
+        const leftWs = ws[join.keys[1]]
         m.errorTargets.push({ target: join.target, worksheetName: leftWs[0]?.worksheetName, joinKey: join.joinKey })
-        const rightWs = Object.values(m.worksheets).filter(({ target }) => target === join.keys[0])
+        const rightWs = ws[join.keys[0]]
         m.errorTargets.push({ target: [], worksheetName: rightWs[0]?.worksheetName, joinKey: join.joinKey })
         return m
       },
       { ...md, errorTargets: [] }
     )
   }
+
+  const constructUpdateFns = (md) =>
+    Object.keys(md.worksheets).reduce((m, k) => {
+      m.worksheets[k].updateFn = updateData(m.worksheets[k].mapping)
+      if (m.worksheets[k].keyCols == null) {
+        m.worksheets[k].keyCols = m.worksheets[k].mapping.map((c, i) => (c.length > 0 ? i : null)).filter((x) => x)
+      }
+      return m
+    }, md)
+
   return (workbook, validateFn, logger) => {
     const templateKey = cellValueText(workbook.getWorksheet(workbook.worksheets[0].name).getRow(1).getCell(1).value)
     const metadata = knownTemplateVersions[templateKey]
@@ -275,7 +348,10 @@ export const getWorksheetMeta = (() => {
           ` with worksheets: ${workbook.worksheets.map((ws) => ws.name).join(', ')}`
       )
     }
-    return { ...constructErrorMatchers(metadata), transform: metadata.transform(validateFn) }
+    return {
+      ...constructUpdateFns(constructErrorMatchers(metadata)),
+      transform: metadata.transform(validateFn)
+    }
   }
 })()
 
@@ -286,6 +362,7 @@ export const parseExcelFile = (() => {
       return { hasErrors: true }
     }
     const worksheetMetadata = getWorksheetMeta(workbook, validateFn, logger)
+    console.log('worksheetMetadata: ', JSON.stringify(worksheetMetadata, null, 4))
     if (worksheetMetadata == null) {
       return { hasErrors: true }
     }

@@ -594,12 +594,7 @@ describe('background processor', () => {
     expect(mockUpdateErrors).toHaveBeenCalledWith(
       expect.anything(),
       {
-        '7. Waste movement level': [
-          {
-            coords: [2, 9],
-            message: 'Waste Tracking ID is required'
-          }
-        ],
+        '7. Waste movement level': [{ coords: [2, 9], message: 'Waste Tracking ID is required' }],
         '8. Waste item level': []
       },
       expect.anything()
