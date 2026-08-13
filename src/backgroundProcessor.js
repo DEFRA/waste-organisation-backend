@@ -132,7 +132,7 @@ const processSpreadsheet = async (
     logger.debug(`ReferenceNumber: ${referenceNumber} -- rowNumbers: ${JSON.stringify(rowNumbers)}`)
     const errs = transformBulkApiErrors(movements, rowNumbers, worksheetMetadata, apiResponse.errors)
     logger.debug(`ReferenceNumber: ${referenceNumber} -- Cells to update with errors: ${JSON.stringify(errs)}`)
-    updateErrors(workbook, errs, worksheetMetadata)
+    updateErrors(workbook, errs, worksheetMetadata, logger)
     const file = await workbookToByteArray(workbook)
     await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
     await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file, referenceNumber, filename })
@@ -157,7 +157,7 @@ const processSpreadsheet = async (
 
 export const processSpreadsheetJob = async (s3Client, message) => {
   const { s3Bucket, s3Key, encryptedEmail, encryptedName, organisationId, uploadId, uploadType, hasError, referenceNumber, filename, traceId } = message
-  const processJobLogger = console // createLogger(traceId)
+  const processJobLogger = createLogger(traceId)
   processJobLogger.info(`Message: ${JSON.stringify(message)}`)
   const decryptedEmail = decrypt(encryptedEmail, config.get('encryptionKey'))
   const decryptedName = decrypt(encryptedName, config.get('encryptionKey'))

@@ -589,23 +589,6 @@ describe('excel proccessor', () => {
   ])('should write waste tracking ids', { timeout: 50000 }, async ({ file, wtidCoords }) => {
     const buffer = await fs.readFile(file)
     const { workbook, movements, rowNumbers, worksheetMetadata } = await parseExcelFile(buffer, 'org-id', console)
-    console.log('worksheetMetadata: ', file, JSON.stringify(worksheetMetadata, null, 4))
-    console.log(
-      'fish >>  ',
-      JSON.stringify(
-        workbook.worksheets.map((x) => x.tables),
-        null,
-        4
-      )
-    )
-    console.log(
-      'dog >>  ',
-      JSON.stringify(
-        workbook.model.worksheets.map((x) => x.tables),
-        null,
-        4
-      )
-    )
     const bulkImportResult = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
 
     const coords = wasteTrackingIdsToCoords(movements, rowNumbers, bulkImportResult.movements, worksheetMetadata)

@@ -127,16 +127,16 @@ export const updateErrors = (() => {
       cell.value = { richText: [{ font, text: 'Please provide a value' }] }
     }
   }
-  return (workbook, cellsAndMessages, worksheetMetadata) => {
+  return (workbook, cellsAndMessages, worksheetMetadata, logger) => {
+    const l = logger || console
     for (const worksheetName of Object.keys(cellsAndMessages)) {
       const worksheet = workbook.getWorksheet(worksheetName)
       if (worksheet) {
         for (const { coords, message } of cellsAndMessages[worksheetName]) {
-          console.log('worksheetMetadata ::: ', JSON.stringify(worksheetMetadata, null, 4))
           updateCell(worksheet, coords, message, worksheetMetadata?.errors[worksheetName] ?? 1)
         }
       } else {
-        console.log(
+        l.log(
           `Cannot update errors - worksheet not fonud "${worksheetName}" not in ${workbook.worksheets.map((ws) => ws.name).join(', ')}`,
           JSON.stringify(cellsAndMessages)
         )

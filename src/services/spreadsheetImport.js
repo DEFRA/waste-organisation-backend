@@ -133,7 +133,6 @@ const joinWasteItems = (flatData, worksheetMetadata, defraCustomerOrganisationId
           }
         }
       }
-      console.log(`>>>>>> ${intoKey} # ${Object.keys(data)}`)
       return { ...data, [intoKey]: data[intoKey].elements, errors, rowNumbers }
     }, flatData)
   } else {
@@ -387,7 +386,6 @@ export const parseExcelFile = (() => {
       return { hasErrors: true }
     }
     const worksheetMetadata = getWorksheetMeta(workbook, validateFn, logger)
-    console.log('worksheetMetadata >> ', JSON.stringify(worksheetMetadata, null, 4))
     if (worksheetMetadata == null) {
       return { hasErrors: true }
     }
@@ -399,16 +397,8 @@ export const parseExcelFile = (() => {
       })
       return result
     }, {})
-    // console.log('flatData: ', JSON.stringify(flatData, null, 4))
     const joined = joinWasteItems(flatData, worksheetMetadata, defraCustomerOrganisationId)
     // logger.trace(`joined excel data: ${JSON.stringify(joined, null, 4)}`)
-    console.log(
-      '>>',
-      flatData.movements.errors.length > 0,
-      flatData.items.errors.length > 0,
-      joined.errors.items.length > 0,
-      joined.errors.movements.length > 0
-    )
     if (flatData.movements.errors.length > 0 || flatData.items.errors.length > 0 || joined.errors.items.length > 0 || joined.errors.movements.length > 0) {
       const errors = Object.values(worksheetMetadata.worksheets).reduce((errs, metadata) => {
         errs[metadata.worksheetName] = distinct(flatData[metadata.target].errors.concat(joined.errors[metadata.target]))
@@ -463,11 +453,9 @@ const errorToCoords = (() => {
     const msg = cleanErrorMessage(error)
     const colNum = keyPathToColNum(errKeyPath.slice(1), movementMapping)
     if (colNum < 0) {
-      console.log('colNum less than jake {ref, msg, colNum}: ', JSON.stringify({ ref, msg, colNum, errKeyPath }, null, 4))
       return {}
     }
     const errorValue = movementMapping[colNum][0].reduce((x, y) => x[y], movementData[idx])
-    console.log('{ref, msg, colNum, errorValue}: ', JSON.stringify({ ref, msg, colNum, errorValue }, null, 4))
     return cellError(colNum, rowNumbers[ref].movementRow, msg, movementWorksheetName, errorValue)
   }
 
@@ -489,21 +477,12 @@ const errorToCoords = (() => {
 
   return (movementData, rowNumbers, { defaultErrorWorksheet, worksheets, errorTargets }, error) => {
     const errKeyPath = error.key.split('.')
-    console.log(
-      'error: ',
-      JSON.stringify(error, null, 4),
-      'errorKeyPath > ',
-      JSON.stringify(errKeyPath, null, 4),
-      'errorTargets >> ',
-      JSON.stringify(errorTargets, null, 4)
-    )
     if (errKeyPath[0].match(/^[0-9]+$/)) {
       const joinErrorTarget = errorTargets.reduce((err, errTarget) => {
         if (err?.coords) {
           return err
         }
         if (errKeyPath[1] === errTarget.target[0] && errKeyPath[2].match(/^[0-9]+$/)) {
-          console.log(`errorToCoords item >>>> ${JSON.stringify(errTarget)}`)
           return wasteItemErr(
             movementData,
             errKeyPath[0],
@@ -516,11 +495,6 @@ const errorToCoords = (() => {
             worksheets[errTarget.worksheetName].mapping
           )
         } else {
-          // console.log(`errorToCoords movement >>>> ${JSON.stringify(errTarget)}`)
-          console.log(
-            'errorToCoords movement >>',
-            JSON.stringify({ movementData, first_errKeyPath: errKeyPath[0], rowNumbers, errKeyPath, error, errTarget, defaultErrorWorksheet }, null, 4)
-          )
           if (Array.isArray(errTarget.target) && errTarget.target.length === 0) {
             const e = wasteMovementErr(
               movementData,
@@ -532,7 +506,6 @@ const errorToCoords = (() => {
               errTarget.joinKey,
               worksheets[errTarget.worksheetName].mapping
             )
-            console.log(JSON.stringify({ e }))
             return e
           }
         }
@@ -555,22 +528,27 @@ export const wasteTrackingIdsToCoords = (movementData, rowNumbers, apiResultData
       result[target.worksheetName] = []
     }
     result[target.worksheetName].push(
-      ...apiResultData.map((obj, idx) => {
+      ...apiResultData.flatMap((obj, idx) => {
         const wasteTrackingId = getIn(obj, source)
-        const { movementRow } = rowNumbers[movementData[idx]['yourUniqueReference']] // TODO take join key as arg
-        return {
-          coords: [target.col, movementRow],
-          value: wasteTrackingId,
-          sheet: target.worksheetName
+        if (movementData[idx] == null) {
+          return []
         }
+        const { movementRow } = rowNumbers[movementData[idx]['yourUniqueReference']] // TODO take join key as arg
+        return [
+          {
+            coords: [target.col, movementRow],
+            value: wasteTrackingId,
+            sheet: target.worksheetName
+          }
+        ]
       })
     )
     return result
   }, {})
 
 // alias these function so I don't have to refactor everthing at once
-export const updateErrors = (worksheet, coords, worksheetMetadata) => {
-  return xlUpdateErrors(worksheet, coords, worksheetMetadata)
+export const updateErrors = (worksheet, coords, worksheetMetadata, logger) => {
+  return xlUpdateErrors(worksheet, coords, worksheetMetadata, logger)
 }
 export const updateCellContent = (workbook, cellsAndValues) => {
   return xlUpdateCellContent(workbook, cellsAndValues)
