@@ -245,7 +245,88 @@ export const getWorksheetMeta = (() => {
       copyFromResult: [{ source: ['wasteTrackingId'], target: { worksheetName: '7. Waste movement level', col: 2 } }],
       version: '1'
     },
-    'Report receipt of waste v1.2': {}
+    'Report receipt of waste v1.2': {
+      worksheets: {
+        '2. Waste movement details': {
+          target: 'movements',
+          firstRowOfData: 3,
+          worksheetName: '2. Waste movement details',
+          mapping: [
+            [],
+            [],
+            [['wasteTrackingId'], parseToString],
+            [['yourUniqueReference'], requiredString],
+            [['receiver', 'siteName'], parseToString],
+            [['receipt', 'address', 'fullAddress'], parseToString],
+            [['receipt', 'address', 'postcode'], parseToString],
+            [['receiver', 'authorisationNumber'], parseToString],
+            [['receiver', 'regulatoryPositionStatements'], parseRegStatements],
+            [['receiver', 'emailAddress'], parseToString],
+            [['receiver', 'phoneNumber'], parseToString],
+            [['dateTimeReceived'], correctDateTimezone],
+            [['hazardousWasteConsignmentCode'], parseToString],
+            [['reasonForNoConsignmentCode'], parseToString],
+            [['specialHandlingRequirements'], parseToString],
+            [['carrier', 'registrationNumber'], parseToString],
+            [['carrier', 'reasonForNoRegistrationNumber'], parseToString],
+            [['carrier', 'organisationName'], parseToString],
+            [['carrier', 'address', 'fullAddress'], parseToString],
+            [['carrier', 'address', 'postcode'], parseToString],
+            [['carrier', 'emailAddress'], parseToString],
+            [['carrier', 'phoneNumber'], parseToString],
+            [['carrier', 'meansOfTransport'], parseTitleCase],
+            [['carrier', 'vehicleRegistration'], parseToString],
+            [['brokerOrDealer', 'organisationName'], parseToString],
+            [['brokerOrDealer', 'address', 'fullAddress'], parseToString],
+            [['brokerOrDealer', 'address', 'postcode'], parseToString],
+            [['brokerOrDealer', 'emailAddress'], parseToString],
+            [['brokerOrDealer', 'phoneNumber'], parseToString],
+            [['brokerOrDealer', 'registrationNumber'], parseToString]
+          ],
+          keyCols: [3, 4, 5, 6, 7] // nosonar
+        },
+        '3. Waste item details': {
+          target: 'items',
+          firstRowOfData: 3,
+          worksheetName: '3. Waste item details',
+          mapping: [
+            [],
+            [],
+            [['yourUniqueReference'], requiredString],
+            [['ewcCodes'], parseEWCCodes],
+            [['wasteDescription'], parseToString],
+            [['physicalForm'], parseTitleCase],
+            [['numberOfContainers'], parseToNumber],
+            [['typeOfContainers'], parseContainerType],
+            [['weight', 'metric'], parseTitleCase],
+            [['weight', 'amount'], parseToNumber],
+            [['weight', 'isEstimate'], parseEstimate],
+            [['containsPops'], parseBoolean],
+            [['pops', 'components'], parseComponentCodes],
+            [['pops', 'sourceOfComponents'], parseToString],
+            [['containsHazardous'], parseBoolean],
+            [['hazardous', 'hazCodes'], parseHazCodes],
+            [['hazardous', 'components'], parseComponentNames],
+            [['hazardous', 'sourceOfComponents'], parseToString],
+            [['disposalOrRecoveryCodes'], parseDisposalCodes]
+          ],
+          keyCols: [2, 3, 4, 5, 6, 7, 8, 9] // nosonar
+        }
+      },
+      joins: [{ joinKey: ['yourUniqueReference'], keys: ['movements', 'items'], target: ['wasteItems'], rowNames: ['movementRow', 'itemRows'] }],
+      transform: (validateFn) =>
+        compose(
+          validateFn,
+          coerceRegistrationNumberWhenReasonSupplied,
+          validateMovementHasWasteItems,
+          populateWholeItemDisposalCodes,
+          validateUniqueReference()
+        ),
+      errors: { '2. Waste movement details': 1, '3. Waste item details': 1 },
+      defaultErrorWorksheet: '2. Waste movement details',
+      copyFromResult: [{ source: ['wasteTrackingId'], target: { worksheetName: '2. Waste movement details', col: 2 } }],
+      version: '1'
+    }
   }
 
   const constructErrorMatchers = (md) => {
@@ -306,7 +387,7 @@ export const parseExcelFile = (() => {
       return { hasErrors: true }
     }
     const worksheetMetadata = getWorksheetMeta(workbook, validateFn, logger)
-    console.log('worksheetMetadata: ', JSON.stringify(worksheetMetadata, null, 4))
+    console.log('worksheetMetadata >> ', JSON.stringify(worksheetMetadata, null, 4))
     if (worksheetMetadata == null) {
       return { hasErrors: true }
     }
