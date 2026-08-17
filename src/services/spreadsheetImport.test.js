@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises'
-import { getWorksheetMeta, parseExcelFile, transformBulkApiErrors, updateCellContent, wasteTrackingIdsToCoords } from './spreadsheetImport.js'
+import { getWorksheetMeta, parseExcelFile, transformBulkApiErrors, updateCellContent, wasteTrackingIdsToCoords, joinWasteItems } from './spreadsheetImport.js'
 import {
   parseBoolean,
   parseComponentCodes,
@@ -11,7 +11,8 @@ import {
   parseHazCodes,
   parseRegStatements,
   parseTitleCase,
-  parseToString
+  parseToString,
+  requiredString
 } from './spreadsheetImport/parsers.js'
 import { appendMessageToCell, cellValueText } from './spreadsheetImport/excel.js'
 import {
@@ -348,6 +349,60 @@ describe('some excel unit tests', () => {
   })
 })
 
+describe('some join items tests', () => {
+  test('should join data', () => {
+    const worksheetMetadata = {
+      worksheets: {
+        ls: { target: 'leaves', firstRowOfData: 2, worksheetName: 'ls', mapping: [[], ['branchId', requiredString], [['fish', requiredString]]] },
+        bs: {
+          target: 'branches',
+          firstRowOfData: 2,
+          worksheetName: 'bs',
+          mapping: [[], ['trunkId', requiredString], ['branchId', requiredString], [['dog', requiredString]]]
+        },
+        ts: { target: 'trunks', firstRowOfData: 2, worksheetName: 'ts', mapping: [[], [], ['trunkId', requiredString], [['cat', requiredString]]] }
+      },
+      joins: [
+        { joinKey: ['branchId'], keys: ['branches', 'leaves'], target: ['leaves'], rowNames: ['branchRow', 'leafRow'] },
+        { joinKey: ['trunkId'], keys: ['trunks', 'branches'], target: ['branches'], rowNames: ['trunkRow', 'branchRow'] }
+      ],
+      errors: { ls: 1, bs: 1, ts: 1 },
+      defaultErrorWorksheet: 'ts',
+      copyFromResult: [{ source: ['id'], target: { worksheetName: 'ts', col: 2 } }],
+      transform: (fn) => fn
+    }
+
+    const flatData = {
+      trunks: { elements: [{ trunkId: 1, cat: 'cat' }] },
+      branches: { elements: [{ trunkId: 1, branchId: 1, dog: 'dog' }] },
+      leaves: { elements: [{ leafId: 1, branchId: 1, fish: 'fish' }] }
+    }
+    const data = joinWasteItems(flatData, worksheetMetadata)
+    expect(data.trunks).toEqual([{ branches: [{ branchId: 1, dog: 'dog', leaves: [{ fish: 'fish', leafId: 1 }] }], cat: 'cat', trunkId: 1 }])
+  })
+
+  test('should support flat data', () => {
+    const worksheetMetadata = {
+      worksheets: {
+        ls: { target: 'lakes', firstRowOfData: 2, worksheetName: 'ls', mapping: [[], ['lakeId', requiredString], [['fish', requiredString]]] },
+        ts: { target: 'trees', firstRowOfData: 2, worksheetName: 'ts', mapping: [[], [], ['treeId', requiredString], [['cat', requiredString]]] }
+      },
+      joins: [],
+      errors: { ls: 1, ts: 1 },
+      defaultErrorWorksheet: 'ts',
+      copyFromResult: [{ source: ['id'], target: { worksheetName: 'ts', col: 2 } }],
+      transform: (fn) => fn
+    }
+    const flatData = {
+      trees: { elements: [{ treeId: 1, cat: 'cat' }] },
+      lakes: { elements: [{ lakeId: 1, fish: 'fish' }] }
+    }
+    const data = joinWasteItems(flatData, worksheetMetadata)
+    expect(data.trees).toEqual([{ cat: 'cat', treeId: 1 }])
+    expect(data.lakes).toEqual([{ fish: 'fish', lakeId: 1 }])
+  })
+})
+
 const mockWorksheet = (fakeData, rowPadding = 8) => {
   const fakeRows = Array.apply(null, Array(rowPadding))
     .map(() => [])
@@ -394,7 +449,7 @@ const mockWorkbook = (buffer, movementData, itemData) => ({
 })
 
 describe('transformBulkApiErrors', () => {
-  const worksheetMetadata = getWorksheetMeta(mockWorkbook(null, [], []), (x) => x, console)
+  const worksheetMetadata = getWorksheetMeta(mockWorkbook(null, [], []), (x) => x, {}, console)
 
   test('distinct should deduplicate identical errors for the same cell', () => {
     const movementData = [{ yourUniqueReference: 'REF1', carrier: { organisationName: 'Carrier Ltd' } }]

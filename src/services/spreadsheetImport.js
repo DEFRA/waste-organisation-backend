@@ -75,14 +75,26 @@ const updateData = (cols) => {
 
 // joins: [{ joinKey: ['yourUniqueReference'], keys: ['movements', 'items'], target: ['wasteItems'], rowNames: ['movementRow', 'itemRow'] }]
 
-const joinWasteItems = (flatData, worksheetMetadata, defraCustomerOrganisationId) => {
+export const joinWasteItems = (flatData, worksheetMetadata) => {
   const transform = worksheetMetadata.transform
   const errorWorksheet = worksheetMetadata.worksheets[worksheetMetadata.defaultErrorWorksheet]
   const errors = {}
   const rowNumbers = {}
+  const extractedData = Object.entries(flatData).reduce((x, [k, { elements }]) => {
+    x[k] = elements
+    return x
+  }, {})
+  const updateRowNumber = (r, rowNames, joinKey) => {
+    return (x) => {
+      rowNumbers[r][rowNames[1]].push(x['--rowNumber'])
+      delete x['--rowNumber']
+      deleteLeaf(x, joinKey)
+      return x
+    }
+  }
+
   if (Array.isArray(worksheetMetadata.joins) && worksheetMetadata.joins.length > 0) {
-    return worksheetMetadata.joins.reduce((data, { joinKey, keys, target, rowNames }) => {
-      // TODO joinKey is an array??
+    return worksheetMetadata.joins.reduce((data, { joinKey, keys, target, rowNames, process }) => {
       const [intoKey, fromKey] = keys
       keys.reduce((e, k) => {
         if (e[k] == null) {
@@ -90,40 +102,27 @@ const joinWasteItems = (flatData, worksheetMetadata, defraCustomerOrganisationId
         }
         return e
       }, errors)
-      const is = Object.groupBy(data[fromKey].elements, (x) => getIn(x, joinKey))
+      const is = Object.groupBy(data[fromKey], (x) => getIn(x, joinKey))
       // TODO do we need wasteTrackingIdCol if the validation func knows the right col??
       const itemRefCol = 2 // TODO are itemRefCol and movementRefCol retrievable from worksheetMetadata?
       const movementRefCol = 3
-      for (let i = 0; i < data[intoKey].elements.length; i++) {
-        const r = getIn(data[intoKey].elements[i], joinKey)
-        rowNumbers[r] = { [rowNames[0]]: data[intoKey].elements[i]['--rowNumber'], [rowNames[1]]: [] }
+      for (let i = 0; i < data[intoKey].length; i++) {
+        const r = getIn(data[intoKey][i], joinKey)
+        rowNumbers[r] = { [rowNames[0]]: data[intoKey][i]['--rowNumber'], [rowNames[1]]: [] }
         if (r && is[r] && is[r].length > 0) {
-          data[intoKey].elements[i].submittingOrganisation = { defraCustomerOrganisationId }
-          updateIn(
-            data[intoKey].elements[i],
-            target,
-            is[r].map((x) => {
-              rowNumbers[r][rowNames[1]].push(x['--rowNumber'])
-              delete x['--rowNumber']
-              deleteLeaf(x, joinKey)
-              return x
-            })
-          )
+          if (typeof process === 'function') {
+            data[intoKey][i] = process(data[intoKey][i])
+          }
+          updateIn(data[intoKey][i], target, is[r].map(updateRowNumber(r, rowNames, joinKey)))
         }
         // WARNING: mutabliy updates movements array from supplied transform
-        collectCellErrors(
-          errors[intoKey], // TODO this isn't right??
-          () => (data[intoKey].elements[i] = transform(data[intoKey].elements[i])),
-          null,
-          [null, data[intoKey].elements[i]['--rowNumber']],
-          {}
-        ) // nosonar
-        delete data[intoKey].elements[i]['--rowNumber']
+        collectCellErrors(errors[intoKey], () => (data[intoKey][i] = transform(data[intoKey][i])), null, [null, data[intoKey][i]['--rowNumber']], {}) // nosonar
+        delete data[intoKey][i]['--rowNumber']
         if (r) {
           delete is[r]
         }
       }
-      if (data[intoKey].elements.length === 0) {
+      if (data[intoKey].length === 0) {
         errors[intoKey].push(cellError(movementRefCol, errorWorksheet.firstRowOfData, 'No movements recognised', errorWorksheet.worksheetName))
       }
       if (Object.keys(is).length > 0) {
@@ -133,17 +132,13 @@ const joinWasteItems = (flatData, worksheetMetadata, defraCustomerOrganisationId
           }
         }
       }
-      return { ...data, [intoKey]: data[intoKey].elements, errors, rowNumbers }
-    }, flatData)
+      return { ...data, errors, rowNumbers }
+    }, extractedData)
   } else {
-    console.log('.... TODO no joins not currently implemented')
-    return flatData
-    // return Object.keys(flatData).reduce((data, key) => {
-    //   if (errors[key] == null) {
-    //     errors[key] = []
-    //   }
-    //   return data
-    // }, flatData)
+    return Object.entries(flatData).reduce((data, [k, { elements }]) => {
+      data[k] = elements
+      return { ...data, errors, rowNumbers }
+    }, {})
   }
 }
 
@@ -230,7 +225,18 @@ export const getWorksheetMeta = (() => {
           keyCols: [2, 3, 4, 5, 6, 7, 8, 9] // nosonar
         }
       },
-      joins: [{ joinKey: ['yourUniqueReference'], keys: ['movements', 'items'], target: ['wasteItems'], rowNames: ['movementRow', 'itemRows'] }],
+      joins: ({ defraCustomerOrganisationId }) => [
+        {
+          joinKey: ['yourUniqueReference'],
+          keys: ['movements', 'items'],
+          target: ['wasteItems'],
+          rowNames: ['movementRow', 'itemRows'],
+          process: (x) => {
+            x.submittingOrganisation = { defraCustomerOrganisationId }
+            return x
+          }
+        }
+      ],
       transform: (validateFn) =>
         compose(
           validateFn,
@@ -312,7 +318,18 @@ export const getWorksheetMeta = (() => {
           keyCols: [2, 3, 4, 5, 6, 7, 8, 9] // nosonar
         }
       },
-      joins: [{ joinKey: ['yourUniqueReference'], keys: ['movements', 'items'], target: ['wasteItems'], rowNames: ['movementRow', 'itemRows'] }],
+      joins: ({ defraCustomerOrganisationId }) => [
+        {
+          joinKey: ['yourUniqueReference'],
+          keys: ['movements', 'items'],
+          target: ['wasteItems'],
+          rowNames: ['movementRow', 'itemRows'],
+          process: (x) => {
+            x.submittingOrganisation = { defraCustomerOrganisationId }
+            return x
+          }
+        }
+      ],
       transform: (validateFn) =>
         compose(
           validateFn,
@@ -353,7 +370,9 @@ export const getWorksheetMeta = (() => {
       return m
     }, md)
 
-  return (workbook, validateFn, logger) => {
+  const constructJoins = (md, defaultData) => (typeof md?.joins === 'function' ? { ...md, joins: md.joins(defaultData) } : md)
+
+  return (workbook, validateFn, defraCustomerOrganisationId, logger) => {
     const templateKey = cellValueText(workbook.getWorksheet(workbook.worksheets[0].name).getRow(1).getCell(1).value)
     const metadata = knownTemplateVersions[templateKey]
     if (metadata == null) {
@@ -373,7 +392,7 @@ export const getWorksheetMeta = (() => {
       )
     }
     return {
-      ...constructUpdateFns(constructErrorMatchers(metadata)),
+      ...constructUpdateFns(constructErrorMatchers(constructJoins(metadata, { defraCustomerOrganisationId }))),
       transform: metadata.transform(validateFn)
     }
   }
@@ -385,7 +404,7 @@ export const parseExcelFile = (() => {
     if (workbook == null) {
       return { hasErrors: true }
     }
-    const worksheetMetadata = getWorksheetMeta(workbook, validateFn, logger)
+    const worksheetMetadata = getWorksheetMeta(workbook, validateFn, defraCustomerOrganisationId, logger)
     if (worksheetMetadata == null) {
       return { hasErrors: true }
     }
@@ -397,8 +416,9 @@ export const parseExcelFile = (() => {
       })
       return result
     }, {})
-    const joined = joinWasteItems(flatData, worksheetMetadata, defraCustomerOrganisationId)
+    const joined = joinWasteItems(flatData, worksheetMetadata)
     // logger.trace(`joined excel data: ${JSON.stringify(joined, null, 4)}`)
+    // TODO get keys from metadata
     if (flatData.movements.errors.length > 0 || flatData.items.errors.length > 0 || joined.errors.items.length > 0 || joined.errors.movements.length > 0) {
       const errors = Object.values(worksheetMetadata.worksheets).reduce((errs, metadata) => {
         errs[metadata.worksheetName] = distinct(flatData[metadata.target].errors.concat(joined.errors[metadata.target]))
