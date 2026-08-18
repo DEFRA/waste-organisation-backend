@@ -73,8 +73,6 @@ const updateData = (cols) => {
   }
 }
 
-// joins: [{ joinKey: ['yourUniqueReference'], keys: ['movements', 'items'], target: ['wasteItems'], rowNames: ['movementRow', 'itemRow'] }]
-
 export const joinWasteItems = (flatData, worksheetMetadata) => {
   const transform = worksheetMetadata.transform
   const errorWorksheet = worksheetMetadata.worksheets[worksheetMetadata.defaultErrorWorksheet]
@@ -94,7 +92,7 @@ export const joinWasteItems = (flatData, worksheetMetadata) => {
   }
 
   if (Array.isArray(worksheetMetadata.joins) && worksheetMetadata.joins.length > 0) {
-    return worksheetMetadata.joins.reduce((data, { joinKey, keys, target, rowNames, process }) => {
+    return worksheetMetadata.joins.reduce((data, { joinKey, keys, target, rowNames, process, refCols }) => {
       const [intoKey, fromKey] = keys
       keys.reduce((e, k) => {
         if (e[k] == null) {
@@ -103,9 +101,7 @@ export const joinWasteItems = (flatData, worksheetMetadata) => {
         return e
       }, errors)
       const is = Object.groupBy(data[fromKey], (x) => getIn(x, joinKey))
-      // TODO do we need wasteTrackingIdCol if the validation func knows the right col??
-      const itemRefCol = 2 // TODO are itemRefCol and movementRefCol retrievable from worksheetMetadata?
-      const movementRefCol = 3
+      const [trunkRefCol, branchRefCol] = refCols
       for (let i = 0; i < data[intoKey].length; i++) {
         const r = getIn(data[intoKey][i], joinKey)
         rowNumbers[r] = { [rowNames[0]]: data[intoKey][i]['--rowNumber'], [rowNames[1]]: [] }
@@ -123,12 +119,12 @@ export const joinWasteItems = (flatData, worksheetMetadata) => {
         }
       }
       if (data[intoKey].length === 0) {
-        errors[intoKey].push(cellError(movementRefCol, errorWorksheet.firstRowOfData, 'No movements recognised', errorWorksheet.worksheetName))
+        errors[intoKey].push(cellError(trunkRefCol, errorWorksheet.firstRowOfData, 'No movements recognised', errorWorksheet.worksheetName))
       }
       if (Object.keys(is).length > 0) {
         for (const i of Object.values(is).flatMap((x) => x)) {
           if (getIn(i, joinKey)) {
-            errors.items.push(cellError(itemRefCol, i['--rowNumber'], 'No waste movements for unique reference'))
+            errors.items.push(cellError(branchRefCol, i['--rowNumber'], 'No waste movements for unique reference'))
           }
         }
       }
@@ -162,6 +158,7 @@ export const getWorksheetMeta = (() => {
         '7. Waste movement level': {
           target: 'movements',
           firstRowOfData: 9,
+          defaultErrorCol: 3,
           worksheetName: '7. Waste movement level',
           mapping: [
             [],
@@ -200,6 +197,7 @@ export const getWorksheetMeta = (() => {
         '8. Waste item level': {
           target: 'items',
           firstRowOfData: 9,
+          defaultErrorCol: 2,
           worksheetName: '8. Waste item level',
           mapping: [
             [],
@@ -255,6 +253,7 @@ export const getWorksheetMeta = (() => {
         '2. Waste movement details': {
           target: 'movements',
           firstRowOfData: 3,
+          defaultErrorCol: 3,
           worksheetName: '2. Waste movement details',
           mapping: [
             [],
@@ -293,6 +292,7 @@ export const getWorksheetMeta = (() => {
         '3. Waste item details': {
           target: 'items',
           firstRowOfData: 3,
+          defaultErrorCol: 2,
           worksheetName: '3. Waste item details',
           mapping: [
             [],
@@ -346,13 +346,12 @@ export const getWorksheetMeta = (() => {
   }
 
   const constructErrorMatchers = (md) => {
-    const worksheetsByTarget = (m) => Object.groupBy(Object.values(m.worksheets), ({ target }) => target)
+    const worksheetsByTarget = Object.groupBy(Object.values(md.worksheets), ({ target }) => target)
     return md.joins.reduce(
       (m, join) => {
-        const ws = worksheetsByTarget(m)
-        const leftWs = ws[join.keys[1]]
+        const leftWs = worksheetsByTarget[join.keys[1]]
         m.errorTargets.push({ target: join.target, worksheetName: leftWs[0]?.worksheetName, joinKey: join.joinKey })
-        const rightWs = ws[join.keys[0]]
+        const rightWs = worksheetsByTarget[join.keys[0]]
         m.errorTargets.push({ target: [], worksheetName: rightWs[0]?.worksheetName, joinKey: join.joinKey })
         return m
       },
@@ -370,7 +369,21 @@ export const getWorksheetMeta = (() => {
       return m
     }, md)
 
-  const constructJoins = (md, defaultData) => (typeof md?.joins === 'function' ? { ...md, joins: md.joins(defaultData) } : md)
+  const constructJoins = (md, defaultData) => {
+    const worksheetsByTarget = Object.groupBy(Object.values(md.worksheets), ({ target }) => target)
+    const arrayEqual = (x, y) => x && y && x.length === y.length && x.every((v, i) => v === y[i])
+    const joins = (typeof md?.joins === 'function' ? md.joins(defaultData) : md.joins).map((join) => {
+      return {
+        ...join,
+        refCols: join.keys.map((k) => {
+          return worksheetsByTarget[k][0].mapping.findIndex(([col]) => {
+            return arrayEqual(col, join.joinKey)
+          })
+        })
+      }
+    })
+    return { ...md, joins }
+  }
 
   return (workbook, validateFn, defraCustomerOrganisationId, logger) => {
     const templateKey = cellValueText(workbook.getWorksheet(workbook.worksheets[0].name).getRow(1).getCell(1).value)
@@ -391,10 +404,8 @@ export const getWorksheetMeta = (() => {
           ` with worksheets: ${workbook.worksheets.map((ws) => ws.name).join(', ')}`
       )
     }
-    return {
-      ...constructUpdateFns(constructErrorMatchers(constructJoins(metadata, { defraCustomerOrganisationId }))),
-      transform: metadata.transform(validateFn)
-    }
+    const m = constructUpdateFns(constructErrorMatchers(constructJoins(metadata, { defraCustomerOrganisationId })))
+    return { ...m, transform: metadata.transform(validateFn) }
   }
 })()
 
@@ -493,8 +504,6 @@ const errorToCoords = (() => {
     return cellError(colNum, rowNumbers[ref].itemRows[itemIdx], msg, itemWorksheetName, errorValue)
   }
 
-  const movementRefCol = 3
-
   return (movementData, rowNumbers, { defaultErrorWorksheet, worksheets, errorTargets }, error) => {
     const errKeyPath = error.key.split('.')
     if (errKeyPath[0].match(/^[0-9]+$/)) {
@@ -535,7 +544,7 @@ const errorToCoords = (() => {
         return joinErrorTarget
       }
     }
-    return cellError(movementRefCol, worksheets[defaultErrorWorksheet].firstRowOfData, error.message, defaultErrorWorksheet)
+    return cellError(worksheets[defaultErrorWorksheet].defaultErrorCol, worksheets[defaultErrorWorksheet].firstRowOfData, error.message, defaultErrorWorksheet)
   }
 })()
 

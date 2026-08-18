@@ -363,8 +363,8 @@ describe('some join items tests', () => {
         ts: { target: 'trunks', firstRowOfData: 2, worksheetName: 'ts', mapping: [[], [], ['trunkId', requiredString], [['cat', requiredString]]] }
       },
       joins: [
-        { joinKey: ['branchId'], keys: ['branches', 'leaves'], target: ['leaves'], rowNames: ['branchRow', 'leafRow'] },
-        { joinKey: ['trunkId'], keys: ['trunks', 'branches'], target: ['branches'], rowNames: ['trunkRow', 'branchRow'] }
+        { joinKey: ['branchId'], keys: ['branches', 'leaves'], target: ['leaves'], rowNames: ['branchRow', 'leafRow'], refCols: [2, 1] },
+        { joinKey: ['trunkId'], keys: ['trunks', 'branches'], target: ['branches'], rowNames: ['trunkRow', 'branchRow'], refCols: [2, 1] }
       ],
       errors: { ls: 1, bs: 1, ts: 1 },
       defaultErrorWorksheet: 'ts',
