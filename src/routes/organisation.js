@@ -111,6 +111,7 @@ export const organisations = [
         request.logger.info(
           `Organisation ${transactionType}: ${JSON.stringify({
             organisationId: organisation.organisationId,
+            isLocalAuthority: organisation.isLocalAuthority,
             createdAt: organisation.createdAt
           })}`
         )
