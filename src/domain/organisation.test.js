@@ -147,7 +147,7 @@ describe('calculate payment period', () => {
   beforeEach(() => {
     config.set('govPay.serviceChargeFreePeriodEnd', new Date('1991-10-01T00:00:00.000Z'))
     config.set('govPay.serviceChargePaymentWindowStart', '1-4') // first of April
-    config.set('govPay.serviceChargeAmountPence', 100) // first of April
+    config.set('govPay.serviceChargeAmountPence', 100)
   })
   afterAll(() => {
     config.set('govPay.serviceChargeFreePeriodEnd', configDate)
@@ -165,7 +165,7 @@ describe('calculate payment period', () => {
   })
 
   test('no initial data, payment window closed', () => {
-    expect(calculateNextPaymentPeriod(testOrganisation, may26).paymentPeriods).toEqual([{ from: october25, to: october26, priceInPence: 100 }])
+    expect(calculateNextPaymentPeriod(testOrganisation, march26).paymentPeriods).toEqual([{ from: october25, to: october26, priceInPence: 100 }])
   })
 
   test('no initial data, payment window closed after the period rollover', () => {
@@ -185,6 +185,7 @@ describe('calculate payment period', () => {
   })
 
   test('paid for next year, payment window open', () => {
+    config.set('govPay.serviceChargeFreePeriodEnd', new Date('2025-10-01T00:00:00.000Z'))
     expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october27), may26).paymentPeriods).toEqual([])
   })
 
@@ -212,6 +213,40 @@ describe('calculate payment period', () => {
 
   test('config validator throws on invalid data', () => {
     expect(() => config.set('govPay.serviceChargeFreePeriodEnd', 'boeucoeru')).toThrow(/must be a valid date string/)
+  })
+
+  test('overlapping years, not paid yet', () => {
+    config.set('govPay.serviceChargePaymentWindowStart', '1-11') // first of Nov
+    config.set('govPay.serviceChargeFreePeriodEnd', new Date('1991-01-01T00:00:00.000Z'))
+    const now = new Date('1990-11-11T00:00:00.000Z')
+    expect(calculateNextPaymentPeriod(testOrganisation, now).paymentPeriods).toEqual([
+      { from: new Date('1991-01-01T00:00:00.000Z'), to: new Date('1992-01-01T00:00:00.000Z'), priceInPence: 100 }
+    ])
+  })
+
+  test('overlapping years and has paid for last year', () => {
+    config.set('govPay.serviceChargePaymentWindowStart', '1-11') // first of Nov
+    config.set('govPay.serviceChargeFreePeriodEnd', new Date('1989-01-01T00:00:00.000Z'))
+    const now = new Date('1990-11-11T00:00:00.000Z')
+    const paidUpTo = new Date('1990-01-01T00:00:00.000Z')
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, paidUpTo), now).paymentPeriods).toEqual([
+      { from: new Date('1990-01-01T00:00:00.000Z'), to: new Date('1991-01-01T00:00:00.000Z'), priceInPence: 100 }
+    ])
+  })
+
+  test('moving the end of the free period does not affect people that have already paid', () => {
+    config.set('govPay.serviceChargePaymentWindowStart', '1-4') // first of April
+    config.set('govPay.serviceChargeFreePeriodEnd', new Date('1991-10-01T00:00:00.000Z'))
+    const paymentDate = new Date('1991-11-11T00:00:00.000Z')
+    const pp = calculateNextPaymentPeriod(testOrganisation, paymentDate)
+    const org = updateDisableAfter(testOrganisation, pp.paymentPeriods[0].to)
+
+    config.set('govPay.serviceChargePaymentWindowStart', '1-12') // first of Dec
+    config.set('govPay.serviceChargeFreePeriodEnd', new Date('1992-01-31T00:00:00.000Z'))
+    const now = new Date('1992-09-25T00:00:00.000Z')
+    expect(calculateNextPaymentPeriod(org, now).paymentPeriods).toEqual([
+      { from: new Date('1992-10-01T00:00:00.000Z'), to: new Date('1993-10-01T00:00:00.000Z'), priceInPence: 100 }
+    ])
   })
 })
 

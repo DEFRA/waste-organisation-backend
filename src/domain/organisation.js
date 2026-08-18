@@ -9,7 +9,7 @@ const validate = (org) => {
   return common.validate({ ...org }, orgSchema)
 }
 
-const freePeriodEnd = () => config.get('govPay.serviceChargeFreePeriodEnd')
+const freePeriodEnd = () => new Date(config.get('govPay.serviceChargeFreePeriodEnd'))
 
 const defaultOrgValues = (org) => {
   const disableAfter = org.disableAfter ?? null
@@ -146,26 +146,31 @@ export const moveDisableAfterBackwards = (org, servicePeriodEnd) => {
 }
 
 export const calculateNextPaymentPeriod = (() => {
-  const getStartDate = (at) => {
-    const s = freePeriodEnd()
+  const getStartDate = (at, org) => {
+    const s = org.disableAfter == null ? freePeriodEnd() : new Date(org.disableAfter)
     s.setFullYear(at.getFullYear() - 1)
     return s
   }
 
-  const getPaymentWindowStart = (at, paymentPeriodStart) => {
+  const getPaymentWindowStart = (at, paymentPeriodStart, org) => {
     const [_, day, month] = config.get('govPay.serviceChargePaymentWindowStart').match(/([0-9]+)-([0-9]+)/) // nosonar
     const p = new Date(paymentPeriodStart)
     p.setFullYear(at.getFullYear())
     p.setDate(day)
     p.setMonth(month - 1)
+    const sevenDaysBefore = 604800000
+    if (org?.disableAfter != null && org.disableAfter.getTime() < p.getTime() - sevenDaysBefore) {
+      return new Date(org.disableAfter.getTime() - sevenDaysBefore)
+    }
     return p
   }
 
   return (org, at) => {
-    const startDate = getStartDate(at)
-    const paymentWindowStart = getPaymentWindowStart(at, startDate)
+    const noInitialData = org.disableAfter == null
+    const startDate = getStartDate(at, org)
+    const paymentWindowStart = getPaymentWindowStart(at, startDate, org)
     const endOfFreePeriod = freePeriodEnd()
-    const paymentPeriods = [null, null]
+    const paymentPeriods = (noInitialData ? [null, null, null] : [null, null])
       .map((_) => {
         const p = new Date(startDate)
         startDate.setFullYear(p.getFullYear() + 1)
@@ -173,10 +178,10 @@ export const calculateNextPaymentPeriod = (() => {
       })
       .filter(({ to }) => to > endOfFreePeriod)
       .filter(({ from, to }) => {
-        const noInitialData = org.disableAfter == null
-        const periodPaidFor = from >= org.disableAfter
-        const inRange = at > paymentWindowStart && at < to
-        return inRange && (noInitialData || periodPaidFor)
+        const periodNotPaidFor = from >= org.disableAfter
+        const paymentWindowOpen = at > paymentWindowStart
+        const inRange = at < to
+        return inRange && (noInitialData || (paymentWindowOpen && periodNotPaidFor))
       })
       .slice(0, 1)
     return { ...org, paymentPeriods }
