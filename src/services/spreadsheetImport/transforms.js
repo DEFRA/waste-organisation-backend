@@ -5,10 +5,10 @@ export const coerceRegistrationNumberWhenReasonSupplied = (movement) => {
   return movement
 }
 
-export const validateWasteTrackingIdExists = (movement) => {
+export const validateWasteTrackingIdExists = (errColNum) => (movement) => {
   if (!movement.wasteTrackingId) {
     const e = new Error('Waste Tracking ID is required')
-    e.colNumber = 2 // TODO get this from the worksheetMetadata
+    e.colNumber = errColNum
     throw e
   }
   return movement
