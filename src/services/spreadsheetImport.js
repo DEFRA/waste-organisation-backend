@@ -238,9 +238,9 @@ export const getWorksheetMeta = (() => {
         compose(
           validateFn,
           coerceRegistrationNumberWhenReasonSupplied,
-          validateMovementHasWasteItems,
+          validateMovementHasWasteItems(3),
           populateWholeItemDisposalCodes,
-          validateUniqueReference()
+          validateUniqueReference(3)
         ),
       errors: { '7. Waste movement level': 1, '8. Waste item level': 1 },
       defaultErrorWorksheet: '7. Waste movement level',
@@ -333,9 +333,9 @@ export const getWorksheetMeta = (() => {
         compose(
           validateFn,
           coerceRegistrationNumberWhenReasonSupplied,
-          validateMovementHasWasteItems,
+          validateMovementHasWasteItems(3),
           populateWholeItemDisposalCodes,
-          validateUniqueReference()
+          validateUniqueReference(3)
         ),
       errors: { '2. Waste movement details': 1, '3. Waste item details': 1 },
       defaultErrorWorksheet: '2. Waste movement details',

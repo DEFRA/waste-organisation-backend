@@ -112,7 +112,7 @@ const processSpreadsheet = async (
   const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
   logger.info(`ReferenceNumber: ${referenceNumber} -- Fetching bytes: ${buffer.length}`)
   const isUpdate = uploadType === 'update'
-  const validatorFn = isUpdate ? validateWasteTrackingIdExists : validateWasteTrackingIdMissing
+  const validatorFn = isUpdate ? validateWasteTrackingIdExists(2) : validateWasteTrackingIdMissing(2)
   const { hasErrors, workbook, movements, rowNumbers, errors, worksheetMetadata } = await parseExcelFile(buffer, organisationId, logger, validatorFn)
   if (hasErrors) {
     logger.warn(`ReferenceNumber: ${referenceNumber} -- Errors before sending to import API ${JSON.stringify(errors)}`)

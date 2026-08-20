@@ -278,9 +278,9 @@ describe('some unit tests for parsers', () => {
   })
 
   test('validateMovementHasWasteItems', () => {
-    expect(() => validateMovementHasWasteItems({ yourUniqueReference: 'fish' })).toThrow()
-    expect(() => validateMovementHasWasteItems({ yourUniqueReference: 'fish', wasteItems: [] })).toThrow()
-    expect(validateMovementHasWasteItems({ yourUniqueReference: 'fish', wasteItems: [{}] })).toEqual({ yourUniqueReference: 'fish', wasteItems: [{}] })
+    expect(() => validateMovementHasWasteItems(3)({ yourUniqueReference: 'fish' })).toThrow()
+    expect(() => validateMovementHasWasteItems(3)({ yourUniqueReference: 'fish', wasteItems: [] })).toThrow()
+    expect(validateMovementHasWasteItems(3)({ yourUniqueReference: 'fish', wasteItems: [{}] })).toEqual({ yourUniqueReference: 'fish', wasteItems: [{}] })
   })
 })
 
@@ -293,25 +293,25 @@ describe('coerceRegistrationNumberWhenReasonSupplied', () => {
 
 describe('validateWasteTrackingIds', () => {
   test('returns errors when wasteTrackingId is missing', () => {
-    expect(() => validateWasteTrackingIdExists({ yourUniqueReference: 'REF2' })).toThrow('Waste Tracking ID is required')
+    expect(() => validateWasteTrackingIdExists(2)({ yourUniqueReference: 'REF2' })).toThrow('Waste Tracking ID is required')
   })
 
   test('returns movement when all wasteTrackingIds are present', () => {
     const m = { yourUniqueReference: 'REF1', wasteTrackingId: 'WTID123' }
-    expect(validateWasteTrackingIdExists(m)).toEqual(m)
+    expect(validateWasteTrackingIdExists(2)(m)).toEqual(m)
   })
 })
 
 describe('validateNoWasteTrackingIds', () => {
   test('returns errors when wasteTrackingId is present', () => {
-    expect(() => validateWasteTrackingIdMissing({ yourUniqueReference: 'REF2', wasteTrackingId: 'WTID123' })).toThrow(
+    expect(() => validateWasteTrackingIdMissing(2)({ yourUniqueReference: 'REF2', wasteTrackingId: 'WTID123' })).toThrow(
       'Waste Tracking ID must not be present on a create upload'
     )
   })
 
   test('returns empty array when no wasteTrackingIds are present', () => {
     const m = { yourUniqueReference: 'REF1' }
-    expect(validateWasteTrackingIdMissing(m)).toEqual(m)
+    expect(validateWasteTrackingIdMissing(2)(m)).toEqual(m)
   })
 })
 
@@ -713,7 +713,7 @@ describe('excel proccessor', () => {
       ]
     )
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
-    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, validateWasteTrackingIdMissing)
+    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, validateWasteTrackingIdMissing(3))
     expect(hasErrors).toEqual(true)
     expect(mockUpdateErrors).toHaveBeenCalledWith(
       expect.anything(),
@@ -828,7 +828,7 @@ describe('excel proccessor', () => {
       ]
     )
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
-    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, validateWasteTrackingIdMissing)
+    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, validateWasteTrackingIdMissing(3))
     expect(hasErrors).toEqual(true)
     expect(mockUpdateErrors).toHaveBeenCalledWith(
       expect.anything(),
@@ -963,7 +963,7 @@ describe('excel proccessor', () => {
       ]
     )
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
-    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, validateWasteTrackingIdMissing)
+    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, validateWasteTrackingIdMissing(3))
     expect(hasErrors).toEqual(true)
     expect(mockUpdateErrors).toHaveBeenCalledWith(
       expect.anything(),
