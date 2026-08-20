@@ -234,6 +234,17 @@ describe('calculate payment period', () => {
     ])
   })
 
+  test(`You can always pay during the free period`, () => {
+    config.set('govPay.serviceChargePaymentWindowStart', '07-01')
+    config.set('govPay.serviceChargeFreePeriodEnd', new Date('2027-01-30T00:00:00.000Z'))
+    const now = new Date('2026-08-20T11:18:48.417Z')
+    expect(calculateNextPaymentPeriod(testOrganisation, now).paymentPeriods).toEqual([
+      { priceInPence: 100, from: new Date('2027-01-30T00:00:00.000Z'), to: new Date('2028-01-30T00:00:00.000Z') }
+    ])
+    const then = new Date('2027-08-20T11:18:48.417Z')
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, new Date('2028-01-30T00:00:00.000Z')), then).paymentPeriods).toEqual([])
+  })
+
   test('moving the end of the free period does not affect people that have already paid', () => {
     config.set('govPay.serviceChargePaymentWindowStart', '1-4') // first of April
     config.set('govPay.serviceChargeFreePeriodEnd', new Date('1991-10-01T00:00:00.000Z'))

@@ -14,22 +14,22 @@ describe.skipIf(!apiKey)('Intergration tests when apiCode is set', () => {
   })
 
   it('should send success email', async () => {
-    const emailResponse = await sendEmail.sendSuccess({ email, file, name: JSON.stringify({ firstName: 'Joe Bloggs' }) })
+    const emailResponse = await sendEmail.sendSuccess({ email, file, name: JSON.stringify({ firstName: 'Joe Bloggs' }), logger: console })
     expect(emailResponse.res.statusCode).toBe(201)
   })
 
   it('should send data validation failed email', async () => {
-    const emailResponse = await sendEmail.sendValidationFailed({ email, file, name: JSON.stringify({ firstName: 'Joe Bloggs' }) })
+    const emailResponse = await sendEmail.sendValidationFailed({ email, file, name: JSON.stringify({ firstName: 'Joe Bloggs' }), logger: console })
     expect(emailResponse.res.statusCode).toBe(201)
   })
 
   it('should send upload failed email', async () => {
-    const emailResponse = await sendEmail.sendFailed({ email, file, name: JSON.stringify({ firstName: 'Joe Bloggs' }) })
+    const emailResponse = await sendEmail.sendFailed({ email, file, name: JSON.stringify({ firstName: 'Joe Bloggs' }), logger: console })
     expect(emailResponse.res.statusCode).toBe(201)
   })
 
   it('should send email with an attachment', async () => {
-    const emailResponse = await sendEmail.sendSuccess({ email, file, name: JSON.stringify({ firstName: 'Joe Bloggs' }) })
+    const emailResponse = await sendEmail.sendSuccess({ email, file, name: JSON.stringify({ firstName: 'Joe Bloggs' }), logger: console })
     expect(emailResponse.res.statusCode).toBe(201)
   })
 })
