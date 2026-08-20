@@ -18,6 +18,7 @@ describe('Notify', () => {
     vi.doMock('pino', () => ({
       pino: vi.fn().mockReturnValue({
         info: loggerInfoMock,
+        debug: loggerInfoMock,
         error: loggerErrorMock
       })
     }))

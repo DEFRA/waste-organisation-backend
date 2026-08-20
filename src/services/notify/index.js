@@ -81,6 +81,10 @@ const send = async ({ template, email, name, file, referenceNumber, filename, lo
     return response
   } catch (err) {
     logger.error(`Error sending emails: ${err}`)
+    logger.debug(
+      `Error sending email: ${email} template: ${template} response: ${JSON.stringify(err.output)} name: '${name}'` +
+        ` referenceNumber: '${referenceNumber}' filename: '${filename}'`
+    )
     return null
   }
 }
