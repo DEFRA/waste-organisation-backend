@@ -151,7 +151,6 @@ const distinct = (xs) => {
 }
 
 export const getWorksheetMeta = (() => {
-  // TODO move 'yourUniqueReference' into here?
   const knownTemplateVersions = {
     'Report receipt of waste': {
       worksheets: {
