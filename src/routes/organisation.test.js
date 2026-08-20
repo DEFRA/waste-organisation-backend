@@ -195,6 +195,9 @@ describe('organisation API', () => {
       expect(statusCode).toBe(200)
       expect(result.message).toBe('success')
       expect(result.organisation.disableAfter).toEqual(new Date('2026-10-01T00:00:00.000Z'))
+      expect(result.organisation.paymentPeriods).toEqual([
+        { from: new Date('2026-10-01T00:00:00.000Z'), priceInPence: 2600, to: new Date('2027-10-01T00:00:00.000Z') }
+      ])
     })
 
     test('not found', async () => {
