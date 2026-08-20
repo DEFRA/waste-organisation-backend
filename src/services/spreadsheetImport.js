@@ -29,7 +29,9 @@ import {
   coerceRegistrationNumberWhenReasonSupplied,
   validateMovementHasWasteItems,
   validateUniqueReference,
-  populateWholeItemDisposalCodes
+  populateWholeItemDisposalCodes,
+  validateWasteTrackingIdExists,
+  validateWasteTrackingIdMissing
 } from './spreadsheetImport/transforms.js'
 
 const getIn = (obj, path) => path?.reduce((x, k) => x && x[k], obj)
@@ -236,7 +238,7 @@ export const getWorksheetMeta = (() => {
       ],
       transform: (validateFn) =>
         compose(
-          validateFn,
+          typeof validateFn === 'function' ? validateFn : validateFn === 'update' ? validateWasteTrackingIdExists(2) : validateWasteTrackingIdMissing(2),
           coerceRegistrationNumberWhenReasonSupplied,
           validateMovementHasWasteItems(3),
           populateWholeItemDisposalCodes,
@@ -331,7 +333,7 @@ export const getWorksheetMeta = (() => {
       ],
       transform: (validateFn) =>
         compose(
-          validateFn,
+          typeof validateFn === 'function' ? validateFn : validateFn === 'update' ? validateWasteTrackingIdExists(2) : validateWasteTrackingIdMissing(2),
           coerceRegistrationNumberWhenReasonSupplied,
           validateMovementHasWasteItems(3),
           populateWholeItemDisposalCodes,
