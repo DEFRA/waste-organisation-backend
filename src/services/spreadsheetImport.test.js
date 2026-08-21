@@ -648,21 +648,26 @@ describe('excel proccessor', () => {
 
     const coords = wasteTrackingIdsToCoords(movements, rowNumbers, bulkImportResult.movements, worksheetMetadata)
     expect(coords).toEqual(wtidCoords)
-    updateCellContent(workbook, coords)
+    updateCellContent(workbook, coords, worksheetMetadata, console)
     await workbook.xlsx.writeFile(file.replace(/xlsx$/, 'with-waste-tracking-ids.xlsx'))
   })
 
   test('updateCellContent handles null and undefined values', { timeout: 50000 }, async () => {
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-    const { workbook } = await parseExcelFile(buffer, 'org-id', logger)
+    const { workbook, worksheetMetadata } = await parseExcelFile(buffer, 'org-id', logger)
     const worksheetName = '7. Waste movement level'
 
-    updateCellContent(workbook, {
-      [worksheetName]: [
-        { coords: [2, 9], value: null },
-        { coords: [2, 10], value: undefined }
-      ]
-    })
+    updateCellContent(
+      workbook,
+      {
+        [worksheetName]: [
+          { coords: [2, 9], value: null },
+          { coords: [2, 10], value: undefined }
+        ]
+      },
+      worksheetMetadata,
+      console
+    )
 
     const worksheet = workbook.getWorksheet(worksheetName)
     const cell1 = worksheet.getRow(9).getCell(2)

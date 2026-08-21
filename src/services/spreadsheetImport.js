@@ -412,7 +412,7 @@ export const getWorksheetMeta = (() => {
 
 export const parseExcelFile = (() => {
   return async (buffer, defraCustomerOrganisationId, logger, validateFn) => {
-    const workbook = await readExcelBuffer(buffer)
+    const workbook = await readExcelBuffer(buffer, logger)
     if (workbook == null) {
       return { hasErrors: true }
     }
@@ -580,9 +580,9 @@ export const wasteTrackingIdsToCoords = (movementData, rowNumbers, apiResultData
 export const updateErrors = (worksheet, coords, worksheetMetadata, logger) => {
   return xlUpdateErrors(worksheet, coords, worksheetMetadata, logger)
 }
-export const updateCellContent = (workbook, cellsAndValues) => {
-  return xlUpdateCellContent(workbook, cellsAndValues)
+export const updateCellContent = (workbook, cellsAndValues, worksheetMetadata, logger) => {
+  return xlUpdateCellContent(workbook, cellsAndValues, worksheetMetadata, logger)
 }
-export const workbookToByteArray = (workbook) => {
-  return xlWorkbookToByteArray(workbook)
+export const workbookToByteArray = (workbook, logger) => {
+  return xlWorkbookToByteArray(workbook, logger)
 }

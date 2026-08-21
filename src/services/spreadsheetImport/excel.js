@@ -1,9 +1,6 @@
 import Excel from 'exceljs'
-import { createLogger } from '../../common/helpers/logging/logger.js'
 import { config } from '../../config.js'
 import crypto from 'node:crypto'
-
-const logger = createLogger()
 
 export const cellError = (colNumber, rowNumber, message, sheet, errorValue) => {
   const x = { coords: [colNumber, rowNumber], message }
@@ -92,7 +89,7 @@ export const worksheetToArray = ({ worksheet, keyCols, updateFn, minRow, maxCol 
   return { elements, errors }
 }
 
-export const readExcelBuffer = async (buffer) => {
+export const readExcelBuffer = async (buffer, logger) => {
   logger.info('Starting parsing spreadsheet')
   try {
     const workbook = new Excel.Workbook()
@@ -136,7 +133,7 @@ export const updateErrors = (() => {
           updateCell(worksheet, coords, message, worksheetMetadata?.errors[worksheetName] ?? 1)
         }
       } else {
-        l.log(
+        l.error(
           `Cannot update errors - worksheet not fonud "${worksheetName}" not in ${workbook.worksheets.map((ws) => ws.name).join(', ')}`,
           JSON.stringify(cellsAndMessages)
         )
@@ -154,7 +151,8 @@ export const updateCellContent = (() => {
     const cell = row.getCell(colNumber)
     cell.value = { richText: [{ font, text: String(value ?? '') }] }
   }
-  return (workbook, cellsAndValues) => {
+  return (workbook, cellsAndValues, logger) => {
+    const l = logger || console
     for (const worksheetName of Object.keys(cellsAndValues)) {
       const worksheet = workbook.getWorksheet(worksheetName)
       if (worksheet) {
@@ -162,7 +160,7 @@ export const updateCellContent = (() => {
           updateCell(worksheet, coords, value)
         }
       } else {
-        console.log(
+        l.error(
           `Cannot update cell content - worksheet not fonud "${worksheetName}" not in ${workbook.worksheets.map((ws) => ws.name).join(', ')}`,
           JSON.stringify(cellsAndValues)
         )
@@ -172,7 +170,7 @@ export const updateCellContent = (() => {
   }
 })()
 
-export const workbookToByteArray = async (workbook) => {
+export const workbookToByteArray = async (workbook, logger) => {
   /* v8 ignore start */
   if (config.get('bulkUpload.copySpreadsheetToDisk')) {
     const f = '/tmp/output-' + crypto.randomUUID() + '.xlsx' // nosonar
