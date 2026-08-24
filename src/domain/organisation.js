@@ -165,21 +165,28 @@ export const calculateNextPaymentPeriod = (() => {
     return p
   }
 
+  const getNextYear = (at) => {
+    const d = new Date(at)
+    d.setFullYear(at.getFullYear() + 1)
+    return d
+  }
+
   return (org, at) => {
     const noInitialData = org.disableAfter == null
     const startDate = getStartDate(at, org)
     const paymentWindowStart = getPaymentWindowStart(at, startDate, org)
     const endOfFreePeriod = freePeriodEnd()
-    const paymentPeriods = (noInitialData ? [null, null, null] : [null, null])
+    const nextYear = getNextYear(at)
+    const paymentPeriods = [null, null, null, null, null]
       .map((_) => {
         const p = new Date(startDate)
         startDate.setFullYear(p.getFullYear() + 1)
         return { from: p, to: new Date(startDate), priceInPence: config.get('govPay.serviceChargeAmountPence') }
       })
-      .filter(({ to }) => to > endOfFreePeriod && at < to)
+      .filter(({ to }) => to > endOfFreePeriod && at <= to)
       .filter(({ from }) => {
         const periodNotPaidFor = from >= org.disableAfter
-        const paymentWindowOpen = at > paymentWindowStart
+        const paymentWindowOpen = at > paymentWindowStart && from <= nextYear
         return noInitialData || (paymentWindowOpen && periodNotPaidFor)
       })
       .slice(0, 1)

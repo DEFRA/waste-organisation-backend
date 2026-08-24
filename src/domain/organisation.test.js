@@ -235,14 +235,24 @@ describe('calculate payment period', () => {
   })
 
   test(`You can always pay during the free period`, () => {
-    config.set('govPay.serviceChargePaymentWindowStart', '07-01')
+    config.set('govPay.serviceChargePaymentWindowStart', '03-01')
     config.set('govPay.serviceChargeFreePeriodEnd', new Date('2027-01-30T00:00:00.000Z'))
     const now = new Date('2026-08-20T11:18:48.417Z')
     expect(calculateNextPaymentPeriod(testOrganisation, now).paymentPeriods).toEqual([
       { priceInPence: 100, from: new Date('2027-01-30T00:00:00.000Z'), to: new Date('2028-01-30T00:00:00.000Z') }
     ])
-    const then = new Date('2027-08-20T11:18:48.417Z')
-    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, new Date('2028-01-30T00:00:00.000Z')), then).paymentPeriods).toEqual([])
+  })
+
+  test('new signups can pay for two years on the same day if the payment period is open', () => {
+    config.set('govPay.serviceChargePaymentWindowStart', '01-08')
+    config.set('govPay.serviceChargeFreePeriodEnd', new Date('2012-01-30T00:00:00.000Z'))
+    const now = new Date('2026-09-20T11:18:48.417Z')
+    expect(calculateNextPaymentPeriod(testOrganisation, now).paymentPeriods).toEqual([
+      { priceInPence: 100, from: new Date('2026-01-30T00:00:00.000Z'), to: new Date('2027-01-30T00:00:00.000Z') }
+    ])
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, new Date('2027-01-30T00:00:00.000Z')), now).paymentPeriods).toEqual([
+      { priceInPence: 100, from: new Date('2027-01-30T00:00:00.000Z'), to: new Date('2028-01-30T00:00:00.000Z') }
+    ])
   })
 
   test('moving the end of the free period does not affect people that have already paid', () => {
