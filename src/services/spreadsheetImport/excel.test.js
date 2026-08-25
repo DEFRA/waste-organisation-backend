@@ -46,6 +46,5 @@ describe('excel proccessor', () => {
     const x = randomUUID()
     expect(updateCellContent({ worksheets: [{ name: 'alice' }], getWorksheet: () => null, x }, { bob: null }, console).x).toBe(x)
     expect(updateErrors({ worksheets: [{ name: 'alice' }], getWorksheet: () => null, x }, { bob: null }, console).x).toBe(x)
-    expect(true).toBe(false)
   })
 })
