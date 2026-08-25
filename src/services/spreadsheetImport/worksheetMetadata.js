@@ -35,6 +35,7 @@ const updateData = (cols) => {
 }
 
 export const getWorksheetMeta = (() => {
+  /* v8 ignore start */
   const knownTemplateVersions = {
     'Report receipt of waste': {
       worksheets: {
@@ -227,6 +228,7 @@ export const getWorksheetMeta = (() => {
       version: '1'
     }
   }
+  /* v8 ignore stop */
 
   const constructErrorMatchers = (md) => {
     const worksheetsByTarget = Object.groupBy(Object.values(md.worksheets), ({ target }) => target)
