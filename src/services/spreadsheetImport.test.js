@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises'
-import { getWorksheetMeta, parseExcelFile, transformBulkApiErrors, updateCellContent, wasteTrackingIdsToCoords, joinWasteItems } from './spreadsheetImport.js'
+import { parseExcelFile, transformBulkApiErrors, updateCellContent, wasteTrackingIdsToCoords, joinWasteItems } from './spreadsheetImport.js'
 import {
   parseBoolean,
   parseComponentCodes,
@@ -25,6 +25,7 @@ import {
 import { expect } from 'vitest'
 import * as excelImportModule from './spreadsheetImport/excel.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
+import { getWorksheetMeta } from './spreadsheetImport/worksheetMetadata.js'
 
 const logger = createLogger()
 
