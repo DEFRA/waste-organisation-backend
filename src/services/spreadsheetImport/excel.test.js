@@ -44,6 +44,8 @@ describe('excel proccessor', () => {
 
   test("excel worksheets disappearing during processing get logged and don't throw errors", () => {
     const x = randomUUID()
-    expect(updateCellContent({ worksheets: [], getWorksheet: () => null, x }, { bob: null }, console).x).toBe(x)
+    expect(updateCellContent({ worksheets: [{ name: 'alice' }], getWorksheet: () => null, x }, { bob: null }, console).x).toBe(x)
+    expect(updateErrors({ worksheets: [{ name: 'alice' }], getWorksheet: () => null, x }, { bob: null }, console).x).toBe(x)
+    expect(true).toBe(false)
   })
 })
