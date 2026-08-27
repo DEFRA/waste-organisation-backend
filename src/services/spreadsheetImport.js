@@ -28,45 +28,53 @@ export const joinWasteItems = (flatData, worksheetMetadata) => {
     }
   }
 
+  const processJoinData = (data, intoKey, is, i, joinDefinition) => {
+    const { joinKey, target, rowNames, process } = joinDefinition
+    const r = getIn(data[intoKey][i], joinKey)
+    rowNumbers[r] = { [rowNames[0]]: data[intoKey][i]['--rowNumber'], [rowNames[1]]: [] }
+    if (r && is[r] && is[r].length > 0) {
+      if (typeof process === 'function') {
+        data[intoKey][i] = process(data[intoKey][i])
+      }
+      updateIn(data[intoKey][i], target, is[r].map(updateRowNumber(r, rowNames, joinKey)))
+    }
+    // WARNING: mutabliy updates movements array from supplied transform
+    collectCellErrors(errors[intoKey], () => (data[intoKey][i] = transform(data[intoKey][i])), null, [null, data[intoKey][i]['--rowNumber']], {}) // nosonar
+    delete data[intoKey][i]['--rowNumber']
+    if (r) {
+      delete is[r]
+    }
+  }
+
+  const rf = (data, joinDefinition) => {
+    const { joinKey, keys, refCols } = joinDefinition
+    const [intoKey, fromKey] = keys
+    keys.reduce((e, k) => {
+      if (e[k] == null) {
+        e[k] = []
+      }
+      return e
+    }, errors)
+    const is = Object.groupBy(data[fromKey], (x) => getIn(x, joinKey))
+    const [trunkRefCol, branchRefCol] = refCols
+    for (let i = 0; i < data[intoKey].length; i++) {
+      processJoinData(data, intoKey, is, i, joinDefinition)
+    }
+    if (data[intoKey].length === 0) {
+      errors[intoKey].push(cellError(trunkRefCol, errorWorksheet.firstRowOfData, 'No movements recognised', errorWorksheet.worksheetName))
+    }
+    if (Object.keys(is).length > 0) {
+      for (const i of Object.values(is).flatMap((x) => x)) {
+        if (getIn(i, joinKey)) {
+          errors.items.push(cellError(branchRefCol, i['--rowNumber'], 'No waste movements for unique reference'))
+        }
+      }
+    }
+    return { ...data, errors, rowNumbers }
+  }
+
   if (Array.isArray(worksheetMetadata.joins) && worksheetMetadata.joins.length > 0) {
-    return worksheetMetadata.joins.reduce((data, { joinKey, keys, target, rowNames, process, refCols }) => {
-      const [intoKey, fromKey] = keys
-      keys.reduce((e, k) => {
-        if (e[k] == null) {
-          e[k] = []
-        }
-        return e
-      }, errors)
-      const is = Object.groupBy(data[fromKey], (x) => getIn(x, joinKey))
-      const [trunkRefCol, branchRefCol] = refCols
-      for (let i = 0; i < data[intoKey].length; i++) {
-        const r = getIn(data[intoKey][i], joinKey)
-        rowNumbers[r] = { [rowNames[0]]: data[intoKey][i]['--rowNumber'], [rowNames[1]]: [] }
-        if (r && is[r] && is[r].length > 0) {
-          if (typeof process === 'function') {
-            data[intoKey][i] = process(data[intoKey][i])
-          }
-          updateIn(data[intoKey][i], target, is[r].map(updateRowNumber(r, rowNames, joinKey)))
-        }
-        // WARNING: mutabliy updates movements array from supplied transform
-        collectCellErrors(errors[intoKey], () => (data[intoKey][i] = transform(data[intoKey][i])), null, [null, data[intoKey][i]['--rowNumber']], {}) // nosonar
-        delete data[intoKey][i]['--rowNumber']
-        if (r) {
-          delete is[r]
-        }
-      }
-      if (data[intoKey].length === 0) {
-        errors[intoKey].push(cellError(trunkRefCol, errorWorksheet.firstRowOfData, 'No movements recognised', errorWorksheet.worksheetName))
-      }
-      if (Object.keys(is).length > 0) {
-        for (const i of Object.values(is).flatMap((x) => x)) {
-          if (getIn(i, joinKey)) {
-            errors.items.push(cellError(branchRefCol, i['--rowNumber'], 'No waste movements for unique reference'))
-          }
-        }
-      }
-      return { ...data, errors, rowNumbers }
-    }, extractedData)
+    return worksheetMetadata.joins.reduce(rf, extractedData)
   } else {
     return Object.entries(flatData).reduce((data, [k, { elements }]) => {
       data[k] = elements
