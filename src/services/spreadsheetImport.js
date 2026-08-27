@@ -153,7 +153,8 @@ const errorToCoords = (() => {
     })
   }
 
-  const wasteMovementErr = (movementData, idx, rowNumbers, errKeyPath, error, movementWorksheetName, joinKey, movementMapping) => {
+  const wasteMovementErr = (movementData, rowNumbers, errKeyPath, error, { worksheetName, joinKey }, movementMapping) => {
+    const idx = errKeyPath[0]
     const ref = getIn(movementData[idx], joinKey)
     const msg = cleanErrorMessage(error)
     const colNum = keyPathToColNum(errKeyPath.slice(1), movementMapping)
@@ -161,10 +162,12 @@ const errorToCoords = (() => {
       return {}
     }
     const errorValue = movementMapping[colNum][0].reduce((x, y) => x[y], movementData[idx])
-    return cellError(colNum, rowNumbers[ref].movementRow, msg, movementWorksheetName, errorValue)
+    return cellError(colNum, rowNumbers[ref].movementRow, msg, worksheetName, errorValue)
   }
 
-  const wasteItemErr = (movementData, movementIdx, itemIdx, rowNumbers, errKeyPath, error, itemWorksheetName, joinKey, itemMapping) => {
+  const wasteItemErr = (movementData, rowNumbers, errKeyPath, error, { worksheetName, joinKey }, itemMapping) => {
+    const movementIdx = errKeyPath[0]
+    const itemIdx = errKeyPath[2]
     // const ref = movementData[movementIdx]?.yourUniqueReference
     const ref = getIn(movementData[movementIdx], joinKey)
     const msg = cleanErrorMessage(error)
@@ -175,7 +178,7 @@ const errorToCoords = (() => {
     }
     const wis = movementData[movementIdx]?.wasteItems
     const errorValue = itemMapping[colNum][0].reduce((x, y) => (x ? x[y] : null), wis ? wis[itemIdx] : null)
-    return cellError(colNum, rowNumbers[ref].itemRows[itemIdx], msg, itemWorksheetName, errorValue)
+    return cellError(colNum, rowNumbers[ref].itemRows[itemIdx], msg, worksheetName, errorValue)
   }
 
   return (movementData, rowNumbers, { defaultErrorWorksheet, worksheets, errorTargets }, error) => {
@@ -186,29 +189,10 @@ const errorToCoords = (() => {
           return err
         }
         if (errKeyPath[1] === errTarget.target[0] && errKeyPath[2].match(/^[0-9]+$/)) {
-          return wasteItemErr(
-            movementData,
-            errKeyPath[0],
-            errKeyPath[2],
-            rowNumbers,
-            errKeyPath,
-            error,
-            errTarget.worksheetName,
-            errTarget.joinKey,
-            worksheets[errTarget.worksheetName].mapping
-          )
+          return wasteItemErr(movementData, rowNumbers, errKeyPath, error, errTarget, worksheets[errTarget.worksheetName].mapping)
         } else {
           if (Array.isArray(errTarget.target) && errTarget.target.length === 0) {
-            const e = wasteMovementErr(
-              movementData,
-              errKeyPath[0],
-              rowNumbers,
-              errKeyPath,
-              error,
-              errTarget.worksheetName,
-              errTarget.joinKey,
-              worksheets[errTarget.worksheetName].mapping
-            )
+            const e = wasteMovementErr(movementData, rowNumbers, errKeyPath, error, errTarget, worksheets[errTarget.worksheetName].mapping)
             return e
           }
         }
