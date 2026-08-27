@@ -190,11 +190,8 @@ const errorToCoords = (() => {
         }
         if (errKeyPath[1] === errTarget.target[0] && errKeyPath[2].match(/^[0-9]+$/)) {
           return wasteItemErr(movementData, rowNumbers, errKeyPath, error, errTarget, worksheets[errTarget.worksheetName].mapping)
-        } else {
-          if (Array.isArray(errTarget.target) && errTarget.target.length === 0) {
-            const e = wasteMovementErr(movementData, rowNumbers, errKeyPath, error, errTarget, worksheets[errTarget.worksheetName].mapping)
-            return e
-          }
+        } else if (Array.isArray(errTarget.target) && errTarget.target.length === 0) {
+          return wasteMovementErr(movementData, rowNumbers, errKeyPath, error, errTarget, worksheets[errTarget.worksheetName].mapping)
         }
         return err
       }, {})
