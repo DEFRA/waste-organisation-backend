@@ -14,7 +14,7 @@ export const updateIn = (data, path, v, func) => {
   return data
 }
 
-export const getIn = (obj, path) => path?.reduce((x, k) => x && x[k], obj)
+export const getIn = (obj, path) => path?.reduce((x, k) => x?.[k], obj)
 
 export const deleteLeaf = (data, path) => {
   if (path) {
