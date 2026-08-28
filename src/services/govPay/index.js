@@ -9,7 +9,7 @@ const fallbackLogger = createLogger()
 
 const agent = createAgent()
 
-export const createGovPayPayment = async ({ reference, amount, description, returnUrl, metadata, idempotencyKey }, logger) => {
+export const createGovPayPayment = async ({ reference, amount, description, returnUrl, metadata, idempotencyKey, language }, logger) => {
   const log = logger ?? fallbackLogger
   try {
     const { apiUrl, apiKey } = config.get('govPay')
@@ -26,7 +26,8 @@ export const createGovPayPayment = async ({ reference, amount, description, retu
         description,
         metadata,
         reference,
-        return_url: returnUrl
+        return_url: returnUrl,
+        language
       },
       agent
     })

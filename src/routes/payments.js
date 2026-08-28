@@ -127,7 +127,8 @@ export const payments = [
     handler: async (request, h) => {
       try {
         const { organisationId } = request.params
-        const { amount, description, returnUrl, metadata } = request.payload.payment
+        const { amount, description, returnUrl, metadata, language } = request.payload.payment
+        const govPayLanguage = typeof language === 'string' && language.toLowerCase() === 'cy' ? 'cy' : 'en'
         if (metadata?.organisationId !== organisationId) {
           throw boom.forbidden(`wrong organisationId in metadata: ${metadata?.organisationId} !== ${organisationId}`)
         }
@@ -143,7 +144,8 @@ export const payments = [
           async (idempotencyKey) => await createStubPayment(request.db, organisationId, period, idempotencyKey),
           async () => await findMatchingPayments(request.db, organisationId, period),
           async (idempotencyKey) => await deleteStubPayment(request.db, organisationId, idempotencyKey),
-          async (idempotencyKey) => await createGovPayPayment({ reference, amount, description, returnUrl, metadata, idempotencyKey }, request.logger),
+          async (idempotencyKey) =>
+            await createGovPayPayment({ reference, amount, description, returnUrl, metadata, idempotencyKey, language: govPayLanguage }, request.logger),
           async (idempotencyKey, paymentId, govPayLinks) => {
             const payment = await updateWithOptimisticLock(request.db.collection(paymentCollection), { idempotencyKey, organisationId }, (dbPayment) => {
               return initiatePayment({ ...dbPayment, paymentId, amount, description, returnUrl, metadata, reference, govPayLinks })
