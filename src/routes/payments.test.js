@@ -157,14 +157,7 @@ describe('payment API', () => {
   ])('initiate payment forwards language $language as $expected', async ({ language, expected }) => {
     const organisationId = faker.string.uuid()
     wreckPostMock.mockImplementation(async () => fakeGovPayResponse(organisationId))
-    const { statusCode } = await initiatePayment(
-      server,
-      organisationId,
-      'organisation name',
-      '2026-05-01T00:00:00.000Z',
-      '2027-05-01T00:00:00.000Z',
-      language
-    )
+    const { statusCode } = await initiatePayment(server, organisationId, 'organisation name', '2026-05-01T00:00:00.000Z', '2027-05-01T00:00:00.000Z', language)
     expect(statusCode).toBe(200)
     expect(wreckPostMock.mock.calls.at(-1)[1].payload.language).toBe(expected)
   })
