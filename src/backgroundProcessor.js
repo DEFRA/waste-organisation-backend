@@ -21,7 +21,6 @@ import { decrypt } from './services/decrypt.js'
 import { sendEmail } from './services/notify/index.js'
 import { bulkImport, bulkUpdate } from './services/bulkImport.js'
 import { TRANSIENT_STATUS_CODES } from './services/httpStatusCodes.js'
-import { validateWasteTrackingIdExists, validateWasteTrackingIdMissing } from './services/spreadsheetImport/transforms.js'
 import { getPaymentStatus, getRefundsBetween } from './services/govPay/index.js'
 import { updateOrganisationPaymentStatus } from './domain/organisation.js'
 import { updateFromGovPayEvent, hasStatusChanged, isPending } from './domain/payment.js'
@@ -92,7 +91,7 @@ const storeProcessedFile = async (s3Client, s3Bucket, s3Key, file) => {
 
 const sendInitialFailedEmail = async ({ s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName, referenceNumber, filename, logger }) => {
   if (workbook) {
-    const file = await workbookToByteArray(workbook)
+    const file = await workbookToByteArray(workbook, logger)
     await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
     logger.info(`sending validation failed message ${file ? 'with file' : 'without file'}`)
     await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file, referenceNumber, filename })
@@ -112,8 +111,7 @@ const processSpreadsheet = async (
   const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
   logger.info(`ReferenceNumber: ${referenceNumber} -- Fetching bytes: ${buffer.length}`)
   const isUpdate = uploadType === 'update'
-  const validatorFn = isUpdate ? validateWasteTrackingIdExists : validateWasteTrackingIdMissing
-  const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, organisationId, logger, validatorFn)
+  const { hasErrors, workbook, movements, rowNumbers, errors, worksheetMetadata } = await parseExcelFile(buffer, organisationId, logger, uploadType)
   if (hasErrors) {
     logger.warn(`ReferenceNumber: ${referenceNumber} -- Errors before sending to import API ${JSON.stringify(errors)}`)
     await sendInitialFailedEmail({ s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName, referenceNumber, filename, logger })
@@ -130,10 +128,10 @@ const processSpreadsheet = async (
   if (apiResponse.errors) {
     logger.warn(`ReferenceNumber: ${referenceNumber} -- Errors from import API ${JSON.stringify(apiResponse.errors)}`)
     logger.debug(`ReferenceNumber: ${referenceNumber} -- rowNumbers: ${JSON.stringify(rowNumbers)}`)
-    const errs = transformBulkApiErrors(movements, rowNumbers, apiResponse.errors)
+    const errs = transformBulkApiErrors(movements, rowNumbers, worksheetMetadata, apiResponse.errors)
     logger.debug(`ReferenceNumber: ${referenceNumber} -- Cells to update with errors: ${JSON.stringify(errs)}`)
-    updateErrors(workbook, errs)
-    const file = await workbookToByteArray(workbook)
+    updateErrors(workbook, errs, worksheetMetadata, logger)
+    const file = await workbookToByteArray(workbook, logger)
     await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
     await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file, referenceNumber, filename })
     return
@@ -142,11 +140,11 @@ const processSpreadsheet = async (
   if (apiResponse.movements) {
     logger.debug(`ReferenceNumber: ${referenceNumber} -- Movements returned from Bulk API`)
     if (!isUpdate) {
-      const coords = wasteTrackingIdsToCoords(movements, rowNumbers, apiResponse.movements)
+      const coords = wasteTrackingIdsToCoords(movements, rowNumbers, apiResponse.movements, worksheetMetadata)
       logger.debug(`ReferenceNumber: ${referenceNumber} -- Cells to update with waste tracking ids: ${JSON.stringify(coords)}`)
-      updateCellContent(workbook, coords)
+      updateCellContent(workbook, coords, worksheetMetadata, logger)
     }
-    const file = await workbookToByteArray(workbook)
+    const file = await workbookToByteArray(workbook, logger)
     await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
     logger.info(`ReferenceNumber: ${referenceNumber} organisationId: ${organisationId} - ${movements.length} waste movement records created successfully`)
     await sendEmail.sendSuccess({ email: decryptedEmail, name: decryptedName, file, referenceNumber, filename })

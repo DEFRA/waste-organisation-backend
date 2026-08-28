@@ -5,35 +5,40 @@ export const coerceRegistrationNumberWhenReasonSupplied = (movement) => {
   return movement
 }
 
-export const validateWasteTrackingIdExists = (movement) => {
+export const validateWasteTrackingIdExists = (errColNum) => (movement) => {
   if (!movement.wasteTrackingId) {
-    throw new Error('Waste Tracking ID is required')
-  }
-  return movement
-}
-
-export const validateWasteTrackingIdMissing = (movement) => {
-  if (movement.wasteTrackingId) {
-    throw new Error('Waste Tracking ID must not be present on a create upload')
-  }
-  return movement
-}
-
-export const validateMovementHasWasteItems = (movement) => {
-  if (movement.yourUniqueReference && (!Array.isArray(movement.wasteItems) || movement.wasteItems.length <= 0)) {
-    const e = new Error('No waste items for unique reference')
-    e.colNumber = 3
+    const e = new Error('Waste Tracking ID is required')
+    e.colNumber = errColNum
     throw e
   }
   return movement
 }
 
-export const validateUniqueReference = () => {
+export const validateWasteTrackingIdMissing = (errColNum) => (movement) => {
+  if (movement.wasteTrackingId) {
+    const e = new Error('Waste Tracking ID must not be present on a create upload')
+    e.colNumber = errColNum
+    throw e
+  }
+  return movement
+}
+
+export const validateMovementHasWasteItems = (errColNum) => (movement) => {
+  if (movement.yourUniqueReference && (!Array.isArray(movement.wasteItems) || movement.wasteItems.length <= 0)) {
+    const e = new Error('No waste items for unique reference')
+    e.colNumber = errColNum
+    throw e
+  }
+  return movement
+}
+
+export const validateUniqueReference = (errColNum) => {
   const seenUniqueRefs = new Set()
   return (movement) => {
     if (movement.yourUniqueReference && seenUniqueRefs.has(movement.yourUniqueReference)) {
       const e = new Error('Duplicate reference')
-      e.colNumber = 3
+      e.colNumber = errColNum
+
       throw e
     } else {
       seenUniqueRefs.add(movement.yourUniqueReference)

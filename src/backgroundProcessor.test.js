@@ -24,8 +24,10 @@ describe('background processor', () => {
   const wreckGetMock = vi.fn()
   const origMongoUrl = config.get('mongo.mongoUrl')
 
-  const mockWorksheet = (fakeData) => {
-    const fakeRows = [[], [], [], [], [], [], [], []].concat(fakeData)
+  const mockWorksheet = (fakeData, rowPadding = 8) => {
+    const fakeRows = Array.apply(null, Array(rowPadding))
+      .map(() => [])
+      .concat(fakeData)
     return {
       eachRow: (rowCallback) => {
         fakeRows.forEach((r, i) => {
@@ -41,7 +43,16 @@ describe('background processor', () => {
           }
           rowCallback(row, i + 1)
         })
-      }
+      },
+      getRow: (rowNumber) => ({
+        getCell: (colNumber) => {
+          const row = fakeRows[rowNumber]
+          const text = colNumber < row?.length ? row[colNumber] : ''
+          return {
+            value: { richText: [{ text }] }
+          }
+        }
+      })
     }
   }
 
@@ -490,11 +501,13 @@ describe('background processor', () => {
       xlsx: { writeBuffer: async () => Buffer.from('test xl file'), writeFile: async () => null },
       getWorksheet: (wsName) => {
         const w = {
+          bumf: mockWorksheet([[], ['', 'Report receipt of waste']], 0),
           '7. Waste movement level': mockWorksheet([['', 'waste tracking id', 'REF1', '']]), // extra waste tracking id
           '8. Waste item level': mockWorksheet([['', 'REF1', '', '']])
         }
         return w[wsName]
-      }
+      },
+      worksheets: [{ name: 'bumf' }, { name: '7. Waste movement level' }, { name: '8. Waste item level' }]
     })
 
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
@@ -521,15 +534,19 @@ describe('background processor', () => {
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
     await processSpreadsheetJob(s3Client, JSON.parse(createMessage.Body))
 
-    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
-      '7. Waste movement level': [
-        {
-          coords: [2, 9],
-          message: 'Waste Tracking ID must not be present on a create upload'
-        }
-      ],
-      '8. Waste item level': []
-    })
+    expect(mockUpdateErrors).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        '7. Waste movement level': [
+          {
+            coords: [2, 9],
+            message: 'Waste Tracking ID must not be present on a create upload'
+          }
+        ],
+        '8. Waste item level': []
+      },
+      expect.anything()
+    )
     expect(mockBulkImport).not.toHaveBeenCalled()
     expect(mockSendFailed).toHaveBeenCalled()
   })
@@ -541,11 +558,13 @@ describe('background processor', () => {
       xlsx: { writeBuffer: async () => Buffer.from('test xl file'), writeFile: async () => null },
       getWorksheet: (wsName) => {
         const w = {
+          bumf: mockWorksheet([[], ['', 'Report receipt of waste']], 0),
           '7. Waste movement level': mockWorksheet([['', '', 'REF1', '']]), // no waste tracking id
           '8. Waste item level': mockWorksheet([['', 'REF1', '', '']])
         }
         return w[wsName]
-      }
+      },
+      worksheets: [{ name: 'bumf' }, { name: '7. Waste movement level' }, { name: '8. Waste item level' }]
     })
 
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
@@ -572,15 +591,14 @@ describe('background processor', () => {
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
     await processSpreadsheetJob(s3Client, JSON.parse(updateMessage.Body))
 
-    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
-      '7. Waste movement level': [
-        {
-          coords: [2, 9],
-          message: 'Waste Tracking ID is required'
-        }
-      ],
-      '8. Waste item level': []
-    })
+    expect(mockUpdateErrors).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        '7. Waste movement level': [{ coords: [2, 9], message: 'Waste Tracking ID is required' }],
+        '8. Waste item level': []
+      },
+      expect.anything()
+    )
     expect(mockBulkUpdate).not.toHaveBeenCalled()
     expect(mockSendFailed).toHaveBeenCalled()
   })

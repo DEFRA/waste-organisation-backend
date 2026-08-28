@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises'
-import { parseExcelFile, transformBulkApiErrors, updateCellContent, wasteTrackingIdsToCoords } from './spreadsheetImport.js'
+import { parseExcelFile, transformBulkApiErrors, updateCellContent, wasteTrackingIdsToCoords, joinWasteItems } from './spreadsheetImport.js'
 import {
   parseBoolean,
   parseComponentCodes,
@@ -11,7 +11,8 @@ import {
   parseHazCodes,
   parseRegStatements,
   parseTitleCase,
-  parseToString
+  parseToString,
+  requiredString
 } from './spreadsheetImport/parsers.js'
 import { appendMessageToCell, cellValueText } from './spreadsheetImport/excel.js'
 import {
@@ -24,6 +25,7 @@ import {
 import { expect } from 'vitest'
 import * as excelImportModule from './spreadsheetImport/excel.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
+import { getWorksheetMeta } from './spreadsheetImport/worksheetMetadata.js'
 
 const logger = createLogger()
 
@@ -60,14 +62,14 @@ describe('some unit tests for parsers', () => {
   test('parseEstimate', () => {
     expect(parseEstimate(null, String('est'))).toEqual(true)
     expect(parseEstimate(null, 'act')).toEqual(false)
-    expect(() => parseEstimate(null, null)).toThrowError()
+    expect(() => parseEstimate(null, null)).toThrow()
   })
 
   test('parseBoolean', () => {
     expect(parseBoolean(null, String('true'))).toEqual(true)
     expect(parseBoolean(null, false)).toEqual(false)
     expect(parseBoolean(null, { formula: 'FALSE()' })).toEqual(false)
-    expect(() => parseBoolean(null, null)).toThrowError()
+    expect(() => parseBoolean(null, null)).toThrow()
   })
 
   test('parseDisposalCodes', () => {
@@ -232,12 +234,12 @@ describe('some unit tests for parsers', () => {
       { code: 'Arsenic', concentration: 300 },
       { code: 'Chromium', concentration: 0.42 }
     ])
-    expect(() => parseComponentCodes(null, 'ontehu')).toThrowError()
+    expect(() => parseComponentCodes(null, 'ontehu')).toThrow()
   })
 
   test('parseHazCodes', () => {
     expect(parseHazCodes(null, 'HP0120')).toEqual(['HP_120'])
-    expect(() => parseHazCodes(null, null)).toThrowError()
+    expect(() => parseHazCodes(null, null)).toThrow()
   })
 
   test('parseContainerType', () => {
@@ -273,13 +275,13 @@ describe('some unit tests for parsers', () => {
       { concentration: 7.1, name: 'def' }
     ])
     expect(parseComponentNames(null, 'abc=123')).toEqual([{ concentration: 123, name: 'abc' }])
-    expect(() => parseComponentNames(null, 'abc')).toThrowError()
+    expect(() => parseComponentNames(null, 'abc')).toThrow()
   })
 
   test('validateMovementHasWasteItems', () => {
-    expect(() => validateMovementHasWasteItems({ yourUniqueReference: 'fish' })).toThrowError()
-    expect(() => validateMovementHasWasteItems({ yourUniqueReference: 'fish', wasteItems: [] })).toThrowError()
-    expect(validateMovementHasWasteItems({ yourUniqueReference: 'fish', wasteItems: [{}] })).toEqual({ yourUniqueReference: 'fish', wasteItems: [{}] })
+    expect(() => validateMovementHasWasteItems(3)({ yourUniqueReference: 'fish' })).toThrow()
+    expect(() => validateMovementHasWasteItems(3)({ yourUniqueReference: 'fish', wasteItems: [] })).toThrow()
+    expect(validateMovementHasWasteItems(3)({ yourUniqueReference: 'fish', wasteItems: [{}] })).toEqual({ yourUniqueReference: 'fish', wasteItems: [{}] })
   })
 })
 
@@ -292,25 +294,25 @@ describe('coerceRegistrationNumberWhenReasonSupplied', () => {
 
 describe('validateWasteTrackingIds', () => {
   test('returns errors when wasteTrackingId is missing', () => {
-    expect(() => validateWasteTrackingIdExists({ yourUniqueReference: 'REF2' })).toThrowError('Waste Tracking ID is required')
+    expect(() => validateWasteTrackingIdExists(2)({ yourUniqueReference: 'REF2' })).toThrow('Waste Tracking ID is required')
   })
 
   test('returns movement when all wasteTrackingIds are present', () => {
     const m = { yourUniqueReference: 'REF1', wasteTrackingId: 'WTID123' }
-    expect(validateWasteTrackingIdExists(m)).toEqual(m)
+    expect(validateWasteTrackingIdExists(2)(m)).toEqual(m)
   })
 })
 
 describe('validateNoWasteTrackingIds', () => {
   test('returns errors when wasteTrackingId is present', () => {
-    expect(() => validateWasteTrackingIdMissing({ yourUniqueReference: 'REF2', wasteTrackingId: 'WTID123' })).toThrowError(
+    expect(() => validateWasteTrackingIdMissing(2)({ yourUniqueReference: 'REF2', wasteTrackingId: 'WTID123' })).toThrow(
       'Waste Tracking ID must not be present on a create upload'
     )
   })
 
   test('returns empty array when no wasteTrackingIds are present', () => {
     const m = { yourUniqueReference: 'REF1' }
-    expect(validateWasteTrackingIdMissing(m)).toEqual(m)
+    expect(validateWasteTrackingIdMissing(2)(m)).toEqual(m)
   })
 })
 
@@ -348,13 +350,114 @@ describe('some excel unit tests', () => {
   })
 })
 
+describe('some join items tests', () => {
+  test('should join data', () => {
+    const worksheetMetadata = {
+      worksheets: {
+        ls: { target: 'leaves', firstRowOfData: 2, worksheetName: 'ls', mapping: [[], ['branchId', requiredString], [['fish', requiredString]]] },
+        bs: {
+          target: 'branches',
+          firstRowOfData: 2,
+          worksheetName: 'bs',
+          mapping: [[], ['trunkId', requiredString], ['branchId', requiredString], [['dog', requiredString]]]
+        },
+        ts: { target: 'trunks', firstRowOfData: 2, worksheetName: 'ts', mapping: [[], [], ['trunkId', requiredString], [['cat', requiredString]]] }
+      },
+      joins: [
+        { joinKey: ['branchId'], keys: ['branches', 'leaves'], target: ['leaves'], rowNames: ['branchRow', 'leafRow'], refCols: [2, 1] },
+        { joinKey: ['trunkId'], keys: ['trunks', 'branches'], target: ['branches'], rowNames: ['trunkRow', 'branchRow'], refCols: [2, 1] }
+      ],
+      errors: { ls: 1, bs: 1, ts: 1 },
+      defaultErrorWorksheet: 'ts',
+      copyFromResult: [{ source: ['id'], target: { worksheetName: 'ts', col: 2 } }],
+      transform: (fn) => fn
+    }
+
+    const flatData = {
+      trunks: { elements: [{ trunkId: 1, cat: 'cat' }] },
+      branches: { elements: [{ trunkId: 1, branchId: 1, dog: 'dog' }] },
+      leaves: { elements: [{ leafId: 1, branchId: 1, fish: 'fish' }] }
+    }
+    const data = joinWasteItems(flatData, worksheetMetadata)
+    expect(data.trunks).toEqual([{ branches: [{ branchId: 1, dog: 'dog', leaves: [{ fish: 'fish', leafId: 1 }] }], cat: 'cat', trunkId: 1 }])
+  })
+
+  test('should support flat data', () => {
+    const worksheetMetadata = {
+      worksheets: {
+        ls: { target: 'lakes', firstRowOfData: 2, worksheetName: 'ls', mapping: [[], ['lakeId', requiredString], [['fish', requiredString]]] },
+        ts: { target: 'trees', firstRowOfData: 2, worksheetName: 'ts', mapping: [[], [], ['treeId', requiredString], [['cat', requiredString]]] }
+      },
+      joins: [],
+      errors: { ls: 1, ts: 1 },
+      defaultErrorWorksheet: 'ts',
+      copyFromResult: [{ source: ['id'], target: { worksheetName: 'ts', col: 2 } }],
+      transform: (fn) => fn
+    }
+    const flatData = {
+      trees: { elements: [{ treeId: 1, cat: 'cat' }] },
+      lakes: { elements: [{ lakeId: 1, fish: 'fish' }] }
+    }
+    const data = joinWasteItems(flatData, worksheetMetadata)
+    expect(data.trees).toEqual([{ cat: 'cat', treeId: 1 }])
+    expect(data.lakes).toEqual([{ fish: 'fish', lakeId: 1 }])
+  })
+})
+
+const mockWorksheet = (fakeData, rowPadding = 8) => {
+  const fakeRows = Array.apply(null, Array(rowPadding))
+    .map(() => [])
+    .concat(fakeData)
+  return {
+    eachRow: (rowCallback) => {
+      fakeRows.forEach((r, i) => {
+        const row = {
+          getCell: (col) => {
+            return { value: r[col - 1] }
+          },
+          eachCell: (cellCallback) => {
+            r.forEach((c, j) => {
+              cellCallback({ value: c }, j + 1)
+            })
+          }
+        }
+        rowCallback(row, i + 1)
+      })
+    },
+    getRow: (rowNumber) => ({
+      getCell: (colNumber) => {
+        const row = fakeRows[rowNumber]
+        const text = colNumber < row?.length ? row[colNumber] : ''
+        return {
+          value: { richText: [{ text }] }
+        }
+      }
+    })
+  }
+}
+
+const mockWorkbook = (buffer, movementData, itemData) => ({
+  xlsx: { writeBuffer: async () => buffer, writeFile: async () => null },
+  getWorksheet: (wsName) => {
+    const w = {
+      bumf: mockWorksheet([[], ['', 'Report receipt of waste', '2', '3']], 0),
+      '7. Waste movement level': mockWorksheet(movementData),
+      '8. Waste item level': mockWorksheet(itemData)
+    }
+    return w[wsName]
+  },
+  worksheets: [{ name: 'bumf' }, { name: '7. Waste movement level' }, { name: '8. Waste item level' }]
+})
+
 describe('transformBulkApiErrors', () => {
+  const worksheetMetadata = getWorksheetMeta(mockWorkbook(null, [], []), (x) => x, {}, console)
+
   test('distinct should deduplicate identical errors for the same cell', () => {
     const movementData = [{ yourUniqueReference: 'REF1', carrier: { organisationName: 'Carrier Ltd' } }]
     const rowNumbers = { REF1: { movementRow: 9 } }
     const duplicateError = { key: '0.carrier.organisationName', message: '"0.carrier.organisationName" is required' }
 
-    const result = transformBulkApiErrors(movementData, rowNumbers, [duplicateError, duplicateError])
+    const result = transformBulkApiErrors(movementData, rowNumbers, worksheetMetadata, [duplicateError, duplicateError])
     const errors = result['7. Waste movement level']
     expect(errors).toHaveLength(1)
   })
@@ -370,7 +473,7 @@ describe('transformBulkApiErrors', () => {
       }
     ]
 
-    const result = transformBulkApiErrors(movementData, rowNumbers, apiErrors)
+    const result = transformBulkApiErrors(movementData, rowNumbers, worksheetMetadata, apiErrors)
     expect(result).toEqual({
       '7. Waste movement level': [
         {
@@ -412,7 +515,7 @@ describe('transformBulkApiErrors', () => {
       }
     ]
 
-    const result = transformBulkApiErrors(movementData, rowNumbers, apiError)
+    const result = transformBulkApiErrors(movementData, rowNumbers, worksheetMetadata, apiError)
     expect(result).toEqual({
       '8. Waste item level': [
         {
@@ -426,52 +529,12 @@ describe('transformBulkApiErrors', () => {
 })
 
 describe('excel proccessor', () => {
+  const setupMockWorkbook = (buffer, movementData, itemData) =>
+    vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue(mockWorkbook(buffer, movementData, itemData))
+
   beforeEach(() => {
     vi.clearAllMocks()
   })
-
-  const mockWorksheet = (fakeData) => {
-    const fakeRows = [[], [], [], [], [], [], [], []].concat(fakeData)
-    return {
-      eachRow: (rowCallback) => {
-        fakeRows.forEach((r, i) => {
-          const row = {
-            getCell: (col) => {
-              return { value: r[col - 1] }
-            },
-            eachCell: (cellCallback) => {
-              r.forEach((c, j) => {
-                cellCallback({ value: c }, j + 1)
-              })
-            }
-          }
-          rowCallback(row, i + 1)
-        })
-      },
-      getRow: (rowNumber) => ({
-        getCell: (colNumber) => {
-          const row = fakeRows[rowNumber]
-          const text = colNumber < row?.length ? row[colNumber] : ''
-          return {
-            value: { richText: [{ text }] }
-          }
-        }
-      })
-    }
-  }
-
-  const mockWorkbook = (buffer, movementData, itemData) => {
-    vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue({
-      xlsx: { writeBuffer: async () => buffer, writeFile: async () => null },
-      getWorksheet: (wsName) => {
-        const w = {
-          '7. Waste movement level': mockWorksheet(movementData),
-          '8. Waste item level': mockWorksheet(itemData)
-        }
-        return w[wsName]
-      }
-    })
-  }
 
   test('should reject not excel files', async () => {
     const { hasErrors, workbook } = await parseExcelFile(Buffer.from('fish'), 'org-id', logger)
@@ -570,36 +633,42 @@ describe('excel proccessor', () => {
     process.env.TZ = oldTimezone
   })
 
-  test('should write waste tracking ids', { timeout: 50000 }, async () => {
-    const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-    const { workbook, movements, rowNumbers } = await parseExcelFile(buffer, 'org-id', logger)
+  test.each([
+    {
+      file: './test-resources/valid-spreadsheet.xlsx',
+      wtidCoords: { '7. Waste movement level': [{ coords: [2, 9], sheet: '7. Waste movement level', value: '26WR8B1H' }] }
+    },
+    {
+      file: './test-resources/v1.2-valid-example-spreadsheet.xlsx',
+      wtidCoords: { '2. Waste movement details': [{ coords: [2, 3], sheet: '2. Waste movement details', value: '26WR8B1H' }] }
+    }
+  ])('should write waste tracking ids', { timeout: 100000 }, async ({ file, wtidCoords }) => {
+    const buffer = await fs.readFile(file)
+    const { workbook, movements, rowNumbers, worksheetMetadata } = await parseExcelFile(buffer, 'org-id', console)
     const bulkImportResult = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
 
-    const coords = wasteTrackingIdsToCoords(movements, rowNumbers, bulkImportResult.movements)
-    expect(coords).toEqual({
-      '7. Waste movement level': [
-        {
-          coords: [2, 9],
-          sheet: '7. Waste movement level',
-          value: '26WR8B1H'
-        }
-      ]
-    })
-    updateCellContent(workbook, coords)
-    await workbook.xlsx.writeFile('./test-resources/output-spreadsheet-with-waste-tracking-ids.xlsx')
+    const coords = wasteTrackingIdsToCoords(movements, rowNumbers, bulkImportResult.movements, worksheetMetadata)
+    expect(coords).toEqual(wtidCoords)
+    updateCellContent(workbook, coords, worksheetMetadata, console)
+    await workbook.xlsx.writeFile(file.replace(/xlsx$/, 'with-waste-tracking-ids.xlsx'))
   })
 
   test('updateCellContent handles null and undefined values', { timeout: 50000 }, async () => {
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-    const { workbook } = await parseExcelFile(buffer, 'org-id', logger)
+    const { workbook, worksheetMetadata } = await parseExcelFile(buffer, 'org-id', logger)
     const worksheetName = '7. Waste movement level'
 
-    updateCellContent(workbook, {
-      [worksheetName]: [
-        { coords: [2, 9], value: null },
-        { coords: [2, 10], value: undefined }
-      ]
-    })
+    updateCellContent(
+      workbook,
+      {
+        [worksheetName]: [
+          { coords: [2, 9], value: null },
+          { coords: [2, 10], value: undefined }
+        ]
+      },
+      worksheetMetadata,
+      console
+    )
 
     const worksheet = workbook.getWorksheet(worksheetName)
     const cell1 = worksheet.getRow(9).getCell(2)
@@ -610,7 +679,7 @@ describe('excel proccessor', () => {
 
   test('should write errors buffer', { timeout: 100000 }, async () => {
     const buffer = Buffer.from('test xl file')
-    mockWorkbook(
+    setupMockWorkbook(
       buffer,
       [['', 'waste tracking id', 'REF1', '']],
       [
@@ -626,17 +695,22 @@ describe('excel proccessor', () => {
     })
 
     const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, mockTransform)
+
     expect(hasErrors).toEqual(true)
     expect(mockTransform).toHaveBeenCalled()
-    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
-      '7. Waste movement level': [{ coords: [33, 9], message: 'test error' }],
-      '8. Waste item level': [{ coords: [2, 10], message: 'No waste movements for unique reference' }]
-    })
+    expect(mockUpdateErrors).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        '7. Waste movement level': [{ coords: [33, 9], message: 'test error' }],
+        '8. Waste item level': [{ coords: [2, 10], message: 'No waste movements for unique reference' }]
+      },
+      expect.anything()
+    )
   })
 
   test('should validate that the "yourUniqueReference" field is provided', { timeout: 50000 }, async () => {
     const buffer = Buffer.from('test xl file')
-    mockWorkbook(
+    setupMockWorkbook(
       buffer,
       [['', '', '', 'company name', '', '', '']],
       [
@@ -645,20 +719,24 @@ describe('excel proccessor', () => {
       ]
     )
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
-    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, validateWasteTrackingIdMissing)
+    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, validateWasteTrackingIdMissing(3))
     expect(hasErrors).toEqual(true)
-    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
-      '7. Waste movement level': [{ coords: [3, 9], message: 'Please provide a value' }],
-      '8. Waste item level': [
-        { coords: [2, 9], message: 'Please provide a value' },
-        { coords: [2, 10], message: 'Please provide a value' }
-      ]
-    })
+    expect(mockUpdateErrors).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        '7. Waste movement level': [{ coords: [3, 9], message: 'Please provide a value' }],
+        '8. Waste item level': [
+          { coords: [2, 9], message: 'Please provide a value' },
+          { coords: [2, 10], message: 'Please provide a value' }
+        ]
+      },
+      expect.anything()
+    )
   })
 
   test("should validate that yourUniqueReference's are provided for waste movements", async () => {
     const buffer = Buffer.from('test xl file')
-    mockWorkbook(
+    setupMockWorkbook(
       buffer,
       [
         [
@@ -756,40 +834,44 @@ describe('excel proccessor', () => {
       ]
     )
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
-    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, validateWasteTrackingIdMissing)
+    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, validateWasteTrackingIdMissing(3))
     expect(hasErrors).toEqual(true)
-    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
-      '7. Waste movement level': [
-        {
-          coords: [3, 9],
-          message: 'Please provide a value'
-        },
-        {
-          coords: [3, 10],
-          message: 'Please provide a value'
-        }
-      ],
-      '8. Waste item level': [
-        {
-          coords: [2, 9],
-          message: 'Please provide a value'
-        },
-        {
-          coords: [18, 9],
-          errorValue: 'R13;R14',
-          message: 'Cannot parse disposal / recovery codes (R13)'
-        },
-        {
-          coords: [2, 10],
-          message: 'Please provide a value'
-        }
-      ]
-    })
+    expect(mockUpdateErrors).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        '7. Waste movement level': [
+          {
+            coords: [3, 9],
+            message: 'Please provide a value'
+          },
+          {
+            coords: [3, 10],
+            message: 'Please provide a value'
+          }
+        ],
+        '8. Waste item level': [
+          {
+            coords: [2, 9],
+            message: 'Please provide a value'
+          },
+          {
+            coords: [18, 9],
+            errorValue: 'R13;R14',
+            message: 'Cannot parse disposal / recovery codes (R13)'
+          },
+          {
+            coords: [2, 10],
+            message: 'Please provide a value'
+          }
+        ]
+      },
+      expect.anything()
+    )
   })
 
   test("should validate that yourUniqueReference's are unique for waste movements", async () => {
     const buffer = Buffer.from('test xl file')
-    mockWorkbook(
+    setupMockWorkbook(
       buffer,
       [
         [
@@ -887,27 +969,31 @@ describe('excel proccessor', () => {
       ]
     )
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
-    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, validateWasteTrackingIdMissing)
+    const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger, validateWasteTrackingIdMissing(3))
     expect(hasErrors).toEqual(true)
-    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
-      '7. Waste movement level': [
-        {
-          coords: [3, 10],
-          message: 'Duplicate reference'
-        },
-        {
-          coords: [3, 10],
-          message: 'No waste items for unique reference'
-        }
-      ],
-      '8. Waste item level': [
-        {
-          coords: [18, 10],
-          errorValue: 'D15qqq',
-          message: 'Cannot parse disposal / recovery codes (D15qqq)'
-        }
-      ]
-    })
+    expect(mockUpdateErrors).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        '7. Waste movement level': [
+          {
+            coords: [3, 10],
+            message: 'Duplicate reference'
+          },
+          {
+            coords: [3, 10],
+            message: 'No waste items for unique reference'
+          }
+        ],
+        '8. Waste item level': [
+          {
+            coords: [18, 10],
+            errorValue: 'D15qqq',
+            message: 'Cannot parse disposal / recovery codes (D15qqq)'
+          }
+        ]
+      },
+      expect.anything()
+    )
   })
 
   test('should have errors when worksheets are missing', { timeout: 100000 }, async () => {
@@ -919,9 +1005,10 @@ describe('excel proccessor', () => {
     ]
     vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue({
       xlsx: { writeBuffer: async () => buffer, writeFile: async () => null },
-      worksheets: [{ name: 'renamed - Waste movement level' }, { name: 'renamed - Waste item level' }],
+      worksheets: [{ name: 'bumf' }, { name: 'renamed - Waste movement level' }, { name: 'renamed - Waste item level' }],
       getWorksheet: (wsName) => {
         const w = {
+          bumf: mockWorksheet([['', 'Report receipt of waste']], 1),
           'renamed - Waste movement level': mockWorksheet(movementData),
           'renamed - Waste item level': mockWorksheet(itemData)
         }
@@ -944,21 +1031,25 @@ describe('excel proccessor', () => {
 
   test('should have errors when there is no data', { timeout: 100000 }, async () => {
     const buffer = Buffer.from('test xl file')
-    mockWorkbook(buffer, [], [])
+    setupMockWorkbook(buffer, [], [])
 
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
 
     const { hasErrors } = await parseExcelFile(buffer, 'org-id', logger)
     expect(hasErrors).toEqual(true)
-    expect(mockUpdateErrors).toHaveBeenCalledWith(expect.anything(), {
-      '7. Waste movement level': [
-        {
-          coords: [3, 9],
-          message: 'No movements recognised',
-          sheet: '7. Waste movement level'
-        }
-      ],
-      '8. Waste item level': []
-    })
+    expect(mockUpdateErrors).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        '7. Waste movement level': [
+          {
+            coords: [3, 9],
+            message: 'No movements recognised',
+            sheet: '7. Waste movement level'
+          }
+        ],
+        '8. Waste item level': []
+      },
+      expect.anything()
+    )
   })
 })

@@ -1,7 +1,8 @@
 import fs from 'node:fs/promises'
-import { parseExcelFile } from '../spreadsheetImport.js'
+import { parseExcelFile, updateCellContent } from '../spreadsheetImport.js'
 import { updateErrors } from './excel.js'
 import { createLogger } from '../../common/helpers/logging/logger.js'
+import { randomUUID } from 'node:crypto'
 
 const logger = createLogger()
 
@@ -39,5 +40,11 @@ describe('excel proccessor', () => {
     updateErrors(workbook, errors)
     const cell1 = worksheet.getRow(9).getCell(1)
     expect(cell1.value.richText[0].text).toBe('ewc codes must be a valid EWC code from the official list (C9)')
+  })
+
+  test("excel worksheets disappearing during processing get logged and don't throw errors", () => {
+    const x = randomUUID()
+    expect(updateCellContent({ worksheets: [{ name: 'alice' }], getWorksheet: () => null, x }, { bob: null }, console).x).toBe(x)
+    expect(updateErrors({ worksheets: [{ name: 'alice' }], getWorksheet: () => null, x }, { bob: null }, console).x).toBe(x)
   })
 })

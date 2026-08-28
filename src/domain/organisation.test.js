@@ -367,7 +367,6 @@ const createOrganisation = (isDisabled = false) => ({
 })
 
 const createPayment = (status, servicePeriodEnd) => {
-  console.log('servicePeriodEnd before if', servicePeriodEnd)
   if (!servicePeriodEnd) {
     servicePeriodEnd = addYears(new Date(), 1)
   }

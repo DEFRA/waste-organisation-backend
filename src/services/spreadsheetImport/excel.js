@@ -1,9 +1,6 @@
 import Excel from 'exceljs'
-import { createLogger } from '../../common/helpers/logging/logger.js'
 import { config } from '../../config.js'
 import crypto from 'node:crypto'
-
-const logger = createLogger()
 
 export const cellError = (colNumber, rowNumber, message, sheet, errorValue) => {
   const x = { coords: [colNumber, rowNumber], message }
@@ -92,7 +89,7 @@ export const worksheetToArray = ({ worksheet, keyCols, updateFn, minRow, maxCol 
   return { elements, errors }
 }
 
-export const readExcelBuffer = async (buffer) => {
+export const readExcelBuffer = async (buffer, logger) => {
   logger.info('Starting parsing spreadsheet')
   try {
     const workbook = new Excel.Workbook()
@@ -112,11 +109,11 @@ export const updateErrors = (() => {
                     'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK']
   const coordsToCellName = (coords) => ` (${colNames[coords[0] - 1]}${coords[1]})`
 
-  const updateCell = (worksheet, coords, message) => {
+  const updateCell = (worksheet, coords, message, errCol) => {
     const [colNumber, rowNumber] = coords
     const row = worksheet.getRow(rowNumber)
     const cell = row.getCell(colNumber)
-    const errorCell = row.getCell(1)
+    const errorCell = row.getCell(errCol)
     if (errorCell) {
       errorCell.value = appendMessageToCell(errorCell, message + coordsToCellName(coords), font)
     }
@@ -127,11 +124,19 @@ export const updateErrors = (() => {
       cell.value = { richText: [{ font, text: 'Please provide a value' }] }
     }
   }
-  return (workbook, cellsAndMessages) => {
+  return (workbook, cellsAndMessages, worksheetMetadata, logger) => {
+    const l = logger || console
     for (const worksheetName of Object.keys(cellsAndMessages)) {
       const worksheet = workbook.getWorksheet(worksheetName)
-      for (const { coords, message } of cellsAndMessages[worksheetName]) {
-        updateCell(worksheet, coords, message)
+      if (worksheet) {
+        for (const { coords, message } of cellsAndMessages[worksheetName]) {
+          updateCell(worksheet, coords, message, worksheetMetadata?.errors[worksheetName] ?? 1)
+        }
+      } else {
+        l.error(
+          `Cannot update errors - worksheet not fonud "${worksheetName}" not in ${workbook.worksheets.map((ws) => ws.name).join(', ')}` +
+            `parsed worksheets: ${JSON.stringify(Object.keys(cellsAndMessages))}`
+        )
       }
     }
     return workbook
@@ -146,18 +151,26 @@ export const updateCellContent = (() => {
     const cell = row.getCell(colNumber)
     cell.value = { richText: [{ font, text: String(value ?? '') }] }
   }
-  return (workbook, cellsAndValues) => {
+  return (workbook, cellsAndValues, logger) => {
+    const l = logger || console
     for (const worksheetName of Object.keys(cellsAndValues)) {
       const worksheet = workbook.getWorksheet(worksheetName)
-      for (const { coords, value } of cellsAndValues[worksheetName]) {
-        updateCell(worksheet, coords, value)
+      if (worksheet) {
+        for (const { coords, value } of cellsAndValues[worksheetName]) {
+          updateCell(worksheet, coords, value)
+        }
+      } else {
+        l.error(
+          `Cannot update cell content - worksheet not fonud "${worksheetName}" not in ` +
+            `${workbook.worksheets.map((ws) => ws.name).join(', ')} parsed worksheets: ${JSON.stringify(Object.keys(cellsAndValues))}`
+        )
       }
     }
     return workbook
   }
 })()
 
-export const workbookToByteArray = async (workbook) => {
+export const workbookToByteArray = async (workbook, logger) => {
   /* v8 ignore start */
   if (config.get('bulkUpload.copySpreadsheetToDisk')) {
     const f = '/tmp/output-' + crypto.randomUUID() + '.xlsx' // nosonar
