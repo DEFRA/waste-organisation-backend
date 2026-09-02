@@ -137,6 +137,29 @@ describe('payment API', () => {
         version: 1
       }
     })
+    expect(wreckPostMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        payload: expect.objectContaining({ language: 'en' })
+      })
+    )
+  })
+
+  test.each([
+    { language: 'cy', expected: 'cy' },
+    { language: 'CY', expected: 'cy' },
+    { language: 'Cy', expected: 'cy' },
+    { language: 'en', expected: 'en' },
+    { language: 'fr', expected: 'en' },
+    { language: '', expected: 'en' },
+    { language: null, expected: 'en' },
+    { language: 123, expected: 'en' }
+  ])('initiate payment forwards language $language as $expected', async ({ language, expected }) => {
+    const organisationId = faker.string.uuid()
+    wreckPostMock.mockImplementation(async () => fakeGovPayResponse(organisationId))
+    const { statusCode } = await initiatePayment(server, organisationId, 'organisation name', '2026-05-01T00:00:00.000Z', '2027-05-01T00:00:00.000Z', language)
+    expect(statusCode).toBe(200)
+    expect(wreckPostMock.mock.calls.at(-1)[1].payload.language).toBe(expected)
   })
 
   test('initiate payment should reject non-matching org ids', async () => {
@@ -386,7 +409,7 @@ const updateOrganisation = async (server, userId, organisationId, organisation) 
   })
 }
 
-const initiatePayment = async (server, organisationId, organisationName, servicePeriodStart, servicePeriodEnd) => {
+const initiatePayment = async (server, organisationId, organisationName, servicePeriodStart, servicePeriodEnd, language) => {
   return await server.inject({
     method: 'POST',
     headers: {
@@ -398,6 +421,7 @@ const initiatePayment = async (server, organisationId, organisationName, service
         amount: 2134,
         description: 'SERVICE_CHARGE_DESCRIPTION',
         returnUrl: `http://example.com/paymentDetails`,
+        ...(language !== undefined ? { language } : {}),
         metadata: { organisationId, organisationName, servicePeriodStart, servicePeriodEnd }
       }
     }

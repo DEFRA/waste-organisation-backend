@@ -3,12 +3,14 @@ import { config } from '../../config.js'
 
 describe('govpay', () => {
   const wreckGetMock = vi.fn()
+  const wreckPostMock = vi.fn()
 
   beforeAll(async () => {
     config.set('govPay.schedulingPollingTaskRetrySleepStep', 1)
     vi.doMock('@hapi/wreck', () => ({
       default: {
-        get: wreckGetMock
+        get: wreckGetMock,
+        post: wreckPostMock
       }
     }))
   })
@@ -57,5 +59,39 @@ describe('govpay', () => {
       x = 'pass'
     }
     expect(x).toEqual('pass')
+  })
+
+  test('createGovPayPayment includes language on the outbound payload', async () => {
+    wreckPostMock.mockResolvedValue({
+      res: { statusCode: 201 },
+      payload: { payment_id: 'pay-123' }
+    })
+    const { createGovPayPayment } = await import('./index.js')
+    const result = await createGovPayPayment(
+      {
+        reference: 'DWT-2026/2027-org',
+        amount: 2134,
+        description: 'SERVICE_CHARGE_DESCRIPTION',
+        returnUrl: 'http://example.com/paymentDetails',
+        metadata: { organisationId: 'org-1' },
+        idempotencyKey: 'idem-1',
+        language: 'cy'
+      },
+      console
+    )
+
+    expect(result.status).toBe('success')
+    expect(wreckPostMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/payments$/),
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          amount: 2134,
+          description: 'SERVICE_CHARGE_DESCRIPTION',
+          reference: 'DWT-2026/2027-org',
+          return_url: 'http://example.com/paymentDetails',
+          language: 'cy'
+        })
+      })
+    )
   })
 })
