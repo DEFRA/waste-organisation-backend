@@ -82,8 +82,8 @@ jobs:
           GOV_NOTIFY_KEY=${GOV_NOTIFY_KEY}
           GOVPAY_API_KEY=${GOVPAY_API_KEY}
           EOF
-          docker compose -f waste-organisation-frontend/compose.yml -f waste-organisation-frontend/compose-local-api.yml -f waste-organisation-frontend/compose-github.override.yml up -d --wait
-          docker compose -f waste-organisation-frontend/compose.yml -f waste-organisation-frontend/compose-local-api.yml -f waste-organisation-frontend/compose-github.override.yml ps
+          docker compose -f waste-organisation-frontend/compose.yml -f waste-organisation-frontend/compose-local-api.yml -f waste-organisation-frontend/compose-github.override.yml -f waste-organisation-frontend/compose-github.override-zap.yml up -d --wait
+          docker compose -f waste-organisation-frontend/compose.yml -f waste-organisation-frontend/compose-local-api.yml -f waste-organisation-frontend/compose-github.override.yml -f waste-organisation-frontend/compose-github.override-zap.yml ps
 
       - name: Checkout UAT Repository as Integration Test Suite
         uses: actions/checkout@v7
@@ -101,6 +101,12 @@ jobs:
       - name: Install Integration Test Dependencies
         working-directory: integration-tests
         run: npm ci --ignore-scripts
+      
+      - name: Prepare ZAP for integration tests
+        if: steps.wait-for-docker-compose-services.outcome == 'success'
+        run: |
+          curl -f http://127.0.0.1:8080/OTHER/core/other/rootcert/ -o "$RUNNER_TEMP/zap-root-ca.pem"
+          echo "NODE_EXTRA_CA_CERTS=$RUNNER_TEMP/zap-root-ca.pem" >> "$GITHUB_ENV"
 
       - name: Run Integration Tests
         id: integration-tests
@@ -108,8 +114,11 @@ jobs:
         env:
           ORGANISATION_BACKEND_PASSWORD: ${{ secrets.ORGANISATION_BACKEND_PASSWORD }}
           ENVIRONMENT: local
+          ZAP_PROXY_URL: http://zap:8080
+          ZAP_PROXY_API_URL: http://127.0.0.1:8080
         run: |
-          npm run test
+          npm run test:smoke
+          npm run test:zap
 
       - name: Generate Test Report
         if: always()
@@ -125,6 +134,15 @@ jobs:
           name: integration-test-report
           path: integration-tests/allure-report/
           retention-days: 30
+      
+      - name: Upload Zap Report
+        if: always() && steps.integration-tests.outcome == 'success'
+        id: upload-zap-report
+        uses: actions/upload-artifact@v7
+        with:
+          name: zap-test-report
+          path: integration-tests/zap-report/
+          retention-days: 30
 
       - name: Comment Test Report Link on PR
         if: always() && steps.upload-report.outcome == 'success' && github.event_name == 'pull_request'
@@ -132,11 +150,14 @@ jobs:
         with:
           script: |
             const statusEmoji = '${{ steps.integration-tests.outcome }}' === 'success' ? '✅' : '❌';
+            const zapLine = '${{ steps.upload-zap-report.outcome }}' === 'success'
+              ? `\n\n🔒 [Download ZAP Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload-zap-report.outputs.artifact-id }})`
+              : '';
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## 📊 Integration Test Report ${statusEmoji}\n\nThe test report has been generated and is available as an artifact.\n\n📥 [Download Test Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload-report.outputs.artifact-id }})`
+              body: `## 📊 Integration Test Report ${statusEmoji}\n\nThe test report has been generated and is available as an artifact.\n\n📥 [Download Test Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload-report.outputs.artifact-id }})${zapLine}`
             })
 
       - name: Stop Docker Compose Services
@@ -151,4 +172,4 @@ jobs:
           GOV_NOTIFY_KEY=${GOV_NOTIFY_KEY}
           GOVPAY_API_KEY=${GOVPAY_API_KEY}
           EOF
-          docker compose -f waste-organisation-frontend/compose.yml -f waste-organisation-frontend/compose-local-api.yml -f waste-organisation-frontend/compose-github.override.yml down
+          docker compose -f waste-organisation-frontend/compose.yml -f waste-organisation-frontend/compose-local-api.yml -f waste-organisation-frontend/compose-github.override.yml -f waste-organisation-frontend/compose-github.override-zap.yml down
