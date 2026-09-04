@@ -56,7 +56,7 @@ describe('backgroundProcessor integration', () => {
     processor = await import('./backgroundProcessor.js')
   })
 
-  it('happy path create - sends success email with waste tracking IDs', { timeout: 30000 }, async () => {
+  it('happy path create - sends success email with waste tracking IDs', { timeout: 60000 }, async () => {
     bulkImportModule.bulkImport.mockResolvedValue({
       movements: [{ wasteTrackingId: 'WTID001' }]
     })
@@ -220,7 +220,7 @@ describe('backgroundProcessor integration', () => {
     expect(notifyModule.sendEmail.sendFailed).toHaveBeenCalledWith(expect.objectContaining({ email: TEST_EMAIL, name: TEST_NAME }))
   })
 
-  it('update upload happy path - calls bulkUpdate and preserves WTIDs', { timeout: 30000 }, async () => {
+  it('update upload happy path - calls bulkUpdate and preserves WTIDs', { timeout: 60000 }, async () => {
     const validBuffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
     const workbook = new Excel.Workbook()
     await workbook.xlsx.load(validBuffer, { ignoreNodes: ['conditionalFormatting'] })

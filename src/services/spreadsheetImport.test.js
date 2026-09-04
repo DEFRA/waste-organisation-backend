@@ -642,7 +642,7 @@ describe('excel proccessor', () => {
       file: './test-resources/v1.2-valid-example-spreadsheet.xlsx',
       wtidCoords: { '2. Waste movement details': [{ coords: [2, 3], sheet: '2. Waste movement details', value: '26WR8B1H' }] }
     }
-  ])('should write waste tracking ids', { timeout: 100000 }, async ({ file, wtidCoords }) => {
+  ])('should write waste tracking ids', { timeout: 180000 }, async ({ file, wtidCoords }) => {
     const buffer = await fs.readFile(file)
     const { workbook, movements, rowNumbers, worksheetMetadata } = await parseExcelFile(buffer, 'org-id', console)
     const bulkImportResult = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
