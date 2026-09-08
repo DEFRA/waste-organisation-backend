@@ -129,24 +129,20 @@ export const payments = [
     path: paths.payment,
     options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ payment: addVersionField(paymentSchema) }), sample: 0 } },
     handler: async (request, h) => {
-      try {
-        const { paymentId, organisationId } = request.params
-        const govPayment = await getPaymentStatus(paymentId, request.logger)
-        if (govPayment.status === 'success') {
-          const { payment, createdOrganisation } = await updatePaymentStatus(
-            paymentId,
-            organisationId,
-            govPayment.payload,
-            request.payload.restoreValues,
-            request.db,
-            request.logger
-          )
-          return h.response({ message: 'success', payment, ...(createdOrganisation ? { createdOrganisation } : {}) })
-        } else {
-          return h.response({ message: 'error', error: govPayment })
-        }
-      } catch (e) {
-        return h.response({ message: 'error', error: e.toString() })
+      const { paymentId, organisationId } = request.params
+      const govPayment = await getPaymentStatus(paymentId, request.logger)
+      if (govPayment.status === 'success') {
+        const { payment, createdOrganisation } = await updatePaymentStatus(
+          paymentId,
+          organisationId,
+          govPayment.payload,
+          request.payload.restoreValues,
+          request.db,
+          request.logger
+        )
+        return h.response({ message: 'success', payment, ...(createdOrganisation ? { createdOrganisation } : {}) })
+      } else {
+        return h.response({ message: 'error', error: govPayment })
       }
     }
   },
