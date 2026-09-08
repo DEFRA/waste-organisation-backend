@@ -384,6 +384,31 @@ describe('payment API', () => {
       payment: { paymentId: expect.any(String) }
     })
   })
+
+  test('flag allows for creating data from a backup', async () => {
+    const organisationId = faker.string.uuid()
+    const paymentId = faker.string.uuid()
+    wreckGetMock.mockImplementation(async () => {
+      return { ...fakeGovPayResponse(organisationId, paymentId), res: { statusCode: 200 } }
+    })
+    const { statusCode, payload } = await server.inject({
+      method: 'POST',
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
+      url: pathTo(paths.payment, { organisationId, paymentId }),
+      payload: { restoreValues: { organisation: { name: 'An Org' } } }
+    })
+
+    const org = await server.db.collection(orgCollection).findOne({ organisationId: { $eq: organisationId } }, { projection: { _id: 0 } })
+    expect(statusCode).toBe(200)
+    expect(org.name).toEqual('An Org')
+    const p = JSON.parse(payload)
+    expect(p.createdOrganisation).toEqual({ name: 'An Org', organisationId })
+    expect(p.message).toEqual('success')
+    expect(p.payment.amount).toEqual(14500)
+    expect(p.payment.metadata.organisationId).toEqual(organisationId)
+  })
 })
 
 const payForFn = (server, organisationId) => async (from, to, paymentFn) => {

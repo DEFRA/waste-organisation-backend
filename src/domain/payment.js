@@ -110,6 +110,29 @@ const transitionState = (() => {
   }
 })()
 
+export const constructFromGovPayment = (govPay, idempotencyKey, logger) => {
+  const { amount, metadata, reference, description } = govPay
+  const { organisationId, servicePeriodStart, servicePeriodEnd } = metadata
+  const start = new Date(servicePeriodStart)
+  const end = new Date(servicePeriodEnd)
+  const payment = {
+    organisationId,
+    paymentId: govPay.payment_id,
+    idempotencyKey,
+    amount,
+    description,
+    returnUrl: govPay.return_url,
+    metadata,
+    reference,
+    status: govPayStatusToStatus(govPay, logger),
+    servicePeriodStart: start,
+    servicePeriodEnd: end,
+    govPayLinks: govPay._links,
+    period: `${start.getFullYear()}/${end.getFullYear()}`
+  }
+  return common.validate(payment, paymentSchema)
+}
+
 export const updateFromGovPayEvent = (payment, govPay, logger) => {
   const status = transitionState(payment, govPayStatusToStatus(govPay, logger))
   return common.validate({ ...payment, ...(govPay._links ? { govPayLinks: govPay._links } : {}), ...(status ? { status } : {}) }, paymentSchema)

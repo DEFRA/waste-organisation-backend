@@ -92,9 +92,9 @@ export const organisations = [
             const org = mergeAndValidate(
               dbOrg,
               {
+                ...paramOrg,
                 organisationId,
-                userId,
-                ...paramOrg
+                userId
               },
               organisationId,
               userId
