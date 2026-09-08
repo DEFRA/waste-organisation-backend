@@ -125,8 +125,8 @@ export const constructFromGovPayment = (govPay, idempotencyKey, logger) => {
     metadata,
     reference,
     status: govPayStatusToStatus(govPay, logger),
-    servicePeriodStart,
-    servicePeriodEnd,
+    servicePeriodStart: start,
+    servicePeriodEnd: end,
     govPayLinks: govPay._links,
     period: `${start.getFullYear()}/${end.getFullYear()}`
   }
