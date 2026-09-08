@@ -1,7 +1,16 @@
 import { randomUUID } from 'node:crypto'
 import { paths } from '../config/paths.js'
 import { config } from '../config.js'
-import { paymentSchema, initiatePayment, updateFromGovPayEvent, hasStatusChanged, isFailed, isRefunded, isPaid } from '../domain/payment.js'
+import {
+  paymentSchema,
+  initiatePayment,
+  updateFromGovPayEvent,
+  constructFromGovPayment,
+  hasStatusChanged,
+  isFailed,
+  isRefunded,
+  isPaid
+} from '../domain/payment.js'
 import { paymentCollection, findMatchingPayments, createStubPayment, deleteStubPayment } from '../repositories/payment.js'
 import { orgCollection } from '../repositories/organisation.js'
 import { updateOrganisationPaymentStatus, updateDisableAfter } from '../domain/organisation.js'
@@ -19,21 +28,31 @@ const createPaymentReference = ({ servicePeriodStart, servicePeriodEnd, organisa
   return `DWT-${start}/${end}-${organisationId}`.toUpperCase()
 }
 
-const updatePaymentStatus = async (paymentId, organisationId, govPayment, db, logger) => {
+const updatePaymentStatus = async (paymentId, organisationId, govPayment, restoreValues, db, logger) => {
   let shouldUpdateOrg = false
+  let createdOrganisation = null
   const payment = await updateWithOptimisticLock(db.collection(paymentCollection), { paymentId, organisationId }, (dbPayment) => {
-    if (dbPayment.status) {
-      const p = updateFromGovPayEvent(dbPayment, govPayment, logger)
-      shouldUpdateOrg = hasStatusChanged(dbPayment, p)
-      return p
+    if (dbPayment.status || restoreValues) {
+      const shouldCreatePayment = dbPayment?.status == null && restoreValues
+      const p = shouldCreatePayment ? constructFromGovPayment(govPayment, randomUUID(), logger) : dbPayment
+      const p1 = updateFromGovPayEvent(p, govPayment, logger)
+      shouldUpdateOrg = hasStatusChanged(dbPayment, p1) || shouldCreatePayment
+      return p1
     } else {
       throw boom.notFound()
     }
   })
   if (shouldUpdateOrg) {
-    await updateWithOptimisticLock(db.collection(orgCollection), { organisationId }, (org) => updateOrganisationPaymentStatus(org, payment))
+    await updateWithOptimisticLock(db.collection(orgCollection), { organisationId }, (org) => {
+      if (restoreValues && org.name == null) {
+        createdOrganisation = { ...org, ...restoreValues.organisation, organisationId }
+        return updateOrganisationPaymentStatus(createdOrganisation, payment)
+      } else {
+        return updateOrganisationPaymentStatus(org, payment)
+      }
+    })
   }
-  return payment
+  return { payment, createdOrganisation }
 }
 
 export const schedulePollingTask = async (request, jobData) => {
@@ -101,7 +120,7 @@ export const payments = [
     options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ payment: addVersionField(paymentSchema) }), sample: 0 } },
     handler: async (request, h) => {
       const { paymentId, organisationId } = request.params
-      const payment = await updatePaymentStatus(paymentId, organisationId, request.payload.payment, request.db, request.logger)
+      const { payment } = await updatePaymentStatus(paymentId, organisationId, request.payload.payment, null, request.db, request.logger)
       return h.response({ message: 'success', payment })
     }
   },
@@ -110,13 +129,24 @@ export const payments = [
     path: paths.payment,
     options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ payment: addVersionField(paymentSchema) }), sample: 0 } },
     handler: async (request, h) => {
-      const { paymentId, organisationId } = request.params
-      const govPayment = await getPaymentStatus(paymentId, request.logger)
-      if (govPayment.status === 'success') {
-        const payment = await updatePaymentStatus(paymentId, organisationId, govPayment.payload, request.db, request.logger)
-        return h.response({ message: 'success', payment })
-      } else {
-        return h.response({ message: 'error', error: govPayment })
+      try {
+        const { paymentId, organisationId } = request.params
+        const govPayment = await getPaymentStatus(paymentId, request.logger)
+        if (govPayment.status === 'success') {
+          const { payment, createdOrganisation } = await updatePaymentStatus(
+            paymentId,
+            organisationId,
+            govPayment.payload,
+            request.payload.restoreValues,
+            request.db,
+            request.logger
+          )
+          return h.response({ message: 'success', payment, ...(createdOrganisation ? { createdOrganisation } : {}) })
+        } else {
+          return h.response({ message: 'error', error: govPayment })
+        }
+      } catch (e) {
+        return h.response({ message: 'error', error: e.toString() })
       }
     }
   },
