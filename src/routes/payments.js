@@ -136,7 +136,7 @@ export const payments = [
           paymentId,
           organisationId,
           govPayment.payload,
-          request.payload.restoreValues,
+          request?.payload?.restoreValues,
           request.db,
           request.logger
         )
