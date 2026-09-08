@@ -325,7 +325,7 @@ describe('payment API', () => {
         'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
       },
       url: pathTo(paths.payment, { organisationId, paymentId }),
-      payload: {}
+      payload: null
     })
     expect(statusCode).toEqual(200)
     expect(JSON.parse(payload).payment.status).toEqual('refund_succeeded')
