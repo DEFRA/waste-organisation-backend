@@ -1,4 +1,6 @@
 import * as mockMongo from 'vitest-mongodb'
+import hapiPino from 'hapi-pino'
+import pino from 'pino'
 
 export const WASTE_CLIENT_AUTH_TEST_TOKEN = 'mytesttoken'
 
@@ -19,6 +21,24 @@ export const initialiseServer = async () => {
   const { createServer, plugins } = await import('../../api-server.js')
   const { updateClientAuthKeys } = await import('../../config.js')
 
+  const instance = pino(
+    {},
+    {
+      write: (msg) => {
+        const data = JSON.parse(msg)
+        if (data.req) {
+          console.log(data.req.method, ': ', data.req.url, JSON.stringify(data, null, 4))
+        } else {
+          console.log(data.msg)
+        }
+      }
+    }
+  )
+  const logger = {
+    plugin: hapiPino,
+    options: { instance }
+  }
+
   process.env.WASTE_CLIENT_AUTH_TEST_TOKEN = WASTE_CLIENT_AUTH_TEST_TOKEN
   process.env.WASTE_CLIENT_AUTH_TEST_1 = 'my test token 1'
   process.env.WASTE_CLIENT_AUTH_TEST_2 = '4d5d48cb-456a-470a-8814-eae2758be90d'
@@ -30,7 +50,7 @@ export const initialiseServer = async () => {
     mongoDb.options.mongoUrl = globalThis.__MONGO_URI__
   }
   const sqsPlugin = mockSqs()
-  const server = await createServer({ mongoDb, sqsPlugin })
+  const server = await createServer({ mongoDb, sqsPlugin, logger })
   await server.initialize()
   server.testPlugins = plugins
   server.testPlugins.mongoDb = mongoDb
