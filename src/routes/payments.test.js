@@ -413,8 +413,10 @@ describe('payment API', () => {
   test('should handle error responses', async () => {
     const organisationId = faker.string.uuid()
     const paymentId = faker.string.uuid()
+    const recursiveData = {}
+    recursiveData.loop = recursiveData
     wreckGetMock.mockImplementation(async () => {
-      return { payload: {}, res: { statusCode: 404 } }
+      return { payload: { data: recursiveData }, res: { statusCode: 404 } }
     })
     const { statusCode, payload } = await server.inject({
       method: 'POST',
