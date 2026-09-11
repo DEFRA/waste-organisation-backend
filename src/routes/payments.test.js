@@ -409,6 +409,30 @@ describe('payment API', () => {
     expect(p.payment.amount).toEqual(14500)
     expect(p.payment.metadata.organisationId).toEqual(organisationId)
   })
+
+  test('should handle error responses', async () => {
+    const organisationId = faker.string.uuid()
+    const paymentId = faker.string.uuid()
+    wreckGetMock.mockImplementation(async () => {
+      return { payload: {}, res: { statusCode: 404 } }
+    })
+    const { statusCode, payload } = await server.inject({
+      method: 'POST',
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
+      url: pathTo(paths.payment, { organisationId, paymentId }),
+      payload: { restoreValues: { organisation: { name: 'An Org' } } }
+    })
+
+    expect(statusCode).toBe(200)
+    const org = await server.db.collection(orgCollection).findOne({ organisationId: { $eq: organisationId } }, { projection: { _id: 0 } })
+    expect(org).toBeNull()
+    const payment = await server.db.collection(paymentCollection).findOne({ paymentId: { $eq: paymentId } }, { projection: { _id: 0 } })
+    expect(payment).toBeNull()
+    const p = JSON.parse(payload)
+    expect(p.message).toEqual('error')
+  })
 })
 
 const payForFn = (server, organisationId) => async (from, to, paymentFn) => {
