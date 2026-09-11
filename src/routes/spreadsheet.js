@@ -35,6 +35,7 @@ const putOptions = { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema
 
 const scheduleProcessor = async (request, jobData) => {
   // TODO check state of the data - maybe only do this if it's just become ready or something??
+  request.logger.info(`Scheduling spreadsheet processing for orgId: ${jobData.organisationId}, ReferenceNumber: ${jobData.referenceNumber}`)
   return await sendSqsMessage(jobData, 'process_excel_file', request.backgroundProcessSqsQueueUrl, request.logger, request.sqsClient)
 }
 
