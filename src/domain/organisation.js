@@ -130,7 +130,7 @@ export const updateOrganisationPaymentStatus = (org, payment) => {
     }
   }
   if (isFailed(payment)) {
-    return validate({ ...org, disabledReason: 'Payment failed' })
+    return validate(ensureAtLeastOneApiCodeExists({ ...org, disabledReason: 'Payment failed' }))
   }
   return validate(org)
 }

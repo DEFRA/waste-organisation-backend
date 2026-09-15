@@ -298,7 +298,11 @@ describe('updateOrganisationPaymentStatus', () => {
     const payment = createPayment('payment_failed')
     const initialOrganisation = createOrganisation()
     const updatedOrganisation = updateOrganisationPaymentStatus(initialOrganisation, payment)
-    expect(updatedOrganisation).toEqual({ ...initialOrganisation, disabledReason: 'Payment failed' })
+    expect(updatedOrganisation).toEqual({
+      ...initialOrganisation,
+      apiCodes: [expect.anything()],
+      disabledReason: 'Payment failed'
+    })
     expect(isEnabled(updatedOrganisation)).toBe(false)
   })
 
