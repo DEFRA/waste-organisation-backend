@@ -63,7 +63,7 @@ export const schedulePollingTask = async (request, jobData) => {
       await setTimeout(i * config.get('govPay.schedulingPollingTaskRetrySleepStep'))
       return await sendSqsMessage(jobData, 'poll_for_payment', request.backgroundProcessSqsQueueUrl, request.logger, request.sqsClient)
     } catch (e) {
-      request.logger.debug(`Scheduling polling task failed retrying (${i}): ${e}`)
+      request.logger.debug(`Scheduling polling task failed retrying (${i}): ${e?.toString()}`)
     }
   }
   return null
@@ -142,7 +142,7 @@ export const payments = [
         )
         return h.response({ message: 'success', payment, ...(createdOrganisation ? { createdOrganisation } : {}) })
       } else {
-        return h.response({ message: 'error', error: govPayment })
+        return h.response({ message: 'error', error: govPayment?.error?.toString() })
       }
     }
   },
@@ -199,7 +199,7 @@ export const payments = [
           return h.response(r)
         }
       } catch (e) {
-        request.logger.error(`error initiating payment ${e} - ${e.stack}`)
+        request.logger.error(`error initiating payment ${e?.toString()} - ${e?.stack}`)
         throw e
       }
     }

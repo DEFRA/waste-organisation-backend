@@ -298,13 +298,23 @@ describe('updateOrganisationPaymentStatus', () => {
     const payment = createPayment('payment_failed')
     const initialOrganisation = createOrganisation()
     const updatedOrganisation = updateOrganisationPaymentStatus(initialOrganisation, payment)
-    expect(updatedOrganisation).toEqual({ ...initialOrganisation, disabledReason: 'Payment failed' })
+    expect(updatedOrganisation).toEqual({
+      ...initialOrganisation,
+      apiCodes: [expect.anything()],
+      disabledReason: 'Payment failed'
+    })
     expect(isEnabled(updatedOrganisation)).toBe(false)
   })
 
   it('should not move disableAfter backwards for refunded payment when disableAfter is null', () => {
     const payment = createPayment('refund_succeeded')
-    const initialOrganisation = { organisationId: ORANISATION_ID, name: ORANISATION_NAME, disableAfter: null, isDisabled: false }
+    const initialOrganisation = {
+      organisationId: ORANISATION_ID,
+      name: ORANISATION_NAME,
+      disableAfter: null,
+      isDisabled: false,
+      apiCodes: [{ code: 'abc-123', isDisabled: false, name: 'code' }]
+    }
     const updatedOrganisation = updateOrganisationPaymentStatus(initialOrganisation, payment)
     expect(updatedOrganisation).toEqual(initialOrganisation)
   })

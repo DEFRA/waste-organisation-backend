@@ -52,7 +52,7 @@ export const getPaymentStatus = async (paymentId, logger) => {
     })
     return { payload, status: res?.statusCode === SUCCESS ? 'success' : 'error', statusCode: res?.statusCode }
   } catch (e) {
-    log.error(`Error initiating payment ${e} ${e.stack}`)
+    log.error(`Error getting payment status ${e.toString()} ${e.stack}`)
     return { status: 'error', error: e }
   }
 }

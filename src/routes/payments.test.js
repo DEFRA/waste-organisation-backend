@@ -409,6 +409,72 @@ describe('payment API', () => {
     expect(p.payment.amount).toEqual(14500)
     expect(p.payment.metadata.organisationId).toEqual(organisationId)
   })
+
+  test('flag allows restoring a failed payment and creates the organisation with an API code', async () => {
+    const occupantOrg = await server.db.collection(orgCollection).findOne({ apiCodes: { $exists: false } })
+    if (!occupantOrg) {
+      await server.db.collection(orgCollection).insertOne({
+        organisationId: faker.string.uuid(),
+        name: 'Occupies null apiCodes index'
+      })
+    }
+
+    const organisationId = faker.string.uuid()
+    const paymentId = faker.string.uuid()
+    const govPay = fakeGovPayResponse(organisationId, paymentId)
+    govPay.payload.state.status = 'failed'
+    govPay.payload.state.finished = true
+    wreckGetMock.mockImplementation(async () => {
+      return { ...govPay, res: { statusCode: 200 } }
+    })
+    const { statusCode, payload } = await server.inject({
+      method: 'POST',
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
+      url: pathTo(paths.payment, { organisationId, paymentId }),
+      payload: { restoreValues: { organisation: { name: 'An Org' } } }
+    })
+
+    const org = await server.db.collection(orgCollection).findOne({ organisationId: { $eq: organisationId } }, { projection: { _id: 0 } })
+    const payment = await server.db.collection(paymentCollection).findOne({ paymentId: { $eq: paymentId } }, { projection: { _id: 0 } })
+    const p = JSON.parse(payload)
+    expect(statusCode).toBe(200)
+    expect(p.message).toEqual('success')
+    expect(p.payment.status).toEqual('payment_failed')
+    expect(org.name).toEqual('An Org')
+    expect(org.disabledReason).toEqual('Payment failed')
+    expect(org.organisationId).toEqual(organisationId)
+    expect(org.apiCodes[0].code).toEqual(expect.stringMatching(/^[0-9a-f-]{36}$/i))
+    expect(payment.status).toEqual('payment_failed')
+    expect(payment.organisationId).toEqual(organisationId)
+  })
+
+  test('should handle error responses', async () => {
+    const organisationId = faker.string.uuid()
+    const paymentId = faker.string.uuid()
+    const recursiveData = {}
+    recursiveData.loop = recursiveData
+    wreckGetMock.mockImplementation(async () => {
+      return { payload: { data: recursiveData }, res: { statusCode: 404 } }
+    })
+    const { statusCode, payload } = await server.inject({
+      method: 'POST',
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
+      url: pathTo(paths.payment, { organisationId, paymentId }),
+      payload: { restoreValues: { organisation: { name: 'An Org' } } }
+    })
+
+    expect(statusCode).toBe(200)
+    const org = await server.db.collection(orgCollection).findOne({ organisationId: { $eq: organisationId } }, { projection: { _id: 0 } })
+    expect(org).toBeNull()
+    const payment = await server.db.collection(paymentCollection).findOne({ paymentId: { $eq: paymentId } }, { projection: { _id: 0 } })
+    expect(payment).toBeNull()
+    const p = JSON.parse(payload)
+    expect(p.message).toEqual('error')
+  })
 })
 
 const payForFn = (server, organisationId) => async (from, to, paymentFn) => {
