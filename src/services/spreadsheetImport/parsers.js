@@ -1,3 +1,16 @@
+const parseConcentration = (value) => {
+  const [, operator, amount] = value.match(/^([<>])?\s*([0-9.]+)$/) ?? []
+
+  if (!amount) {
+    return { concentration: value }
+  }
+
+  return {
+    concentration: Number(amount),
+    ...(operator && { concentrationOperator: operator })
+  }
+}
+
 export const parseComponentCodes = (existing, data) => {
   const result = existing ?? []
   try {
@@ -9,7 +22,7 @@ export const parseComponentCodes = (existing, data) => {
         const [_, code, c] = y
           .match(/([^=]*)=(.*)/) // nosonar
           .map((x) => x.trim())
-        return [{ code, concentration: c.match(/^([0-9.]+)$/) ? Number(c) : c }]
+        return [{ code, ...parseConcentration(c) }]
       })
     )
   } catch {
@@ -27,7 +40,7 @@ export const parseComponentNames = (existing, data) => {
       const [_, name, c] = y
         .match(/([^=]*)=(.*)/) // nosonar
         .map((x) => x.trim())
-      return [{ name, concentration: c.match(/^([0-9.]+)$/) ? Number(c) : c }]
+      return [{ name, ...parseConcentration(c) }]
     })
     return result.concat(parsed)
   } catch {
