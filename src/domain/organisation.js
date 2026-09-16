@@ -126,7 +126,7 @@ export const updateOrganisationPaymentStatus = (org, payment) => {
     if (org.disableAfter != null && org.disableAfter <= payment.servicePeriodEnd) {
       return validate(moveDisableAfterBackwards({ ...org, disabledReason: null }, payment.servicePeriodStart))
     } else {
-      return validate(org)
+      return validate(ensureAtLeastOneApiCodeExists(org))
     }
   }
   if (isFailed(payment)) {
