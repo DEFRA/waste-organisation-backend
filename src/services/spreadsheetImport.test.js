@@ -285,6 +285,9 @@ describe('some unit tests for parsers', () => {
       { code: 'HCB', concentration: 30 }
     ])
     expect(parseComponentCodes(null, 'ALD = > 10')).toEqual([{ code: 'ALD', concentration: 10, concentrationOperator: '>' }])
+  })
+
+  test('parseComponentCodes passes an unsupported operator through unchanged so validation rejects it', () => {
     expect(parseComponentCodes(null, 'ALD=>=10')).toEqual([{ code: 'ALD', concentration: '>=10' }])
   })
 
