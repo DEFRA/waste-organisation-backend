@@ -134,6 +134,10 @@ export const updateErrors = (() => {
       const worksheet = workbook.getWorksheet(worksheetName)
       if (worksheet) {
         for (const { coords, message } of cellsAndMessages[worksheetName]) {
+          try {
+            const logMsg = worksheetMetadata.worksheets[worksheetName].mapping[coords[0]][0].join('.')
+            l.info(`GRAPHANA_REPORT >> spreadsheet_validation_failure >> ${logMsg} >> ${message}`)
+          } catch {}
           updateCell(worksheet, coords, message, worksheetMetadata?.errors[worksheetName] ?? 1)
         }
       } else {

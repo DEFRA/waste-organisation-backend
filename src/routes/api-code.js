@@ -79,6 +79,7 @@ export const apiCodeRoutes = [
           createApiCode(dbOrg, request.payload?.apiCode?.name)
         )
         const apiCode = organisation.apiCodes[organisation.apiCodes.length - 1]
+        logger.info(`GRAPHANA_REPORT >> api_code_lifecycle_changed >> created`)
         return h.response(apiCode)
       } catch (e) {
         return handleErr(e)
@@ -95,6 +96,11 @@ export const apiCodeRoutes = [
           updateApiCode(dbOrg, request.params.apiCode, request.payload?.apiCode?.name, request.payload?.apiCode?.isDisabled)
         )
         const apiCode = organisation.apiCodes.find(({ code }) => code === request.params.apiCode)
+        if (apiCode.isDisabled) {
+          logger.info(`GRAPHANA_REPORT >> api_code_lifecycle_changed >> revoked`)
+        } else {
+          logger.info(`GRAPHANA_REPORT >> api_code_lifecycle_changed >> re-enabled`)
+        }
         return h.response(apiCode)
       } catch (e) {
         return handleErr(e)
