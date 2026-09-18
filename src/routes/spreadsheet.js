@@ -36,7 +36,7 @@ const putOptions = { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema
 const scheduleProcessor = async (request, jobData) => {
   // TODO check state of the data - maybe only do this if it's just become ready or something??
   request.logger.info(
-    `GRAPHANA_REPORT >> spreadsheet_submission_processed >> accepted_for_bulk_processing >> Scheduling spreadsheet processing for ` +
+    `GRAFANA_REPORT >> spreadsheet_submission_processed >> accepted_for_bulk_processing >> Scheduling spreadsheet processing for ` +
       `orgId: ${jobData.organisationId}, ReferenceNumber: ${jobData.referenceNumber}`
   )
   return await sendSqsMessage(jobData, 'process_excel_file', request.backgroundProcessSqsQueueUrl, request.logger, request.sqsClient)
@@ -55,7 +55,7 @@ const putHandler = async (request, h) => {
     return h.response({ message: 'success', spreadsheet: data })
   } catch (e) {
     request.logger.error(`Error storing spreadsheet info ${e}`)
-    request.logger.info(`GRAPHANA_REPORT >> spreadsheet_submission_processed >> rejected`)
+    request.logger.info(`GRAFANA_REPORT >> spreadsheet_submission_processed >> rejected`)
     return h.response({
       message: 'error',
       errors: e.isJoi ? e.details : [`${e}`]

@@ -205,7 +205,7 @@ const updatePaymentStatus = async (paymentId, govPayment, db, logger) => {
   })
   if (shouldUpdateOrg) {
     logger.info(
-      `GRAPHANA_REPORT >> service_charge_payment_outcome >> ${payment.status} >> organisationId: ${payment.organisationId} paymentId: ${payment.paymentId}`
+      `GRAFANA_REPORT >> service_charge_payment_outcome >> ${payment.status} >> organisationId: ${payment.organisationId} paymentId: ${payment.paymentId}`
     )
     organisation = await updateWithOptimisticLock(db.collection(orgCollection), { organisationId: payment.organisationId }, (org) => {
       return updateOrganisationPaymentStatus(org, payment)
