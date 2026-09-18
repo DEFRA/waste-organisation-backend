@@ -105,7 +105,7 @@ export const organisations = [
         delete organisation.apiCodes
 
         request.logger.info(
-          `Organisation ${transactionType}: ${JSON.stringify({
+          `GRAFANA_REPORT >> organisation_${transactionType} >> Organisation ${transactionType}: ${JSON.stringify({
             organisationId: organisation.organisationId,
             isLocalAuthority: organisation.isLocalAuthority,
             createdAt: organisation.createdAt
