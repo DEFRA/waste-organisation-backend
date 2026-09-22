@@ -104,13 +104,11 @@ export const organisations = [
         )
         delete organisation.apiCodes
 
-        request.logger.info(
-          `GRAFANA_REPORT >> organisation_${transactionType} >> Organisation ${transactionType}: ${JSON.stringify({
-            organisationId: organisation.organisationId,
-            isLocalAuthority: organisation.isLocalAuthority,
-            createdAt: organisation.createdAt
-          })}`
-        )
+        request.logger.info(`GRAFANA_REPORT >> organisation_${transactionType} >> Organisation ${transactionType}`, {
+          organisationId: organisation.organisationId,
+          isLocalAuthority: organisation.isLocalAuthority,
+          createdAt: organisation.createdAt
+        })
 
         return h.response({ message: 'success', organisation })
       } catch (e) {

@@ -4,15 +4,12 @@ import { paths } from '../config/paths.js'
 import { createApiCode, updateApiCode, apiCodeSchema, isEnabled, hasPaid } from '../domain/organisation.js'
 import { findOrganisationByApiCode, findOrganisationById, orgCollection } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
-import { createLogger } from '../common/helpers/logging/logger.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
 import { config } from '../config.js'
 
-const logger = createLogger()
-
 const freePeriodEnd = () => config.get('govPay.serviceChargeFreePeriodEnd')
 
-const handleErr = (e) => {
+const handleErr = (e, logger) => {
   logger.error(`Error with request: ${e}`)
   if (e.isBoom) {
     throw e
@@ -79,10 +76,10 @@ export const apiCodeRoutes = [
           createApiCode(dbOrg, request.payload?.apiCode?.name)
         )
         const apiCode = organisation.apiCodes[organisation.apiCodes.length - 1]
-        logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> created`)
+        request.logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> created`, { organisationId: organisation.organisationId })
         return h.response(apiCode)
       } catch (e) {
-        return handleErr(e)
+        return handleErr(e, request.logger)
       }
     }
   },
@@ -97,13 +94,13 @@ export const apiCodeRoutes = [
         )
         const apiCode = organisation.apiCodes.find(({ code }) => code === request.params.apiCode)
         if (apiCode.isDisabled) {
-          logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> revoked`)
+          request.logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> revoked`, { organisationId: organisation.organisationId })
         } else {
-          logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> re-enabled`)
+          request.logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> re-enabled`, { organisationId: organisation.organisationId })
         }
         return h.response(apiCode)
       } catch (e) {
-        return handleErr(e)
+        return handleErr(e, request.logger)
       }
     }
   }
