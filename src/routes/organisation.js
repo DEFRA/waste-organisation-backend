@@ -8,6 +8,44 @@ import { apiKeyAuthStrategy } from '../plugins/auth.js'
 import { addVersionField, swaggerResponse } from './swagger-common.js'
 import boom from '@hapi/boom'
 
+const logPutMessages = (organisation, transactionType, oldApiCodes, logger) => {
+  logger.info(JSON.stringify(oldApiCodes))
+  for (const code of organisation.apiCodes) {
+    let apiCodeEvent = null
+
+    if (oldApiCodes[code.code] == null) {
+      apiCodeEvent = 'created'
+    } else if (code.isDisabled && !oldApiCodes[code.code].isDisabled) {
+      apiCodeEvent = 'revoked'
+      delete oldApiCodes[code.code]
+    } else if (!code.isDisabled && oldApiCodes[code.code].isDisabled) {
+      apiCodeEvent = 're-enabled'
+      delete oldApiCodes[code.code]
+    }
+
+    if (apiCodeEvent) {
+      logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> ${apiCodeEvent}`, {
+        organisationId: organisation.organisationId,
+        apiCodeEvent
+      })
+    }
+  }
+  for (const c in oldApiCodes) {
+    if (c) {
+      logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> deleted ${JSON.stringify(c)}`, {
+        organisationId: organisation.organisationId,
+        apiCodeEvent: 'deleted'
+      })
+    }
+  }
+
+  logger.info(`GRAFANA_REPORT >> organisation_${transactionType} >> Organisation ${transactionType}`, {
+    organisationId: organisation.organisationId,
+    isLocalAuthority: organisation.isLocalAuthority,
+    createdAt: organisation.createdAt
+  })
+}
+
 export const organisations = [
   {
     method: 'GET',
@@ -76,11 +114,18 @@ export const organisations = [
     handler: async (request, h) => {
       try {
         let transactionType = 'updated'
+        let oldApiCodes = {}
         const organisation = await updateWithOptimisticLock(
           request.db.collection(orgCollection),
           { organisationId: request.params.organisationId },
           (dbOrg) => {
             let paramOrg = request?.payload?.organisation
+            if (dbOrg?.apiCodes != null) {
+              oldApiCodes = dbOrg.apiCodes.reduce((acc, c) => {
+                acc[c.code] = { ...c }
+                return acc
+              }, {})
+            }
 
             if (!dbOrg._id) {
               transactionType = 'created'
@@ -102,14 +147,8 @@ export const organisations = [
             return ensureAtLeastOneApiCodeExists(org)
           }
         )
+        logPutMessages(organisation, transactionType, oldApiCodes, request.logger)
         delete organisation.apiCodes
-
-        request.logger.info(`GRAFANA_REPORT >> organisation_${transactionType} >> Organisation ${transactionType}`, {
-          organisationId: organisation.organisationId,
-          isLocalAuthority: organisation.isLocalAuthority,
-          createdAt: organisation.createdAt
-        })
-
         return h.response({ message: 'success', organisation })
       } catch (e) {
         return h.response({
