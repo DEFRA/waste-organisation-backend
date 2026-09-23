@@ -9,16 +9,16 @@ import { addVersionField, swaggerResponse } from './swagger-common.js'
 import boom from '@hapi/boom'
 
 const logPutMessages = (organisation, transactionType, oldApiCodes, logger) => {
-  logger.info(JSON.stringify(oldApiCodes))
   for (const code of organisation.apiCodes) {
     let apiCodeEvent = null
 
+    // prettier-ignore
     if (oldApiCodes[code.code] == null) {
       apiCodeEvent = 'created'
     } else if (code.isDisabled && !oldApiCodes[code.code].isDisabled) {
       apiCodeEvent = 'revoked'
       delete oldApiCodes[code.code]
-    } else if (!code.isDisabled && oldApiCodes[code.code].isDisabled) {
+    } else if (!code.isDisabled && oldApiCodes[code.code].isDisabled) { // nosonar
       apiCodeEvent = 're-enabled'
       delete oldApiCodes[code.code]
     }
