@@ -8,21 +8,25 @@ import { apiKeyAuthStrategy } from '../plugins/auth.js'
 import { addVersionField, swaggerResponse } from './swagger-common.js'
 import boom from '@hapi/boom'
 
+const getApiCodeEvent = (code, oldApiCodes) => {
+  let apiCodeEvent = null
+  if (oldApiCodes[code.code] == null) {
+    apiCodeEvent = 'created'
+  } else {
+    if (code.isDisabled && !oldApiCodes[code.code].isDisabled) {
+      apiCodeEvent = 'revoked'
+    }
+    if (!code.isDisabled && oldApiCodes[code.code].isDisabled) {
+      apiCodeEvent = 're-enabled'
+    }
+    delete oldApiCodes[code.code]
+  }
+  return apiCodeEvent
+}
+
 const logPutMessages = (organisation, transactionType, oldApiCodes, logger) => {
   for (const code of organisation.apiCodes) {
-    let apiCodeEvent = null
-
-    if (oldApiCodes[code.code] == null) {
-      apiCodeEvent = 'created'
-    } else {
-      if (code.isDisabled && !oldApiCodes[code.code].isDisabled) {
-        apiCodeEvent = 'revoked'
-      }
-      if (!code.isDisabled && oldApiCodes[code.code].isDisabled) {
-        apiCodeEvent = 're-enabled'
-      }
-      delete oldApiCodes[code.code]
-    }
+    const apiCodeEvent = getApiCodeEvent(code, oldApiCodes)
 
     if (apiCodeEvent) {
       logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> ${apiCodeEvent}`, {
@@ -31,16 +35,14 @@ const logPutMessages = (organisation, transactionType, oldApiCodes, logger) => {
       })
     }
   }
-  for (const c in oldApiCodes) {
-    if (c) {
-      logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> deleted ${JSON.stringify(c)}`, {
-        organisationId: organisation.organisationId,
-        apiCodeEvent: 'deleted'
-      })
-    }
+  for (const _ in oldApiCodes) {
+    logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> deleted`, {
+      organisationId: organisation.organisationId,
+      apiCodeEvent: 'deleted'
+    })
   }
 
-  logger.info(`GRAFANA_REPORT >> organisation_${transactionType} >> Organisation ${transactionType}`, {
+  logger.info(`GRAFANA_REPORT >> organisation >> organisation_${transactionType} >> Organisation ${transactionType}`, {
     organisationId: organisation.organisationId,
     isLocalAuthority: organisation.isLocalAuthority,
     createdAt: organisation.createdAt
