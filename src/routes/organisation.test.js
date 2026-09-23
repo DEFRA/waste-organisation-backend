@@ -43,6 +43,7 @@ describe('organisation API', () => {
     })
     expect(statusCode).toBe(200)
 
+    const o = await findOrganisationById(server.db, '456')
     const res = await server.inject({
       method: 'PUT',
       url: pathTo(paths.putOrganisation, { userId: 123, organisationId: 456 }),
@@ -53,6 +54,7 @@ describe('organisation API', () => {
         organisation: {
           name: 'Bob Dabolina',
           apiCodes: [
+            { ...o.apiCodes[0], isDisabled: true },
             {
               code: 'bbdb240e-f2d2-4ccb-a8f1-b69c87b73d11',
               isDisabled: false,
@@ -63,9 +65,8 @@ describe('organisation API', () => {
       }
     })
     expect(res.statusCode).toBe(200)
-    const o = await findOrganisationById(server.db, '456')
-    expect(o.apiCodes.length).toBe(1)
-    expect(o.apiCodes[0].code).toBe('bbdb240e-f2d2-4ccb-a8f1-b69c87b73d11')
+    const updatedOrg = await findOrganisationById(server.db, '456')
+    expect(updatedOrg.apiCodes.length).toBe(2)
   })
 
   test('Should add user to existing org', async () => {
