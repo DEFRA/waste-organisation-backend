@@ -12,14 +12,15 @@ const logPutMessages = (organisation, transactionType, oldApiCodes, logger) => {
   for (const code of organisation.apiCodes) {
     let apiCodeEvent = null
 
-    // prettier-ignore
     if (oldApiCodes[code.code] == null) {
       apiCodeEvent = 'created'
-    } else if (code.isDisabled && !oldApiCodes[code.code].isDisabled) {
-      apiCodeEvent = 'revoked'
-      delete oldApiCodes[code.code]
-    } else if (!code.isDisabled && oldApiCodes[code.code].isDisabled) { // nosonar
-      apiCodeEvent = 're-enabled'
+    } else {
+      if (code.isDisabled && !oldApiCodes[code.code].isDisabled) {
+        apiCodeEvent = 'revoked'
+      }
+      if (!code.isDisabled && oldApiCodes[code.code].isDisabled) {
+        apiCodeEvent = 're-enabled'
+      }
       delete oldApiCodes[code.code]
     }
 
