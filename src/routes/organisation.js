@@ -35,7 +35,8 @@ const logPutMessages = (organisation, transactionType, oldApiCodes, logger) => {
       })
     }
   }
-  for (const _ in oldApiCodes) {
+  // prettier-ignore
+  for (const _ in oldApiCodes) { // nosonar
     logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> deleted`, {
       organisationId: organisation.organisationId,
       apiCodeEvent: 'deleted'
