@@ -1,7 +1,7 @@
 import { expect } from 'vitest'
 import { initialiseServer, WASTE_CLIENT_AUTH_TEST_TOKEN, stopServer } from '../common/helpers/initialse-test-server.js'
 import { paths, pathTo } from '../config/paths.js'
-import { orgCollection } from '../repositories/organisation.js'
+import { orgCollection, findOrganisationById } from '../repositories/organisation.js'
 import { randomUUID } from 'node:crypto'
 
 describe('organisation API', () => {
@@ -42,6 +42,31 @@ describe('organisation API', () => {
       }
     })
     expect(statusCode).toBe(200)
+
+    const o = await findOrganisationById(server.db, '456')
+    const res = await server.inject({
+      method: 'PUT',
+      url: pathTo(paths.putOrganisation, { userId: 123, organisationId: 456 }),
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      },
+      payload: {
+        organisation: {
+          name: 'Bob Dabolina',
+          apiCodes: [
+            { ...o.apiCodes[0], isDisabled: true },
+            {
+              code: 'bbdb240e-f2d2-4ccb-a8f1-b69c87b73d11',
+              isDisabled: false,
+              name: 'API Code 1'
+            }
+          ]
+        }
+      }
+    })
+    expect(res.statusCode).toBe(200)
+    const updatedOrg = await findOrganisationById(server.db, '456')
+    expect(updatedOrg.apiCodes.length).toBe(2)
   })
 
   test('Should add user to existing org', async () => {
@@ -73,7 +98,7 @@ describe('organisation API', () => {
         organisationId: '456',
         users: ['123', '789'],
         disableAfter: null,
-        version: 3
+        version: expect.any(Number)
       }
     })
     expect(statusCode).toBe(200)

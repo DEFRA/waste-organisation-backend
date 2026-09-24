@@ -35,13 +35,17 @@ const putOptions = { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema
 
 const scheduleProcessor = async (request, jobData) => {
   // TODO check state of the data - maybe only do this if it's just become ready or something??
+  request.logger.info(`GRAFANA_REPORT >> spreadsheet_submission_processed >> accepted_for_bulk_processing >> Scheduling spreadsheet processing `, {
+    organisationId: jobData.organisationId,
+    spreadsheetReferenceNumber: jobData.referenceNumber
+  })
   return await sendSqsMessage(jobData, 'process_excel_file', request.backgroundProcessSqsQueueUrl, request.logger, request.sqsClient)
 }
 
 const putHandler = async (request, h) => {
+  const organisationId = request?.params?.organisationId
+  const uploadId = request?.params?.uploadId
   try {
-    const organisationId = request.params.organisationId
-    const uploadId = request.params.uploadId
     const data = await updateWithOptimisticLock(request.db.collection(spreadsheetCollection), { uploadId, organisationId }, (dbSpreadsheet) => {
       const s = { organisationId, uploadId, ...request?.payload?.spreadsheet, updatedAtTimstamp: new Date(), traceId: request.getTraceId() }
       return mergeAndValidate(dbSpreadsheet, s, spreadsheetSchema)
@@ -51,6 +55,7 @@ const putHandler = async (request, h) => {
     return h.response({ message: 'success', spreadsheet: data })
   } catch (e) {
     request.logger.error(`Error storing spreadsheet info ${e}`)
+    request.logger.info(`GRAFANA_REPORT >> spreadsheet_submission_processed >> rejected`, { organisationId, uploadId })
     return h.response({
       message: 'error',
       errors: e.isJoi ? e.details : [`${e}`]

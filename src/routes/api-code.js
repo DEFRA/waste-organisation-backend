@@ -4,15 +4,12 @@ import { paths } from '../config/paths.js'
 import { createApiCode, updateApiCode, apiCodeSchema, isEnabled, hasPaid } from '../domain/organisation.js'
 import { findOrganisationByApiCode, findOrganisationById, orgCollection } from '../repositories/organisation.js'
 import { updateWithOptimisticLock } from '../repositories/index.js'
-import { createLogger } from '../common/helpers/logging/logger.js'
 import { apiKeyAuthStrategy } from '../plugins/auth.js'
 import { config } from '../config.js'
 
-const logger = createLogger()
-
 const freePeriodEnd = () => config.get('govPay.serviceChargeFreePeriodEnd')
 
-const handleErr = (e) => {
+const handleErr = (e, logger) => {
   logger.error(`Error with request: ${e}`)
   if (e.isBoom) {
     throw e
@@ -79,9 +76,10 @@ export const apiCodeRoutes = [
           createApiCode(dbOrg, request.payload?.apiCode?.name)
         )
         const apiCode = organisation.apiCodes[organisation.apiCodes.length - 1]
+        request.logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> created`, { organisationId: organisation.organisationId })
         return h.response(apiCode)
       } catch (e) {
-        return handleErr(e)
+        return handleErr(e, request.logger)
       }
     }
   },
@@ -91,13 +89,24 @@ export const apiCodeRoutes = [
     options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: apiCodeSchema, sample: 0 } },
     handler: async (request, h) => {
       try {
-        const organisation = await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId: request.params.organisationId }, (dbOrg) =>
-          updateApiCode(dbOrg, request.params.apiCode, request.payload?.apiCode?.name, request.payload?.apiCode?.isDisabled)
+        let oldApiCode = null
+        const organisation = await updateWithOptimisticLock(
+          request.db.collection(orgCollection),
+          { organisationId: request.params.organisationId },
+          (dbOrg) => {
+            oldApiCode = { ...dbOrg.apiCodes.find(({ code }) => code === request.params.apiCode) }
+            return updateApiCode(dbOrg, request.params.apiCode, request.payload?.apiCode?.name, request.payload?.apiCode?.isDisabled)
+          }
         )
         const apiCode = organisation.apiCodes.find(({ code }) => code === request.params.apiCode)
+        if (oldApiCode.isDisabled !== apiCode.isDisabled) {
+          request.logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> ${apiCode.isDisabled ? 'revoked' : 're-enabled'}`, {
+            organisationId: organisation.organisationId
+          })
+        }
         return h.response(apiCode)
       } catch (e) {
-        return handleErr(e)
+        return handleErr(e, request.logger)
       }
     }
   }
