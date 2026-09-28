@@ -97,7 +97,23 @@ export const readExcelBuffer = async (buffer, logger) => {
       ignoreNodes: [
         'conditionalFormatting', // breaks generated excel file
         'tableParts', // errors on opening
-        'autoFilter' // errors on opening
+        'autoFilter', // errors on opening
+        'sheetPr',
+        'dimension',
+        'sheetViews',
+        'sheetFormatPr',
+        'mergeCells',
+        'rowBreaks',
+        'hyperlinks',
+        'pageMargins',
+        'dataValidations',
+        'pageSetup',
+        'headerFooter',
+        'printOptions',
+        'picture',
+        'drawing',
+        'sheetProtection',
+        'extLst'
       ]
     })
   } catch {
