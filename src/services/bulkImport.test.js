@@ -14,8 +14,8 @@ const conf = {
   basicAuth: { username: 'waste-organisations-backend', password: '92fa681e-44b4-4b9c-8f7a-59c117757452' }
 }
 
-describe.skip('bulk import api calls data - requires service dependencies to be running', () => {
-  test('should import some data', { timeout: 50000 }, async () => {
+describe('bulk import api calls data - requires service dependencies to be running', () => {
+  test.skip('should import some data', { timeout: 50000 }, async () => {
     const { bulkImport } = await import('./bulkImport.js')
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
     const { movements } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44', console)
@@ -26,19 +26,24 @@ describe.skip('bulk import api calls data - requires service dependencies to be 
     expect(true).toBe(false)
   })
 
-  test.skip('should update waste tracking IDs', { timeout: 50000 }, async () => {
+  test('should update waste tracking IDs', { timeout: 50000 }, async () => {
     // const { bulkImport } = await import('./bulkImport.js')
-    const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
-    const { rowNumbers, movements, worksheetMetadata } = await parseExcelFile(buffer, faker.string.uuid(), console)
-    expect(movements.length).toBe(1)
-    // const res = await bulkImport(uuidv4().toString(), faker.string.uuid().toString(), console, conf)
-    const res = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
-    const coords = wasteTrackingIdsToCoords(movements, rowNumbers, res.movements, worksheetMetadata)
-    expect(coords).toEqual([])
+    const buffer = await fs.readFile('./test-resources/bork.xlsx')
+    const { workbook, hasErrors, rowNumbers, movements, worksheetMetadata } = await parseExcelFile(buffer, faker.string.uuid(), console)
+    if (hasErrors) {
+      await workbook.xlsx.writeFile('./test-resources/bork-errors.xlsx')
+    } else {
+      expect(movements.length).toBe(1)
+      const res = { movements: [{ wasteTrackingId: '26WR8B1H' }] }
+      const coords = wasteTrackingIdsToCoords(movements, rowNumbers, res.movements, worksheetMetadata)
+      updateCellContent(workbook, coords, worksheetMetadata, logger)
+      await workbook.xlsx.writeFile('./test-resources/bork-waste-tracking-ids.xlsx')
+    }
+    expect(true).toBe(false)
   })
 })
 
-describe('mock bulk import data', () => {
+describe.skip('mock bulk import data', () => {
   const wreckPostMock = vi.fn()
   const wreckPutMock = vi.fn()
 
