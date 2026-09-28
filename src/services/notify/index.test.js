@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { config } from '../../config.js'
+import { PermanentApiError, TransientApiError } from '../../common/helpers/exceptions.js'
 
 describe('Notify', () => {
   const sendEmailMock = vi.fn()
@@ -166,21 +167,45 @@ describe('Notify', () => {
   it('should handle exception correctly', async () => {
     sendEmailMock.mockRejectedValue('Mock Error')
     const { sendEmail } = await import('./index.js')
-    await sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }) })
+    const result = sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }) })
+    await expect(result).rejects.toBeInstanceOf(PermanentApiError)
+    await expect(result).rejects.toMatchObject({ statusCode: undefined, cause: 'Mock Error' })
     expect(loggerErrorMock).toHaveBeenCalledWith('Error sending emails: Mock Error')
+  })
+
+  it('should throw TransientApiError on a transient send failure', async () => {
+    const error = Object.assign(new Error('Service Unavailable'), { output: { statusCode: 503 } })
+    sendEmailMock.mockRejectedValue(error)
+    const { sendEmail } = await import('./index.js')
+    const result = sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'John' }) })
+    await expect(result).rejects.toBeInstanceOf(TransientApiError)
+    await expect(result).rejects.toMatchObject({ statusCode: 503, cause: error })
+  })
+
+  it('should throw PermanentApiError on a non-transient send failure', async () => {
+    const error = Object.assign(new Error('Bad Request'), { output: { statusCode: 400 } })
+    sendEmailMock.mockRejectedValue(error)
+    const { sendEmail } = await import('./index.js')
+    const result = sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'John' }) })
+    await expect(result).rejects.toBeInstanceOf(PermanentApiError)
+    await expect(result).rejects.toMatchObject({ statusCode: 400, cause: error })
   })
 
   it('should error when file is too large', async () => {
     const { sendEmail } = await import('./index.js')
     const file = { length: 2048 * 1024 + 1 }
-    await sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }), file })
+    const result = sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }), file })
+    await expect(result).rejects.toBeInstanceOf(PermanentApiError)
+    await expect(result).rejects.toMatchObject({ cause: { message: 'File is larger than 2MB.' } })
     expect(loggerErrorMock).toHaveBeenCalledWith('Error sending emails: Error: File is larger than 2MB.')
   })
 
   it('should error when gov notify key is not set', async () => {
     config.set('notify.govNotifyKey', null)
     const { sendEmail } = await import('./index.js')
-    await sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }) })
+    const result = sendEmail.sendSuccess({ email, name: JSON.stringify({ firstName: 'Joe Bloggs' }) })
+    await expect(result).rejects.toBeInstanceOf(PermanentApiError)
+    await expect(result).rejects.toMatchObject({ cause: { message: 'Notify key not set' } })
     expect(loggerErrorMock).toHaveBeenCalledWith('Error sending emails: Error: Notify key not set')
   })
 })

@@ -10,6 +10,7 @@ import * as spreadsheetImportModule from './services/spreadsheetImport.js'
 import * as excelImportModule from './services/spreadsheetImport/excel.js'
 import { sendEmail } from './services/notify/index.js'
 import { createLogger } from './common/helpers/logging/logger.js'
+import { PermanentApiError, TransientApiError } from './common/helpers/exceptions.js'
 import { paymentCollection } from './repositories/payment.js'
 import { orgCollection } from './repositories/organisation.js'
 import { isPaid, isRefunded } from './domain/payment.js'
@@ -168,6 +169,51 @@ describe('background processor', () => {
       expect(sideEffect.deletedMessages).toContain(ReceiptHandle)
       expect(sideEffect.processedMessages).toContain(test)
     }
+  })
+
+  const pollOnce = async (action) => {
+    const { pollQueue } = await import('./backgroundProcessor.js')
+    const deletedMessages = []
+    const response = await pollQueue({
+      sqsClient: {
+        send: async (cmd) => {
+          if (cmd instanceof DeleteMessageCommand) {
+            deletedMessages.push(cmd.input.ReceiptHandle)
+            return {}
+          }
+          return { Messages: [{ test: 'data1', ReceiptHandle: 'handle1' }] }
+        }
+      },
+      QueueUrl: 'http://example.com/queue',
+      action
+    })
+    return { response, deletedMessages }
+  }
+
+  test('poll queue should not delete message when action throws an unexpected error', async () => {
+    const { _, deletedMessages } = await pollOnce(async () => {
+      throw new Error('Error')
+    })
+    expect(deletedMessages).toEqual([])
+  })
+
+  test('poll queue should delete message when action throws a PermanentApiError', async () => {
+    const { deletedMessages } = await pollOnce(async () => {
+      throw new PermanentApiError('Bad Request', { statusCode: 400 })
+    })
+    expect(deletedMessages).toEqual(['handle1'])
+  })
+
+  test('poll queue should keep message for retry when action throws a TransientApiError', async () => {
+    const { _, deletedMessages } = await pollOnce(async () => {
+      throw new TransientApiError('Service Unavailable', { statusCode: 503 })
+    })
+    expect(deletedMessages).toEqual([])
+  })
+
+  test('poll queue should keep message when action asks to skip delete', async () => {
+    const { deletedMessages } = await pollOnce(async () => ({ logger, skipDeleteMessage: true }))
+    expect(deletedMessages).toEqual([])
   })
 
   test('poll queue should handle exception from action', async () => {
@@ -698,7 +744,7 @@ describe('background processor', () => {
 
   it('should rethrow transient errors from processSpreadsheet', { timeout: 50000 }, async () => {
     vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
-    const transientError = { output: { statusCode: 503 }, stack: 'Service Unavailable' }
+    const transientError = new TransientApiError('Service Unavailable', { statusCode: 503 })
     vi.spyOn(bulkImportModule, 'bulkImport').mockRejectedValue(transientError)
     const mockSendFailed = vi.spyOn(sendEmail, 'sendFailed').mockImplementation(vi.fn())
 

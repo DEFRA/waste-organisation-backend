@@ -3,6 +3,8 @@ import { config } from '../../config.js'
 import { createLogger } from '../../common/helpers/logging/logger.js'
 import jwt from 'jsonwebtoken'
 import wreck from '@hapi/wreck'
+import { TRANSIENT_STATUS_CODES } from '../httpStatusCodes.js'
+import { PermanentApiError, TransientApiError } from '../../common/helpers/exceptions.js'
 
 const govPayUrl = 'https://api.notifications.service.gov.uk'
 
@@ -85,6 +87,13 @@ const send = async ({ template, email, name, file, referenceNumber, filename, lo
       `Error sending email: ${email} template: ${template} response: ${JSON.stringify(err.output)} name: '${name}'` +
         ` referenceNumber: '${referenceNumber}' filename: '${filename}'`
     )
-    return null
+
+    const statusCode = err.output?.statusCode
+    if (TRANSIENT_STATUS_CODES.has(statusCode)) {
+      // temporary error, the caller may want to retry
+      throw new TransientApiError(`Temporary error from GOV.UK Notify (status ${statusCode})`, { statusCode, cause: err })
+    } else {
+      throw new PermanentApiError(`Permanent error from GOV.UK Notify (status ${statusCode})`, { statusCode, cause: err })
+    }
   }
 }

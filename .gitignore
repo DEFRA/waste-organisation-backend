@@ -12,4 +12,6 @@ coverage
 test-resources/output-spreadsheet-2-with-errors.xlsx
 test-resources/output-spreadsheet-with-waste-tracking-ids.xlsx
 test-resources/example-spreadsheet-3.with-api-errors.xlsx
-TAGS
+test-resources/v1.2-valid-example-spreadsheet.with-waste-tracking-ids.xlsx
+test-resources/valid-spreadsheet.with-waste-tracking-ids.xlsx
+test-resources/very-big.xlsx
