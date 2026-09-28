@@ -278,6 +278,28 @@ describe('some unit tests for parsers', () => {
     expect(() => parseComponentNames(null, 'abc')).toThrow()
   })
 
+  test('parseComponentCodes with a concentration operator', () => {
+    expect(parseComponentCodes(null, 'ALD=>10;END=<0.5;HCB=30')).toEqual([
+      { code: 'ALD', concentration: 10, concentrationOperator: '>' },
+      { code: 'END', concentration: 0.5, concentrationOperator: '<' },
+      { code: 'HCB', concentration: 30 }
+    ])
+    expect(parseComponentCodes(null, 'ALD = > 10')).toEqual([{ code: 'ALD', concentration: 10, concentrationOperator: '>' }])
+  })
+
+  test('parseComponentCodes passes an unsupported operator through unchanged so validation rejects it', () => {
+    expect(parseComponentCodes(null, 'ALD=>=10')).toEqual([{ code: 'ALD', concentration: '>=10' }])
+  })
+
+  test('parseComponentNames with a concentration operator', () => {
+    expect(parseComponentNames(null, 'Mercury=>10;Lead=<0.5;Arsenic=30')).toEqual([
+      { name: 'Mercury', concentration: 10, concentrationOperator: '>' },
+      { name: 'Lead', concentration: 0.5, concentrationOperator: '<' },
+      { name: 'Arsenic', concentration: 30 }
+    ])
+    expect(parseComponentNames(null, 'Mercury=ten')).toEqual([{ name: 'Mercury', concentration: 'ten' }])
+  })
+
   test('validateMovementHasWasteItems', () => {
     expect(() => validateMovementHasWasteItems(3)({ yourUniqueReference: 'fish' })).toThrow()
     expect(() => validateMovementHasWasteItems(3)({ yourUniqueReference: 'fish', wasteItems: [] })).toThrow()
