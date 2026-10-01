@@ -3,6 +3,7 @@ import { expect, vi } from 'vitest'
 import fs from 'node:fs/promises'
 import { parseExcelFile, transformBulkApiErrors, updateErrors, wasteTrackingIdsToCoords, updateCellContent } from './spreadsheetImport.js'
 import { TRANSIENT_STATUS_CODES } from './httpStatusCodes.js'
+import { TransientApiError } from '../common/helpers/exceptions.js'
 import { faker } from '@faker-js/faker'
 
 const logger = createLogger()
@@ -203,13 +204,15 @@ describe('mock bulk import data', () => {
     const { bulkImport } = await import('./bulkImport.js')
     const traceId = faker.string.uuid()
 
-    await expect(bulkImport('abc1234', testMovements, traceId, logger, conf)).rejects.toEqual({ output: { statusCode } })
+    const result = bulkImport('abc1234', testMovements, traceId, logger, conf)
+    await expect(result).rejects.toBeInstanceOf(TransientApiError)
+    await expect(result).rejects.toMatchObject({ statusCode, cause: { output: { statusCode } } })
   })
 
-  test('should return failed for non-transient error (500)', { timeout: 100000 }, async () => {
+  test('should return failed for non-transient error (401)', { timeout: 100000 }, async () => {
     wreckPostMock.mockImplementation(async () => {
       // eslint-disable-next-line no-throw-literal
-      throw { output: { statusCode: 500 } }
+      throw { output: { statusCode: 401 } }
     })
 
     const { bulkImport } = await import('./bulkImport.js')
@@ -219,16 +222,18 @@ describe('mock bulk import data', () => {
     expect(res).toEqual({ failed: true })
   })
 
-  test('should return failed for network error without status code', { timeout: 100000 }, async () => {
+  test('should throw TransientApiError for network error without status code', { timeout: 100000 }, async () => {
+    const networkError = new Error('ECONNREFUSED')
     wreckPostMock.mockImplementation(async () => {
-      throw new Error('ECONNREFUSED')
+      throw networkError
     })
 
     const { bulkImport } = await import('./bulkImport.js')
-
     const traceId = faker.string.uuid()
-    const res = await bulkImport('abc1234', testMovements, traceId, logger, conf)
-    expect(res).toEqual({ failed: true })
+
+    const result = bulkImport('abc1234', testMovements, traceId, logger, conf)
+    await expect(result).rejects.toBeInstanceOf(TransientApiError)
+    await expect(result).rejects.toMatchObject({ statusCode: undefined, cause: networkError })
   })
 })
 

@@ -4,6 +4,7 @@ import Excel from 'exceljs'
 
 import { encrypt } from './test-utils/encrypt.js'
 import { config } from './config.js'
+import { TransientApiError } from './common/helpers/exceptions.js'
 
 vi.mock('./services/bulkImport.js')
 vi.mock('./services/notify/index.js')
@@ -149,13 +150,13 @@ describe('backgroundProcessor integration', () => {
   })
 
   it('transient API error (503) - rejects for SQS retry', { timeout: 30000 }, async () => {
-    const transientError = { output: { statusCode: 503 }, stack: 'Service Unavailable' }
+    const transientError = new TransientApiError('Service Unavailable', { statusCode: 503 })
     bulkImportModule.bulkImport.mockRejectedValue(transientError)
 
     const s3Client = buildS3Client('valid-spreadsheet.xlsx')
 
     processJob = processor.dispatchProcessJob(s3Client)
-    await expect(processJob(buildMessage())).rejects.toEqual(transientError)
+    await expect(processJob(buildMessage())).rejects.toBe(transientError)
     expect(notifyModule.sendEmail.sendFailed).not.toHaveBeenCalled()
     expect(notifyModule.sendEmail.sendSuccess).not.toHaveBeenCalled()
   })

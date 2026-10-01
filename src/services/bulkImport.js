@@ -2,6 +2,7 @@ import wreck from '@hapi/wreck'
 import { config } from '../config.js'
 import { pathTo } from '../config/paths.js'
 import { HTTP_BAD_REQUEST, TRANSIENT_STATUS_CODES } from './httpStatusCodes.js'
+import { TransientApiError } from '../common/helpers/exceptions.js'
 
 const formatErrorDetail = (e) => (e instanceof Error ? e.stack : JSON.stringify(e))
 
@@ -50,8 +51,9 @@ const apiCall = async (asyncFunc, { username, password }, payload, uploadId, tra
     if (statusCode === HTTP_BAD_REQUEST) {
       return extractValidationErrors(e, uploadId, logger)
     }
-    if (TRANSIENT_STATUS_CODES.has(statusCode)) {
-      throw e
+    // We check for absent statusCode, for low-level network errors
+    if (!statusCode || TRANSIENT_STATUS_CODES.has(statusCode)) {
+      throw new TransientApiError(`Temporary error from Bulk API (status ${statusCode})`, { statusCode, cause: e })
     }
     return { failed: true }
   }

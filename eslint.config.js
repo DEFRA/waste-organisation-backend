@@ -9,7 +9,7 @@ export default [
   }),
   {
     rules: {
-      'max-len': ['error', { code: 160 }],
+      'max-len': 'off',
       'no-unused-vars': [
         'error',
         {

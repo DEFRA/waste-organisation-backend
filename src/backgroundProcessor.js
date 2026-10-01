@@ -20,7 +20,7 @@ import {
 import { decrypt } from './services/decrypt.js'
 import { sendEmail } from './services/notify/index.js'
 import { bulkImport, bulkUpdate } from './services/bulkImport.js'
-import { TRANSIENT_STATUS_CODES } from './services/httpStatusCodes.js'
+import { TransientApiError, PermanentApiError } from './common/helpers/exceptions.js'
 import { getPaymentStatus, getRefundsBetween } from './services/govPay/index.js'
 import { updateOrganisationPaymentStatus } from './domain/organisation.js'
 import { updateFromGovPayEvent, hasStatusChanged, isPending } from './domain/payment.js'
@@ -162,6 +162,7 @@ export const processSpreadsheetJob = async (s3Client, message) => {
 
   const emailReferenceNumber = referenceNumber ?? uploadId
 
+  /* hasError is true if CDP has rejected or failed the spreadsheet upload, and the file won't be in the bucket */
   if (hasError) {
     await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName, referenceNumber: emailReferenceNumber, filename, logger: processJobLogger })
     return { logger: processJobLogger }
@@ -181,8 +182,7 @@ export const processSpreadsheetJob = async (s3Client, message) => {
       processJobLogger
     )
   } catch (e) {
-    const statusCode = e.output?.statusCode
-    if (TRANSIENT_STATUS_CODES.has(statusCode)) {
+    if (e instanceof TransientApiError) {
       throw e
     }
     processJobLogger.error(`ReferenceNumber: ${emailReferenceNumber} -- Unexpected error processing spreadsheet: ${e.stack}`)
@@ -264,18 +264,30 @@ export const dispatchProcessJob = (s3Client, mongoClient) => async (message) => 
 }
 
 const processMessage = async (message, sqsClient, action, QueueUrl) => {
+  // We default to not deleting the message on errors - only when we're sure we should
+  let shouldDelete = false
+  let lg = defaultLogger
   try {
     const result = await action(message)
-    const lg = result?.logger || defaultLogger
+    lg = result?.logger || defaultLogger
     if (result?.skipDeleteMessage) {
       lg.info(`Skipping deleting message ${message.ReceiptHandle}`)
     } else {
-      // Delete message after successful processing
-      await deleteMessage(sqsClient, QueueUrl, message.ReceiptHandle, lg)
+      shouldDelete = true
     }
   } catch (err) {
-    // Message will become visible again after VisibilityTimeout
     defaultLogger.error(`Error processing message: ${err.stack}`)
+    /* We list here all the errors that should result in deleting the message. Errors with e.g. Mongo don't cause a delete, so that we can fix the condition and not lose a potentially important message.
+    
+    For API errors, if it's temporary, we can retry, the message will become visible again after VisibilityTimeout. Permanent errors, no point, delete the message and let the error handling that hopefully occurred in {action} take care of it */
+    if (err instanceof PermanentApiError) {
+      shouldDelete = true
+    }
+  }
+
+  if (shouldDelete) {
+    /* Failure of the delete will lead to the message being reprocessed, which is fine as messages must be idempotent. deleteMessage logs its own errors. */
+    await deleteMessage(sqsClient, QueueUrl, message.ReceiptHandle, lg)
   }
 }
 
