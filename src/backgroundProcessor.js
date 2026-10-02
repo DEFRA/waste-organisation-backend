@@ -110,11 +110,10 @@ const processSpreadsheet = async (
   blow up the node's RAM/disk/CPU. */
   const { hasErrors, errors, movements, rowNumbers, workbookBase64 } = await parseSpreadsheetInSandbox(buffer, organisationId, uploadType, logger)
 
-  const parsedWorkbookFile = workbookBase64 ? Buffer.from(workbookBase64, 'base64') : null
-
   if (hasErrors) {
     logger.warn(`ReferenceNumber: ${referenceNumber} -- Errors before sending to import API ${JSON.stringify(errors)}`)
-    await sendInitialFailedEmail({ s3Client, s3Bucket, s3Key, file: parsedWorkbookFile, decryptedEmail, decryptedName, referenceNumber, filename, logger })
+    const file = workbookBase64 ? Buffer.from(workbookBase64, 'base64') : null
+    await sendInitialFailedEmail({ s3Client, s3Bucket, s3Key, file, decryptedEmail, decryptedName, referenceNumber, filename, logger })
     return
   }
 
@@ -129,20 +128,23 @@ const processSpreadsheet = async (
     logger.warn(`ReferenceNumber: ${referenceNumber} -- Errors from import API ${JSON.stringify(apiResponse.errors)}`)
     logger.debug(`ReferenceNumber: ${referenceNumber} -- rowNumbers: ${JSON.stringify(rowNumbers)}`)
     // Re-open the workbook returned by the sandbox (already validated there) to annotate the API errors.
-    const workbook = await readExcelBuffer(parsedWorkbookFile, logger)
+    const workbook = await readExcelBuffer(Buffer.from(workbookBase64, 'base64'), logger)
     const worksheetMetadata = getWorksheetMeta(workbook, uploadType, organisationId, logger)
     const errs = transformBulkApiErrors(movements, rowNumbers, worksheetMetadata, apiResponse.errors)
+
     logger.debug(`ReferenceNumber: ${referenceNumber} -- Cells to update with errors: ${JSON.stringify(errs)}`)
     updateErrors(workbook, errs, worksheetMetadata, logger)
+
     const file = await workbookToByteArray(workbook, logger)
     await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
+
     await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file, referenceNumber, filename })
     return
   }
 
   if (apiResponse.movements) {
     logger.debug(`ReferenceNumber: ${referenceNumber} -- Movements returned from Bulk API`)
-    const workbook = await readExcelBuffer(parsedWorkbookFile, logger)
+    const workbook = await readExcelBuffer(Buffer.from(workbookBase64, 'base64'), logger)
     if (!isUpdate) {
       const worksheetMetadata = getWorksheetMeta(workbook, uploadType, organisationId, logger)
       const coords = wasteTrackingIdsToCoords(movements, rowNumbers, apiResponse.movements, worksheetMetadata)
