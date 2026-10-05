@@ -35,8 +35,9 @@ const run = async () => {
 run()
   .then(() => process.exit(0))
   .catch((e) => {
-    // parse error (not resource breach)
-    // TODO Formalise this
-    writeResult({ errors: e?.message ?? String(e) })
+    // An unexpected parse failure (not a resource breach). Reported under its own
+    // `parseError` key — distinct from the `errors` validation map of a normal
+    // result — so the parent (spreadsheetSandbox) can tell it apart and reject.
+    writeResult({ parseError: e?.message ?? String(e) })
     process.exit(0)
   })

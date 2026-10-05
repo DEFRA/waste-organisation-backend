@@ -32,7 +32,10 @@ export const parseSpreadsheetInSandbox = async (buffer, organisationId, uploadTy
       let result = ''
       child.stdio[3].on('data', (chunk) => (result += chunk))
       const killTimer = setTimeout(() => child.kill('SIGKILL'), SANDBOX_MAX_TIME_MS)
-      child.on('error', reject)
+      child.on('error', (err) => {
+        clearTimeout(killTimer)
+        reject(err)
+      })
       child.on('exit', (code, signal) => {
         clearTimeout(killTimer)
         // Killed by a resource limit.
