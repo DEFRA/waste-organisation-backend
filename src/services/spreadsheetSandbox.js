@@ -8,7 +8,7 @@ import { writeFile, unlink } from 'node:fs/promises'
 // Resource limits for a sandboxed parser
 const SANDBOX_MAX_HEAP_MB = 256 // with node --max-old-space-size; heap size, so very approximate. Actual process peaks at ~300MB
 const SANDBOX_MAX_FILE_BLOCKS = 102400 // with ulimit -f; 512-byte blocks, so 50MB of disk
-const SANDBOX_MAX_TIME_MS = 15000 // enforced by timed signal on parent (wall clock)
+export const SANDBOX_MAX_TIME_MS = 15000 // enforced by timed signal on parent (wall clock)
 
 //compute absolute file path of the work file, relative to this file
 const parseWorkerPath = fileURLToPath(new URL('./spreadsheetParseWorker.js', import.meta.url))
