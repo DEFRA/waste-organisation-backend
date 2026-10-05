@@ -25,7 +25,8 @@
     "stop:docker": "docker compose down",
     "test": "TZ=UTC vitest run --coverage",
     "test-long-timeout": "TZ=UTC vitest run --coverage --hook-timeout=1000000 --testTimeout=10000000",
-    "test:watch": "TZ=UTC vitest"
+    "test:watch": "TZ=UTC vitest",
+    "test:quiet": "TZ=UTC vitest run --coverage --silent=passed-only"
   },
   "author": "Defra DDTS",
   "license": "OGL-UK-3.0",
@@ -75,14 +76,12 @@
     "vitest-mongodb": "1.0.3"
   },
   "overrides": {
-    "notifications-node-client": {
-      "axios": "1.16.0"
-    },
+    "chokidar": "4.0.3",
     "exceljs": {
       "archiver": "8.0.0",
       "uuid": "14.0.0",
       "unzipper": "0.12.3",
-      "brace-expansion": "5.0.9"
+      "brace-expansion": "5.0.12"
     },
     "fast-xml-parser": "5.7.3",
     "hapi-swagger": {
@@ -91,12 +90,15 @@
     "hapi-pulse": {
       "joi": "18.2.9"
     },
+    "js-yaml": "4.3.2",
     "nodemon": {
       "minimatch": {
-        "brace-expansion": "5.0.9"
+        "brace-expansion": "5.0.12"
       }
     },
-    "js-yaml": "4.3.2"
+    "notifications-node-client": {
+      "axios": "1.16.0"
+    }
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "4.63.1"
