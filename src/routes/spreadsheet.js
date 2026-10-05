@@ -55,7 +55,11 @@ const putHandler = async (request, h) => {
     return h.response({ message: 'success', spreadsheet: data })
   } catch (e) {
     request.logger.error(`Error storing spreadsheet info ${e}`)
-    request.logger.info(`GRAFANA_REPORT >> spreadsheet_submission_processed >> rejected`, { organisationId, uploadId })
+    request.logger.info(`GRAFANA_REPORT >> spreadsheet_submission_processed >> rejected`, {
+      organisationId,
+      uploadId,
+      spreadsheetRejectionReasion: 'putHandlerError'
+    })
     return h.response({
       message: 'error',
       errors: e.isJoi ? e.details : [`${e}`]

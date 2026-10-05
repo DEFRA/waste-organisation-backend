@@ -89,7 +89,23 @@ const storeProcessedFile = async (s3Client, s3Bucket, s3Key, file) => {
   )
 }
 
-const sendInitialFailedEmail = async ({ s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName, referenceNumber, filename, logger }) => {
+const sendInitialFailedEmail = async ({
+  s3Client,
+  s3Bucket,
+  s3Key,
+  workbook,
+  decryptedEmail,
+  decryptedName,
+  referenceNumber,
+  filename,
+  organisationId,
+  logger
+}) => {
+  logger.info(`GRAFANA_REPORT >> spreadsheet_submission_processed >> rejected >> `, {
+    organisationId,
+    referenceNumber,
+    spreadsheetRejectionReasion: workbook ? '' : 'Error'
+  })
   if (workbook) {
     const file = await workbookToByteArray(workbook, logger)
     await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
@@ -114,7 +130,7 @@ const processSpreadsheet = async (
   const { hasErrors, workbook, movements, rowNumbers, errors, worksheetMetadata } = await parseExcelFile(buffer, organisationId, logger, uploadType)
   if (hasErrors) {
     logger.warn(`ReferenceNumber: ${referenceNumber} -- Errors before sending to import API ${JSON.stringify(errors)}`)
-    await sendInitialFailedEmail({ s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName, referenceNumber, filename, logger })
+    await sendInitialFailedEmail({ s3Client, s3Bucket, s3Key, workbook, decryptedEmail, decryptedName, referenceNumber, filename, organisationId, logger })
     return
   }
 
@@ -164,12 +180,24 @@ export const processSpreadsheetJob = async (s3Client, message) => {
 
   /* hasError is true if CDP has rejected or failed the spreadsheet upload, and the file won't be in the bucket */
   if (hasError) {
+    processJobLogger.info(`GRAFANA_REPORT >> spreadsheet_submission_processed >> rejected >> CDP Uploader hasError`, {
+      organisationId,
+      uploadId,
+      referenceNumber,
+      spreadsheetRejectionReasion: 'cdpUploaderError'
+    })
     await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName, referenceNumber: emailReferenceNumber, filename, logger: processJobLogger })
     return { logger: processJobLogger }
   }
 
   if (!s3Key || !s3Bucket) {
     processJobLogger.info(`Message missing s3 coords: ${JSON.stringify(message)}`)
+    processJobLogger.info(`GRAFANA_REPORT >> spreadsheet_submission_processed >> rejected >> Missing S3 coords`, {
+      organisationId,
+      uploadId,
+      referenceNumber,
+      spreadsheetRejectionReasion: 'noS3KeyOrBucketError'
+    })
     return { logger: processJobLogger }
   }
   try {
@@ -186,6 +214,12 @@ export const processSpreadsheetJob = async (s3Client, message) => {
       throw e
     }
     processJobLogger.error(`ReferenceNumber: ${emailReferenceNumber} -- Unexpected error processing spreadsheet: ${e.stack}`)
+    processJobLogger.info(`GRAFANA_REPORT >> spreadsheet_submission_processed >> rejected >> Error processing spreadsheet`, {
+      organisationId,
+      uploadId,
+      referenceNumber,
+      spreadsheetRejectionReasion: 'processingError'
+    })
     await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName, referenceNumber: emailReferenceNumber, filename, logger: processJobLogger })
   }
   return { logger: processJobLogger }
