@@ -8,6 +8,7 @@ import * as encryption from './services/decrypt.js'
 import * as bulkImportModule from './services/bulkImport.js'
 import * as spreadsheetImportModule from './services/spreadsheetImport.js'
 import * as excelImportModule from './services/spreadsheetImport/excel.js'
+import * as spreadsheetSandboxModule from './services/spreadsheetSandbox.js'
 import { sendEmail } from './services/notify/index.js'
 import { createLogger } from './common/helpers/logging/logger.js'
 import { PermanentApiError, TransientApiError } from './common/helpers/exceptions.js'
@@ -24,38 +25,6 @@ describe('background processor', () => {
   const wreckPutMock = vi.fn()
   const wreckGetMock = vi.fn()
   const origMongoUrl = config.get('mongo.mongoUrl')
-
-  const mockWorksheet = (fakeData, rowPadding = 8) => {
-    const fakeRows = Array.apply(null, Array(rowPadding))
-      .map(() => [])
-      .concat(fakeData)
-    return {
-      eachRow: (rowCallback) => {
-        fakeRows.forEach((r, i) => {
-          const row = {
-            getCell: (col) => {
-              return { value: r[col - 1] }
-            },
-            eachCell: (cellCallback) => {
-              r.forEach((c, j) => {
-                cellCallback({ value: c }, j + 1)
-              })
-            }
-          }
-          rowCallback(row, i + 1)
-        })
-      },
-      getRow: (rowNumber) => ({
-        getCell: (colNumber) => {
-          const row = fakeRows[rowNumber]
-          const text = colNumber < row?.length ? row[colNumber] : ''
-          return {
-            value: { richText: [{ text }] }
-          }
-        }
-      })
-    }
-  }
 
   beforeAll(async () => {
     vi.clearAllMocks()
@@ -540,23 +509,21 @@ describe('background processor', () => {
     expect(mockSendSuccess).toHaveBeenCalled()
   })
 
-  it('should send validation failed when create upload has wasteTrackingIds', { timeout: 50000 }, async () => {
+  it('should send validation failed when sandbox parse reports errors (create upload)', { timeout: 50000 }, async () => {
     vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
     const mockSendFailed = vi.spyOn(sendEmail, 'sendValidationFailed').mockImplementation(vi.fn())
-    vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue({
-      xlsx: { writeBuffer: async () => Buffer.from('test xl file'), writeFile: async () => null },
-      getWorksheet: (wsName) => {
-        const w = {
-          bumf: mockWorksheet([[], ['', 'Report receipt of waste']], 0),
-          '7. Waste movement level': mockWorksheet([['', 'waste tracking id', 'REF1', '']]), // extra waste tracking id
-          '8. Waste item level': mockWorksheet([['', 'REF1', '', '']])
-        }
-        return w[wsName]
+    // The parse (and its cell-level validation) now runs in the sandboxed child
+    // process; here we exercise the orchestration of the pre-API failure path.
+    vi.spyOn(spreadsheetSandboxModule, 'parseSpreadsheetInSandbox').mockResolvedValue({
+      hasErrors: true,
+      errors: {
+        '7. Waste movement level': [{ coords: [2, 9], message: 'Waste Tracking ID must not be present on a create upload' }],
+        '8. Waste item level': []
       },
-      worksheets: [{ name: 'bumf' }, { name: '7. Waste movement level' }, { name: '8. Waste item level' }]
+      movements: null,
+      rowNumbers: null,
+      workbookBase64: Buffer.from('annotated xl file').toString('base64')
     })
-
-    const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
     const mockBulkImport = vi.spyOn(bulkImportModule, 'bulkImport')
 
     const createMessage = {
@@ -580,40 +547,24 @@ describe('background processor', () => {
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
     await processSpreadsheetJob(s3Client, JSON.parse(createMessage.Body))
 
-    expect(mockUpdateErrors).toHaveBeenCalledWith(
-      expect.anything(),
-      {
-        '7. Waste movement level': [
-          {
-            coords: [2, 9],
-            message: 'Waste Tracking ID must not be present on a create upload'
-          }
-        ],
-        '8. Waste item level': []
-      },
-      expect.anything()
-    )
+    // The annotated workbook produced by the sandbox is attached to the email.
+    expect(mockSendFailed).toHaveBeenCalledWith(expect.objectContaining({ file: Buffer.from('annotated xl file') }))
     expect(mockBulkImport).not.toHaveBeenCalled()
-    expect(mockSendFailed).toHaveBeenCalled()
   })
 
-  it('should send validation failed when update upload has missing WTIDs', { timeout: 50000 }, async () => {
+  it('should send validation failed when sandbox parse reports errors (update upload)', { timeout: 50000 }, async () => {
     vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
     const mockSendFailed = vi.spyOn(sendEmail, 'sendValidationFailed').mockImplementation(vi.fn())
-    vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue({
-      xlsx: { writeBuffer: async () => Buffer.from('test xl file'), writeFile: async () => null },
-      getWorksheet: (wsName) => {
-        const w = {
-          bumf: mockWorksheet([[], ['', 'Report receipt of waste']], 0),
-          '7. Waste movement level': mockWorksheet([['', '', 'REF1', '']]), // no waste tracking id
-          '8. Waste item level': mockWorksheet([['', 'REF1', '', '']])
-        }
-        return w[wsName]
+    vi.spyOn(spreadsheetSandboxModule, 'parseSpreadsheetInSandbox').mockResolvedValue({
+      hasErrors: true,
+      errors: {
+        '7. Waste movement level': [{ coords: [2, 9], message: 'Waste Tracking ID is required' }],
+        '8. Waste item level': []
       },
-      worksheets: [{ name: 'bumf' }, { name: '7. Waste movement level' }, { name: '8. Waste item level' }]
+      movements: null,
+      rowNumbers: null,
+      workbookBase64: Buffer.from('annotated xl file').toString('base64')
     })
-
-    const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
     const mockBulkUpdate = vi.spyOn(bulkImportModule, 'bulkUpdate')
 
     const updateMessage = {
@@ -637,24 +588,15 @@ describe('background processor', () => {
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
     await processSpreadsheetJob(s3Client, JSON.parse(updateMessage.Body))
 
-    expect(mockUpdateErrors).toHaveBeenCalledWith(
-      expect.anything(),
-      {
-        '7. Waste movement level': [{ coords: [2, 9], message: 'Waste Tracking ID is required' }],
-        '8. Waste item level': []
-      },
-      expect.anything()
-    )
+    expect(mockSendFailed).toHaveBeenCalledWith(expect.objectContaining({ file: Buffer.from('annotated xl file') }))
     expect(mockBulkUpdate).not.toHaveBeenCalled()
-    expect(mockSendFailed).toHaveBeenCalled()
   })
 
   it('should call bulkUpdate for update uploads with valid WTIDs and preserve original WTIDs', { timeout: 50000 }, async () => {
     vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
     const mockWorkbook = { xlsx: { writeBuffer: async () => Buffer.from('test') } }
-    vi.spyOn(spreadsheetImportModule, 'parseExcelFile').mockResolvedValue({
+    vi.spyOn(spreadsheetSandboxModule, 'parseSpreadsheetInSandbox').mockResolvedValue({
       hasErrors: false,
-      workbook: mockWorkbook,
       movements: [
         {
           wasteTrackingId: 'EXISTING1',
@@ -664,8 +606,11 @@ describe('background processor', () => {
         }
       ],
       rowNumbers: { REF1: { movementRow: 9, itemRows: [] } },
-      errors: { movements: [], items: [] }
+      errors: null,
+      workbookBase64: Buffer.from('test').toString('base64')
     })
+    // The success path re-opens the sandbox-returned workbook bytes to attach the file.
+    vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue(mockWorkbook)
     const mockBulkUpdate = vi.spyOn(bulkImportModule, 'bulkUpdate').mockResolvedValue({
       movements: [{ wasteTrackingId: 'EXISTING1' }]
     })
