@@ -101,10 +101,10 @@ const sendInitialFailedEmail = async ({
   organisationId,
   logger
 }) => {
-  logger.info(`GRAFANA_REPORT >> spreadsheet_submission_processed >> rejected >> `, {
+  logger.info(`GRAFANA_REPORT >> spreadsheet_submission_processed >> failed `, {
     organisationId,
     referenceNumber,
-    spreadsheetRejectionReasion: workbook ? '' : 'Error'
+    spreadsheetRejectionReasion: workbook ? 'CannotParseSpreadsheetContents' : 'CannotReadSpreadsheet'
   })
   if (workbook) {
     const file = await workbookToByteArray(workbook, logger)
@@ -137,11 +137,21 @@ const processSpreadsheet = async (
   const apiResponse = isUpdate ? await bulkUpdate(referenceNumber, movements, traceId, logger) : await bulkImport(referenceNumber, movements, traceId, logger)
 
   if (apiResponse.failed) {
+    logger.info(`GRAFANA_REPORT >> spreadsheet_submission_processed >> failed `, {
+      organisationId,
+      referenceNumber,
+      spreadsheetRejectionReasion: 'BulkImportApiCallFailed'
+    })
     await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName, referenceNumber, filename })
     return
   }
 
   if (apiResponse.errors) {
+    logger.info(`GRAFANA_REPORT >> spreadsheet_submission_processed >> failed `, {
+      organisationId,
+      referenceNumber,
+      spreadsheetRejectionReasion: 'BulkImportApiReturnedValidationErrors'
+    })
     logger.warn(`ReferenceNumber: ${referenceNumber} -- Errors from import API ${JSON.stringify(apiResponse.errors)}`)
     logger.debug(`ReferenceNumber: ${referenceNumber} -- rowNumbers: ${JSON.stringify(rowNumbers)}`)
     const errs = transformBulkApiErrors(movements, rowNumbers, worksheetMetadata, apiResponse.errors)
