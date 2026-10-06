@@ -8,6 +8,7 @@ import * as encryption from './services/decrypt.js'
 import * as bulkImportModule from './services/bulkImport.js'
 import * as spreadsheetImportModule from './services/spreadsheetImport.js'
 import * as excelImportModule from './services/spreadsheetImport/excel.js'
+import * as spreadsheetSandboxModule from './services/spreadsheetSandbox.js'
 import { sendEmail } from './services/notify/index.js'
 import { createLogger } from './common/helpers/logging/logger.js'
 import { PermanentApiError, TransientApiError } from './common/helpers/exceptions.js'
@@ -20,42 +21,15 @@ const logger = createLogger()
 
 describe('background processor', () => {
   let message
+  // The spreadsheet parse now runs out-of-process (sandbox + child download from S3),
+  // which these in-process tests can't feed. Tests set `sandboxS3Client` to the fake
+  // S3 client they want the (mocked) sandbox to read from; the mock then does the real
+  // parse in-process, exactly as the worker would.
+  let sandboxS3Client
   const wreckPostMock = vi.fn()
   const wreckPutMock = vi.fn()
   const wreckGetMock = vi.fn()
   const origMongoUrl = config.get('mongo.mongoUrl')
-
-  const mockWorksheet = (fakeData, rowPadding = 8) => {
-    const fakeRows = Array.apply(null, Array(rowPadding))
-      .map(() => [])
-      .concat(fakeData)
-    return {
-      eachRow: (rowCallback) => {
-        fakeRows.forEach((r, i) => {
-          const row = {
-            getCell: (col) => {
-              return { value: r[col - 1] }
-            },
-            eachCell: (cellCallback) => {
-              r.forEach((c, j) => {
-                cellCallback({ value: c }, j + 1)
-              })
-            }
-          }
-          rowCallback(row, i + 1)
-        })
-      },
-      getRow: (rowNumber) => ({
-        getCell: (colNumber) => {
-          const row = fakeRows[rowNumber]
-          const text = colNumber < row?.length ? row[colNumber] : ''
-          return {
-            value: { richText: [{ text }] }
-          }
-        }
-      })
-    }
-  }
 
   beforeAll(async () => {
     vi.clearAllMocks()
@@ -83,6 +57,21 @@ describe('background processor', () => {
     if (globalThis?.__MONGO_URI__) {
       config.set('mongo.mongoUrl', globalThis.__MONGO_URI__)
     }
+  })
+
+  beforeEach(() => {
+    sandboxS3Client = null
+    // Default: run the real parse in-process from whatever S3 client the test set.
+    // Tests that need a specific parse result override this spy in their body.
+    vi.spyOn(spreadsheetSandboxModule, 'downloadAndParseSpreadsheetInSandbox').mockImplementation(async (_bucket, _key, _ref, org, uploadType, log) => {
+      const { Body } = await sandboxS3Client.send()
+      const chunks = []
+      for await (const chunk of Body) chunks.push(chunk)
+      const buffer = Buffer.concat(chunks)
+      const { hasErrors, workbook, movements, rowNumbers, errors } = await spreadsheetImportModule.parseExcelFile(buffer, org, log, uploadType)
+      const workbookBytes = workbook ? Buffer.from(await spreadsheetImportModule.workbookToByteArray(workbook, log)) : null
+      return { hasErrors, errors: errors ?? null, movements: movements ?? null, rowNumbers: rowNumbers ?? null, workbookBytes }
+    })
   })
 
   afterAll(() => {
@@ -287,6 +276,7 @@ describe('background processor', () => {
         }
       }
     }
+    sandboxS3Client = s3Client
 
     const { dispatchProcessJob } = await import('./backgroundProcessor.js')
     const processSpreadsheetJob = dispatchProcessJob(s3Client)
@@ -308,6 +298,7 @@ describe('background processor', () => {
         }
       }
     }
+    sandboxS3Client = s3Client
 
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
     const response = await processSpreadsheetJob(s3Client, JSON.parse(message.Body))
@@ -338,6 +329,7 @@ describe('background processor', () => {
         }
       }
     }
+    sandboxS3Client = s3Client
 
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
 
@@ -363,6 +355,7 @@ describe('background processor', () => {
         }
       }
     }
+    sandboxS3Client = s3Client
 
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
 
@@ -388,6 +381,7 @@ describe('background processor', () => {
         }
       }
     }
+    sandboxS3Client = s3Client
 
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
 
@@ -418,6 +412,7 @@ describe('background processor', () => {
         }
       }
     }
+    sandboxS3Client = s3Client
 
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
 
@@ -459,6 +454,7 @@ describe('background processor', () => {
         }
       }
     }
+    sandboxS3Client = s3Client
 
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
 
@@ -500,6 +496,7 @@ describe('background processor', () => {
         }
       }
     }
+    sandboxS3Client = s3Client
 
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
 
@@ -532,6 +529,7 @@ describe('background processor', () => {
         return { Body: [buffer] }
       }
     }
+    sandboxS3Client = s3Client
 
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
     await processSpreadsheetJob(s3Client, JSON.parse(createMessage.Body))
@@ -540,23 +538,21 @@ describe('background processor', () => {
     expect(mockSendSuccess).toHaveBeenCalled()
   })
 
-  it('should send validation failed when create upload has wasteTrackingIds', { timeout: 50000 }, async () => {
+  it('should send validation failed when sandbox parse reports errors (create upload)', { timeout: 50000 }, async () => {
     vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
     const mockSendFailed = vi.spyOn(sendEmail, 'sendValidationFailed').mockImplementation(vi.fn())
-    vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue({
-      xlsx: { writeBuffer: async () => Buffer.from('test xl file'), writeFile: async () => null },
-      getWorksheet: (wsName) => {
-        const w = {
-          bumf: mockWorksheet([[], ['', 'Report receipt of waste']], 0),
-          '7. Waste movement level': mockWorksheet([['', 'waste tracking id', 'REF1', '']]), // extra waste tracking id
-          '8. Waste item level': mockWorksheet([['', 'REF1', '', '']])
-        }
-        return w[wsName]
+    // The parse (and its cell-level validation) now runs in the sandboxed child
+    // process; here we exercise the orchestration of the pre-API failure path.
+    vi.spyOn(spreadsheetSandboxModule, 'downloadAndParseSpreadsheetInSandbox').mockResolvedValue({
+      hasErrors: true,
+      errors: {
+        '7. Waste movement level': [{ coords: [2, 9], message: 'Waste Tracking ID must not be present on a create upload' }],
+        '8. Waste item level': []
       },
-      worksheets: [{ name: 'bumf' }, { name: '7. Waste movement level' }, { name: '8. Waste item level' }]
+      movements: null,
+      rowNumbers: null,
+      workbookBytes: Buffer.from('annotated xl file')
     })
-
-    const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
     const mockBulkImport = vi.spyOn(bulkImportModule, 'bulkImport')
 
     const createMessage = {
@@ -576,44 +572,29 @@ describe('background processor', () => {
         return { Body: [buffer] }
       }
     }
+    sandboxS3Client = s3Client
 
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
     await processSpreadsheetJob(s3Client, JSON.parse(createMessage.Body))
 
-    expect(mockUpdateErrors).toHaveBeenCalledWith(
-      expect.anything(),
-      {
-        '7. Waste movement level': [
-          {
-            coords: [2, 9],
-            message: 'Waste Tracking ID must not be present on a create upload'
-          }
-        ],
-        '8. Waste item level': []
-      },
-      expect.anything()
-    )
+    // The annotated workbook produced by the sandbox is attached to the email.
+    expect(mockSendFailed).toHaveBeenCalledWith(expect.objectContaining({ file: Buffer.from('annotated xl file') }))
     expect(mockBulkImport).not.toHaveBeenCalled()
-    expect(mockSendFailed).toHaveBeenCalled()
   })
 
-  it('should send validation failed when update upload has missing WTIDs', { timeout: 50000 }, async () => {
+  it('should send validation failed when sandbox parse reports errors (update upload)', { timeout: 50000 }, async () => {
     vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
     const mockSendFailed = vi.spyOn(sendEmail, 'sendValidationFailed').mockImplementation(vi.fn())
-    vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue({
-      xlsx: { writeBuffer: async () => Buffer.from('test xl file'), writeFile: async () => null },
-      getWorksheet: (wsName) => {
-        const w = {
-          bumf: mockWorksheet([[], ['', 'Report receipt of waste']], 0),
-          '7. Waste movement level': mockWorksheet([['', '', 'REF1', '']]), // no waste tracking id
-          '8. Waste item level': mockWorksheet([['', 'REF1', '', '']])
-        }
-        return w[wsName]
+    vi.spyOn(spreadsheetSandboxModule, 'downloadAndParseSpreadsheetInSandbox').mockResolvedValue({
+      hasErrors: true,
+      errors: {
+        '7. Waste movement level': [{ coords: [2, 9], message: 'Waste Tracking ID is required' }],
+        '8. Waste item level': []
       },
-      worksheets: [{ name: 'bumf' }, { name: '7. Waste movement level' }, { name: '8. Waste item level' }]
+      movements: null,
+      rowNumbers: null,
+      workbookBytes: Buffer.from('annotated xl file')
     })
-
-    const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
     const mockBulkUpdate = vi.spyOn(bulkImportModule, 'bulkUpdate')
 
     const updateMessage = {
@@ -633,28 +614,20 @@ describe('background processor', () => {
         return { Body: [buffer] }
       }
     }
+    sandboxS3Client = s3Client
 
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
     await processSpreadsheetJob(s3Client, JSON.parse(updateMessage.Body))
 
-    expect(mockUpdateErrors).toHaveBeenCalledWith(
-      expect.anything(),
-      {
-        '7. Waste movement level': [{ coords: [2, 9], message: 'Waste Tracking ID is required' }],
-        '8. Waste item level': []
-      },
-      expect.anything()
-    )
+    expect(mockSendFailed).toHaveBeenCalledWith(expect.objectContaining({ file: Buffer.from('annotated xl file') }))
     expect(mockBulkUpdate).not.toHaveBeenCalled()
-    expect(mockSendFailed).toHaveBeenCalled()
   })
 
   it('should call bulkUpdate for update uploads with valid WTIDs and preserve original WTIDs', { timeout: 50000 }, async () => {
     vi.spyOn(encryption, 'decrypt').mockImplementation(() => 'test@email.com')
     const mockWorkbook = { xlsx: { writeBuffer: async () => Buffer.from('test') } }
-    vi.spyOn(spreadsheetImportModule, 'parseExcelFile').mockResolvedValue({
+    vi.spyOn(spreadsheetSandboxModule, 'downloadAndParseSpreadsheetInSandbox').mockResolvedValue({
       hasErrors: false,
-      workbook: mockWorkbook,
       movements: [
         {
           wasteTrackingId: 'EXISTING1',
@@ -664,8 +637,11 @@ describe('background processor', () => {
         }
       ],
       rowNumbers: { REF1: { movementRow: 9, itemRows: [] } },
-      errors: { movements: [], items: [] }
+      errors: null,
+      workbookBytes: Buffer.from('test')
     })
+    // The success path re-opens the sandbox-returned workbook bytes to attach the file.
+    vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue(mockWorkbook)
     const mockBulkUpdate = vi.spyOn(bulkImportModule, 'bulkUpdate').mockResolvedValue({
       movements: [{ wasteTrackingId: 'EXISTING1' }]
     })
@@ -689,6 +665,7 @@ describe('background processor', () => {
         return { Body: [buffer] }
       }
     }
+    sandboxS3Client = s3Client
 
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
     await processSpreadsheetJob(s3Client, JSON.parse(updateMessage.Body))
@@ -735,6 +712,7 @@ describe('background processor', () => {
         return { Body: [buffer] }
       }
     }
+    sandboxS3Client = s3Client
 
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
     await processSpreadsheetJob(s3Client, JSON.parse(createMessage.Body))
@@ -765,6 +743,7 @@ describe('background processor', () => {
         return { Body: [buffer] }
       }
     }
+    sandboxS3Client = s3Client
 
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
 
@@ -794,6 +773,7 @@ describe('background processor', () => {
         return { Body: [buffer] }
       }
     }
+    sandboxS3Client = s3Client
 
     const { processSpreadsheetJob } = await import('./backgroundProcessor.js')
 
