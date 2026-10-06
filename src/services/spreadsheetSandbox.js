@@ -27,7 +27,7 @@ export const downloadAndParseSpreadsheetInSandbox = async (
       stdio: ['ignore', 'inherit', 'inherit', 'pipe'] // fd 3 will be the result, with logs on stdout / fd 1
     })
     let result = ''
-    child.stdio[3].on('data', (chunk) => (result += chunk))
+    child.stdio[3].on('data', (chunk) => (result += chunk)) // NOSONAR
     const killTimer = setTimeout(() => child.kill('SIGKILL'), maxTimeMs)
     child.on('error', (err) => {
       clearTimeout(killTimer)
@@ -47,7 +47,7 @@ export const downloadAndParseSpreadsheetInSandbox = async (
       }
       parsed.workbookBytes = parsed.workbookBase64 ? Buffer.from(parsed.workbookBase64, 'base64') : null
       delete parsed.workbookBase64
-      resolve(parsed)
+      return resolve(parsed)
     })
   })
 }
