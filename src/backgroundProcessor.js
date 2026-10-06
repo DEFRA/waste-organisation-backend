@@ -12,7 +12,7 @@ import { createLogger } from './common/helpers/logging/logger.js'
 import { workbookToByteArray, transformBulkApiErrors, updateErrors, wasteTrackingIdsToCoords, updateCellContent } from './services/spreadsheetImport.js'
 import { readExcelBuffer } from './services/spreadsheetImport/excel.js'
 import { getWorksheetMeta } from './services/spreadsheetImport/worksheetMetadata.js'
-import { parseSpreadsheetInSandbox } from './services/spreadsheetSandbox.js'
+import { downloadAndParseSpreadsheetInSandbox } from './services/spreadsheetSandbox.js'
 import { decrypt } from './services/decrypt.js'
 import { sendEmail } from './services/notify/index.js'
 import { bulkImport, bulkUpdate } from './services/bulkImport.js'
@@ -103,17 +103,21 @@ const processSpreadsheet = async (
   traceId,
   logger
 ) => {
-  const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
-  logger.info(`ReferenceNumber: ${referenceNumber} -- Fetching bytes: ${buffer.length}`)
-  const isUpdate = uploadType === 'update'
   /* Parse in a separate, resource-limited process so a poisoned file can't
   blow up the node's RAM/disk/CPU. */
-  const { hasErrors, errors, movements, rowNumbers, workbookBase64 } = await parseSpreadsheetInSandbox(buffer, organisationId, uploadType, logger)
+  const isUpdate = uploadType === 'update'
+  let { hasErrors, errors, movements, rowNumbers, workbookBytes } = await downloadAndParseSpreadsheetInSandbox(
+    s3Bucket,
+    s3Key,
+    referenceNumber,
+    organisationId,
+    uploadType,
+    logger
+  )
 
   if (hasErrors) {
     logger.warn(`ReferenceNumber: ${referenceNumber} -- Errors before sending to import API ${JSON.stringify(errors)}`)
-    const file = workbookBase64 ? Buffer.from(workbookBase64, 'base64') : null
-    await sendInitialFailedEmail({ s3Client, s3Bucket, s3Key, file, decryptedEmail, decryptedName, referenceNumber, filename, logger })
+    await sendInitialFailedEmail({ s3Client, s3Bucket, s3Key, file: workbookBytes, decryptedEmail, decryptedName, referenceNumber, filename, logger })
     return
   }
 
@@ -127,34 +131,35 @@ const processSpreadsheet = async (
   if (apiResponse.errors) {
     logger.warn(`ReferenceNumber: ${referenceNumber} -- Errors from import API ${JSON.stringify(apiResponse.errors)}`)
     logger.debug(`ReferenceNumber: ${referenceNumber} -- rowNumbers: ${JSON.stringify(rowNumbers)}`)
-    // Re-open the workbook returned by the sandbox (already validated there) to annotate the API errors.
-    const workbook = await readExcelBuffer(Buffer.from(workbookBase64, 'base64'), logger)
+    const workbook = await readExcelBuffer(Buffer.from(workbookBytes), logger)
+    workbookBytes = null
     const worksheetMetadata = getWorksheetMeta(workbook, uploadType, organisationId, logger)
     const errs = transformBulkApiErrors(movements, rowNumbers, worksheetMetadata, apiResponse.errors)
 
     logger.debug(`ReferenceNumber: ${referenceNumber} -- Cells to update with errors: ${JSON.stringify(errs)}`)
     updateErrors(workbook, errs, worksheetMetadata, logger)
 
-    const file = await workbookToByteArray(workbook, logger)
-    await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
+    workbookBytes = await workbookToByteArray(workbook, logger)
+    await storeProcessedFile(s3Client, s3Bucket, s3Key, workbookBytes)
 
-    await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file, referenceNumber, filename })
+    await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file: workbookBytes, referenceNumber, filename })
     return
   }
 
   if (apiResponse.movements) {
     logger.debug(`ReferenceNumber: ${referenceNumber} -- Movements returned from Bulk API`)
-    const workbook = await readExcelBuffer(Buffer.from(workbookBase64, 'base64'), logger)
+    const workbook = await readExcelBuffer(Buffer.from(workbookBytes), logger)
+    workbookBytes = null
     if (!isUpdate) {
       const worksheetMetadata = getWorksheetMeta(workbook, uploadType, organisationId, logger)
       const coords = wasteTrackingIdsToCoords(movements, rowNumbers, apiResponse.movements, worksheetMetadata)
       logger.debug(`ReferenceNumber: ${referenceNumber} -- Cells to update with waste tracking ids: ${JSON.stringify(coords)}`)
       updateCellContent(workbook, coords, worksheetMetadata, logger)
     }
-    const file = await workbookToByteArray(workbook, logger)
-    await storeProcessedFile(s3Client, s3Bucket, s3Key, file)
+    workbookBytes = await workbookToByteArray(workbook, logger)
+    await storeProcessedFile(s3Client, s3Bucket, s3Key, workbookBytes)
     logger.info(`ReferenceNumber: ${referenceNumber} organisationId: ${organisationId} - ${movements.length} waste movement records created successfully`)
-    await sendEmail.sendSuccess({ email: decryptedEmail, name: decryptedName, file, referenceNumber, filename })
+    await sendEmail.sendSuccess({ email: decryptedEmail, name: decryptedName, file: workbookBytes, referenceNumber, filename })
     return
   }
   logger.error(`ReferenceNumber: ${referenceNumber} -- Unhandled case. No errors or waste tracking ids generated for ${referenceNumber}`)

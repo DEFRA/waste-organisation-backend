@@ -5,6 +5,8 @@ import Excel from 'exceljs'
 import { encrypt } from './test-utils/encrypt.js'
 import { config } from './config.js'
 import { TransientApiError } from './common/helpers/exceptions.js'
+import * as spreadsheetSandboxModule from './services/spreadsheetSandbox.js'
+import { parseExcelFile, workbookToByteArray } from './services/spreadsheetImport.js'
 
 vi.mock('./services/bulkImport.js')
 vi.mock('./services/notify/index.js')
@@ -30,12 +32,20 @@ const buildMessage = (overrides = {}) => ({
   })
 })
 
-const buildS3Client = (filenameOrBuffer) => ({
-  send: async () => {
-    const buffer = Buffer.isBuffer(filenameOrBuffer) ? filenameOrBuffer : await fs.readFile(`./test-resources/${filenameOrBuffer}`)
-    return { Body: [buffer] }
+// The parse now runs out-of-process (sandbox + child S3 download). These tests
+// can't feed a fake S3 client to a child, so building a client records it here and
+// the sandbox is mocked (in beforeEach) to run the real parse in-process from it.
+let sandboxS3Client
+const buildS3Client = (filenameOrBuffer) => {
+  const client = {
+    send: async () => {
+      const buffer = Buffer.isBuffer(filenameOrBuffer) ? filenameOrBuffer : await fs.readFile(`./test-resources/${filenameOrBuffer}`)
+      return { Body: [buffer] }
+    }
   }
-})
+  sandboxS3Client = client
+  return client
+}
 
 const loadWorkbookFromEmailCall = async (mockFn) => {
   const { file } = mockFn.mock.calls[0][0]
@@ -52,9 +62,20 @@ describe('backgroundProcessor integration', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks()
+    sandboxS3Client = null
     bulkImportModule = await import('./services/bulkImport.js')
     notifyModule = await import('./services/notify/index.js')
     processor = await import('./backgroundProcessor.js')
+    // Run the real parse in-process from the test's S3 client, as the worker would.
+    vi.spyOn(spreadsheetSandboxModule, 'downloadAndParseSpreadsheetInSandbox').mockImplementation(async (_bucket, _key, _ref, org, uploadType, log) => {
+      const { Body } = await sandboxS3Client.send()
+      const chunks = []
+      for await (const chunk of Body) chunks.push(chunk)
+      const buffer = Buffer.concat(chunks)
+      const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, org, log, uploadType)
+      const workbookBytes = workbook ? Buffer.from(await workbookToByteArray(workbook, log)) : null
+      return { hasErrors, errors: errors ?? null, movements: movements ?? null, rowNumbers: rowNumbers ?? null, workbookBytes }
+    })
   })
 
   it('happy path create - sends success email with waste tracking IDs', { timeout: 30000 }, async () => {
