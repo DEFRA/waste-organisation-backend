@@ -31,7 +31,7 @@ jobs:
           GOV_NOTIFY_KEY: ${{ secrets.GOV_NOTIFY_KEY }}
         run: |
           npm audit --audit-level=high --omit=dev
-          # npm audit --audit-level=critical
+          npm audit --audit-level=critical
           npm ci
           npm run format:check
           npm run lint
