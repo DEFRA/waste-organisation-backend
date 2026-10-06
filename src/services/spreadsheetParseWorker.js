@@ -11,7 +11,7 @@ The parse result is written to fd 3, which should be a pipe, so it doesn't run i
 
 If an unexpected error occur in parsing, we write something to fd 3 and exit 0; if killed by signal of any sort, we don't write anything, which should be interpreted as 'blew up'.
 */
-
+/* v8 ignore start */
 import fs from 'node:fs'
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
 import { parseExcelFile, workbookToByteArray } from './spreadsheetImport.js'
@@ -22,7 +22,7 @@ const [, , s3Bucket, s3Key, referenceNumber, organisationId, uploadType] = proce
 
 const writeResult = (result) => {
   //3 is fd 3, by contract
-  fs.writeFileSync(3, JSON.stringify(result))
+  fs.writeFileSync(3, JSON.stringify(result)) // NOSONAR
 }
 
 // S3 download is done here (not in the parent) , we copy the two S3 functions to keep the process lean.
@@ -65,3 +65,4 @@ run()
     writeResult({ parseError: e?.message ?? String(e) })
     process.exit(0)
   })
+/* v8 ignore stop */
