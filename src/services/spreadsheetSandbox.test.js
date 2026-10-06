@@ -2,11 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { EventEmitter } from 'node:events'
 
 vi.mock('node:child_process', () => ({ spawn: vi.fn() }))
-vi.mock('node:fs/promises', () => ({ writeFile: vi.fn(), unlink: vi.fn() }))
 
 import { spawn } from 'node:child_process'
-import { writeFile, unlink } from 'node:fs/promises'
-import { parseSpreadsheetInSandbox, SANDBOX_MAX_TIME_MS } from './spreadsheetSandbox.js'
+import { downloadAndParseSpreadsheetInSandbox } from './spreadsheetSandbox.js'
+
+// Override the wall-clock limit for the tests (the production default is 15000ms).
+const SANDBOX_MAX_TIME_MS = 2500
 
 const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), trace: vi.fn() }
 
@@ -19,17 +20,17 @@ const makeChild = () => {
   return child
 }
 
-// Flush pending microtasks so the awaited writeFile resolves and spawn runs
-// (works under fake timers, which only affect timer callbacks).
+// Flush microtasks (harmless; spawn is actually called synchronously inside the
+// Promise executor, so the child/listeners exist as soon as the call returns).
 const settle = async () => {
   for (let i = 0; i < 10; i++) await Promise.resolve()
 }
 
 // Start a parse, let it reach spawn, and hand back the fake child + promise.
-const startParse = async (buffer = Buffer.from('xlsx'), org = 'org-123', uploadType = 'create') => {
+const startParse = async (s3Bucket = 'test-bucket', s3Key = 'test-key', referenceNumber = 'ref-1', org = 'org-123', uploadType = 'create') => {
   const child = makeChild()
   spawn.mockReturnValue(child)
-  const promise = parseSpreadsheetInSandbox(buffer, org, uploadType, logger)
+  const promise = downloadAndParseSpreadsheetInSandbox(s3Bucket, s3Key, referenceNumber, org, uploadType, logger, SANDBOX_MAX_TIME_MS)
   await settle()
   return { child, promise }
 }
@@ -39,8 +40,6 @@ const emitResult = (child, result) => child.stdio[3].emit('data', Buffer.from(JS
 beforeEach(() => {
   vi.useFakeTimers()
   vi.clearAllMocks()
-  writeFile.mockResolvedValue(undefined)
-  unlink.mockResolvedValue(undefined)
 })
 
 afterEach(() => {
@@ -48,8 +47,8 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('parseSpreadsheetInSandbox', () => {
-  it('resolves with the parsed result written by the child on a clean exit', async () => {
+describe('downloadAndParseSpreadsheetInSandbox', () => {
+  it('resolves on a clean exit, decoding workbookBase64 to a workbookBytes Buffer', async () => {
     const { child, promise } = await startParse()
 
     emitResult(child, { hasErrors: false, movements: [{ yourUniqueReference: 'REF1' }], rowNumbers: {}, errors: null, workbookBase64: 'AA==' })
@@ -60,42 +59,36 @@ describe('parseSpreadsheetInSandbox', () => {
       movements: [{ yourUniqueReference: 'REF1' }],
       rowNumbers: {},
       errors: null,
-      workbookBase64: 'AA=='
+      workbookBytes: Buffer.from('AA==', 'base64')
     })
   })
 
-  it('writes the buffer to a temp .xlsx and removes it afterwards', async () => {
-    const buffer = Buffer.from('spreadsheet-bytes')
-    const { child, promise } = await startParse(buffer)
-
-    expect(writeFile).toHaveBeenCalledTimes(1)
-    const [inputPath, written] = writeFile.mock.calls[0]
-    expect(inputPath).toMatch(/spreadsheet-.*\.xlsx$/)
-    expect(written).toBe(buffer)
-
-    emitResult(child, { hasErrors: false })
+  it('returns workbookBytes: null when the child produced no workbook', async () => {
+    const { child, promise } = await startParse()
+    emitResult(child, { hasErrors: true, errors: { '7. Waste movement level': [] } })
     child.emit('exit', 0, null)
-    await promise
-
-    expect(unlink).toHaveBeenCalledWith(inputPath)
+    await expect(promise).resolves.toEqual({ hasErrors: true, errors: { '7. Waste movement level': [] }, workbookBytes: null })
   })
 
-  it('spawns a resource-limited child with the worker, input path and job args', async () => {
-    const { child, promise } = await startParse(Buffer.from('x'), 'org-xyz', 'update')
+  it('spawns a resource-limited child with the worker and S3/job args', async () => {
+    const { child, promise } = await startParse('bucket-x', 'key-x', 'ref-9', 'org-xyz', 'update')
 
     expect(spawn).toHaveBeenCalledTimes(1)
     const [cmd, args, opts] = spawn.mock.calls[0]
     expect(cmd).toBe('/bin/sh')
     expect(args[0]).toBe('-c')
     expect(args[1]).toContain('ulimit -f 102400') // 50MB disk cap
-    expect(args[1]).toContain('--max-old-space-size=256') // heap cap
+    expect(args[1]).toContain('--max-old-space-size=1024') // heap cap
     expect(args[1]).toContain('exec node')
-    // positional args passed to the shell: $0..$4
+    expect(args[1]).toContain('"$6"') // all six positional args are forwarded to node
+    // positional args: $0='sh', $1=worker, $2=bucket, $3=key, $4=referenceNumber, $5=org, $6=uploadType
     expect(args[2]).toBe('sh')
     expect(args[3]).toMatch(/spreadsheetParseWorker\.js$/)
-    expect(args[4]).toBe(writeFile.mock.calls[0][0]) // the temp input path
-    expect(args[5]).toBe('org-xyz')
-    expect(args[6]).toBe('update')
+    expect(args[4]).toBe('bucket-x')
+    expect(args[5]).toBe('key-x')
+    expect(args[6]).toBe('ref-9')
+    expect(args[7]).toBe('org-xyz')
+    expect(args[8]).toBe('update')
     // fd 3 is a pipe for the result; stdout/stderr inherited, stdin ignored
     expect(opts.stdio).toEqual(['ignore', 'inherit', 'inherit', 'pipe'])
 
@@ -105,13 +98,12 @@ describe('parseSpreadsheetInSandbox', () => {
   })
 
   it('passes an empty string when uploadType is undefined', async () => {
-    // call directly so startParse's default doesn't mask the undefined
     const child = makeChild()
     spawn.mockReturnValue(child)
-    const promise = parseSpreadsheetInSandbox(Buffer.from('x'), 'org-1', undefined, logger)
+    const promise = downloadAndParseSpreadsheetInSandbox('b', 'k', 'r', 'org-1', undefined, logger)
     await settle()
 
-    expect(spawn.mock.calls[0][1][6]).toBe('')
+    expect(spawn.mock.calls[0][1][8]).toBe('')
 
     emitResult(child, { hasErrors: false })
     child.emit('exit', 0, null)
@@ -123,7 +115,6 @@ describe('parseSpreadsheetInSandbox', () => {
     emitResult(child, { hasErrors: false }) // a (complete) result is still thrown away on a signal kill
     child.emit('exit', null, 'SIGKILL')
     await expect(promise).rejects.toThrow(/exceeded resource limits/)
-    expect(unlink).toHaveBeenCalled() // temp file still cleaned up
   })
 
   it('rejects on a non-zero exit code even when a result was produced', async () => {
@@ -153,7 +144,7 @@ describe('parseSpreadsheetInSandbox', () => {
     child.stdio[3].emit('data', Buffer.from(json.slice(0, mid)))
     child.stdio[3].emit('data', Buffer.from(json.slice(mid)))
     child.emit('exit', 0, null)
-    await expect(promise).resolves.toEqual({ hasErrors: false, workbookBase64: 'QQ==' })
+    await expect(promise).resolves.toEqual({ hasErrors: false, workbookBytes: Buffer.from('QQ==', 'base64') })
   })
 
   it('rejects when spawn emits an error, and clears the kill timer', async () => {
