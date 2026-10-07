@@ -200,7 +200,7 @@ const errorToCoords = (() => {
           return err
         }
         if (Array.isArray(errTarget.target)) {
-          if (errKeyPath[1] === errTarget.target[0] && errKeyPath[2] && errKeyPath[2].match(/^\d+$/)) {
+          if (errKeyPath[1] === errTarget.target[0] && errKeyPath?.[2].match(/^\d+$/)) {
             return wasteItemErr(movementData, rowNumbers, errKeyPath, error, errTarget, worksheets[errTarget.worksheetName].mapping)
           }
           if (errTarget.target.length === 0) {
