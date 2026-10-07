@@ -126,13 +126,25 @@ export const parseExcelFile = (() => {
 
 const errorToCoords = (() => {
   const cleanErrorMessage = ({ message, key }) => {
-    const name = key
-      .split('.')
-      .reduce((n, x) => (x.match(/^[0-9]+$/) ? n : x), '')
-      .replace(/([A-Z])/g, ' $1')
-      .trim()
-      .toLowerCase()
-    return message.replace(/^"[^"]*"/, name)
+    if (key?.match(/^[0-9]+$/)) {
+      const name = message?.split(' ')
+      if (Array.isArray(name)) {
+        name[0] = name[0]
+          ?.replace(/"/g, '')
+          ?.replace(/([A-Z])/g, ' $1')
+          ?.toLowerCase()
+        return name.join(' ')
+      }
+    } else {
+      const name = key
+        ?.split('.')
+        ?.reduce((n, x) => (x.match(/^[0-9]+$/) ? n : x), '')
+        ?.replace(/([A-Z])/g, ' $1')
+        ?.trim()
+        ?.toLowerCase()
+      return message.replace(/^"[^"]*"/, name)
+    }
+    return message
   }
 
   const keyPathToColNum = (path, mappings) => {
@@ -168,7 +180,6 @@ const errorToCoords = (() => {
   const wasteItemErr = (movementData, rowNumbers, errKeyPath, error, { worksheetName, joinKey }, itemMapping) => {
     const movementIdx = errKeyPath[0]
     const itemIdx = errKeyPath[2]
-    // const ref = movementData[movementIdx]?.yourUniqueReference
     const ref = getIn(movementData[movementIdx], joinKey)
     const msg = cleanErrorMessage(error)
     // prettier-ignore
@@ -183,16 +194,18 @@ const errorToCoords = (() => {
 
   return (movementData, rowNumbers, { defaultErrorWorksheet, worksheets, errorTargets }, error) => {
     const errKeyPath = error.key.split('.')
-    if (errKeyPath[0].match(/^[0-9]+$/)) {
+    if (errKeyPath?.[0]?.match(/^[0-9]+$/)) {
       const joinErrorTarget = errorTargets.reduce((err, errTarget) => {
         if (err?.coords) {
           return err
         }
-        if (errKeyPath[1] === errTarget.target[0] && errKeyPath[2].match(/^[0-9]+$/)) {
-          return wasteItemErr(movementData, rowNumbers, errKeyPath, error, errTarget, worksheets[errTarget.worksheetName].mapping)
-        }
-        if (Array.isArray(errTarget.target) && errTarget.target.length === 0) {
-          return wasteMovementErr(movementData, rowNumbers, errKeyPath, error, errTarget, worksheets[errTarget.worksheetName].mapping)
+        if (Array.isArray(errTarget.target)) {
+          if (errKeyPath[1] === errTarget.target[0] && errKeyPath[2] && errKeyPath[2].match(/^[0-9]+$/)) {
+            return wasteItemErr(movementData, rowNumbers, errKeyPath, error, errTarget, worksheets[errTarget.worksheetName].mapping)
+          }
+          if (errTarget.target.length === 0) {
+            return wasteMovementErr(movementData, rowNumbers, errKeyPath, error, errTarget, worksheets[errTarget.worksheetName].mapping)
+          }
         }
         return err
       }, {})
@@ -200,7 +213,12 @@ const errorToCoords = (() => {
         return joinErrorTarget
       }
     }
-    return cellError(worksheets[defaultErrorWorksheet].defaultErrorCol, worksheets[defaultErrorWorksheet].firstRowOfData, error.message, defaultErrorWorksheet)
+    return cellError(
+      worksheets[defaultErrorWorksheet].defaultErrorCol,
+      worksheets[defaultErrorWorksheet].firstRowOfData,
+      cleanErrorMessage(error),
+      defaultErrorWorksheet
+    )
   }
 })()
 

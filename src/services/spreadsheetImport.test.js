@@ -484,27 +484,101 @@ describe('transformBulkApiErrors', () => {
     expect(errors).toHaveLength(1)
   })
 
-  test('should add default error message when col not matched', () => {
+  test.each([
+    {
+      apiErrors: [
+        {
+          key: '0.submittingOrganisation',
+          errorType: 'BusinessRuleViolation',
+          message: 'submitting organisation the submitting organisation does not match the Organisation that created the original waste item record'
+        }
+      ],
+      expected: {
+        '7. Waste movement level': [
+          {
+            coords: [3, 9],
+            message: 'submitting organisation the submitting organisation does not match the Organisation that created the original waste item record',
+            sheet: '7. Waste movement level'
+          }
+        ]
+      }
+    },
+    {
+      apiErrors: [
+        {
+          key: '0',
+          errorType: 'BusinessRuleViolation',
+          message:
+            '"reasonForNoConsignmentCode" is required when wasteItems[*].ewcCodes contains a hazardous code and hazardousWasteConsignmentCode is not provided'
+        }
+      ],
+      expected: {
+        '7. Waste movement level': [
+          {
+            coords: [2, 9],
+            message:
+              'reason for no consignment code is required when wasteItems[*].ewcCodes ' +
+              'contains a hazardous code and hazardousWasteConsignmentCode is not provided',
+            sheet: '7. Waste movement level'
+          }
+        ]
+      }
+    },
+    {
+      apiErrors: [
+        { key: 'estimatedDateTimeCollected', errorType: 'NotAllowed', message: '"estimatedDateTimeCollected" is not allowed' },
+        { key: 'hazardousWasteConsignmentCode', errorType: 'NotAllowed', message: '"hazardousWasteConsignmentCode" is not allowed' },
+        { key: 'reasonForNoConsignmentCode', errorType: 'NotAllowed', message: '"reasonForNoConsignmentCode" is not allowed' },
+        { key: 'yourUniqueReference', errorType: 'NotAllowed', message: '"yourUniqueReference" is not allowed' }
+      ],
+      expected: {
+        '7. Waste movement level': [
+          {
+            coords: [3, 9],
+            message: 'estimated date time collected is not allowed',
+            sheet: '7. Waste movement level'
+          },
+          {
+            coords: [3, 9],
+            message: 'hazardous waste consignment code is not allowed',
+            sheet: '7. Waste movement level'
+          },
+          {
+            coords: [3, 9],
+            message: 'reason for no consignment code is not allowed',
+            sheet: '7. Waste movement level'
+          },
+          {
+            coords: [3, 9],
+            message: 'your unique reference is not allowed',
+            sheet: '7. Waste movement level'
+          }
+        ]
+      }
+    },
+    {
+      apiErrors: [
+        {
+          key: '0.carrier',
+          errorType: 'BusinessRuleViolation',
+          message: 'carrier is required'
+        }
+      ],
+      expected: {
+        '7. Waste movement level': [
+          {
+            coords: [15, 9],
+            message: 'carrier is required',
+            sheet: '7. Waste movement level'
+          }
+        ]
+      }
+    }
+  ])('should add default error message when col not matched', ({ apiErrors, expected }) => {
     const movementData = [{ yourUniqueReference: 'REF1', carrier: { organisationName: 'Carrier Ltd' } }]
     const rowNumbers = { REF1: { movementRow: 9 } }
-    const apiErrors = [
-      {
-        key: '0.submittingOrganisation',
-        errorType: 'BusinessRuleViolation',
-        message: '[0].submittingOrganisation the submitting organisation does not match the Organisation that created the original waste item record'
-      }
-    ]
-
     const result = transformBulkApiErrors(movementData, rowNumbers, worksheetMetadata, apiErrors)
-    expect(result).toEqual({
-      '7. Waste movement level': [
-        {
-          coords: [3, 9],
-          message: '[0].submittingOrganisation the submitting organisation does not match the Organisation that created the original waste item record',
-          sheet: '7. Waste movement level'
-        }
-      ]
-    })
+    expect(result).toEqual(expected)
   })
 
   test('should partially match error key', () => {
