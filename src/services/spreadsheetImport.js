@@ -126,20 +126,20 @@ export const parseExcelFile = (() => {
 
 const errorToCoords = (() => {
   const cleanErrorMessage = ({ message, key }) => {
-    if (key?.match(/^[0-9]+$/)) {
+    if (key?.match(/^\d+$/)) {
       const name = message?.split(' ')
       if (Array.isArray(name)) {
         name[0] = name[0]
-          ?.replace(/"/g, '')
-          ?.replace(/([A-Z])/g, ' $1')
+          ?.replaceAll('"', '')
+          ?.replaceAll(/([A-Z])/g, ' $1')
           ?.toLowerCase()
         return name.join(' ')
       }
     } else {
       const name = key
         ?.split('.')
-        ?.reduce((n, x) => (x.match(/^[0-9]+$/) ? n : x), '')
-        ?.replace(/([A-Z])/g, ' $1')
+        ?.reduce((n, x) => (x.match(/^\d+$/) ? n : x), '')
+        ?.replaceAll(/([A-Z])/g, ' $1')
         ?.trim()
         ?.toLowerCase()
       return message.replace(/^"[^"]*"/, name)
@@ -148,7 +148,7 @@ const errorToCoords = (() => {
   }
 
   const keyPathToColNum = (path, mappings) => {
-    const numIdx = path.findIndex((x) => x.match(/^[0-9]+$/))
+    const numIdx = path.findIndex((x) => x.match(/^\d+$/))
     const p = numIdx >= 0 ? path.slice(0, numIdx + 1) : path
     return mappings.findIndex((x) => {
       if (x[0]) {
@@ -194,13 +194,13 @@ const errorToCoords = (() => {
 
   return (movementData, rowNumbers, { defaultErrorWorksheet, worksheets, errorTargets }, error) => {
     const errKeyPath = error.key.split('.')
-    if (errKeyPath?.[0]?.match(/^[0-9]+$/)) {
+    if (errKeyPath?.[0]?.match(/^\d+$/)) {
       const joinErrorTarget = errorTargets.reduce((err, errTarget) => {
         if (err?.coords) {
           return err
         }
         if (Array.isArray(errTarget.target)) {
-          if (errKeyPath[1] === errTarget.target[0] && errKeyPath[2] && errKeyPath[2].match(/^[0-9]+$/)) {
+          if (errKeyPath[1] === errTarget.target[0] && errKeyPath[2] && errKeyPath[2].match(/^\d+$/)) {
             return wasteItemErr(movementData, rowNumbers, errKeyPath, error, errTarget, worksheets[errTarget.worksheetName].mapping)
           }
           if (errTarget.target.length === 0) {
