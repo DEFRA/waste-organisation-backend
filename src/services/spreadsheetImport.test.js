@@ -573,6 +573,24 @@ describe('transformBulkApiErrors', () => {
           }
         ]
       }
+    },
+    {
+      apiErrors: [
+        {
+          key: '0.carrier.registrationNumber',
+          errorType: 'BusinessRuleViolation',
+          message: 'carrier is required'
+        }
+      ],
+      expected: {
+        '7. Waste movement level': [
+          {
+            coords: [15, 9],
+            message: 'carrier is required',
+            sheet: '7. Waste movement level'
+          }
+        ]
+      }
     }
   ])('should add default error message when col not matched', ({ apiErrors, expected }) => {
     const movementData = [{ yourUniqueReference: 'REF1', carrier: { organisationName: 'Carrier Ltd' } }]
