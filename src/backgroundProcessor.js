@@ -325,7 +325,7 @@ export const pollQueue = async ({ sqsClient, QueueUrl, action }) => {
     QueueUrl,
     MaxNumberOfMessages: 1, // Process 1 messages at once
     WaitTimeSeconds: 20, // Long polling to reduce empty responses
-    VisibilityTimeout: 300 // Hide message while processing
+    VisibilityTimeout: 600 // Hide message while processing
   }
 
   try {
