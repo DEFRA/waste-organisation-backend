@@ -6,6 +6,7 @@ argv[3] = s3 key
 argv[4] = reference number
 argv[5] = organisationId
 argv[6] = uploadType ('create' | 'update')
+argv[7] = traceId (for logging)
 
 The parse result is written to fd 3, which should be a pipe, so it doesn't run into log output or a stray output of any sort; logs will be on fd 1.
 
@@ -18,7 +19,7 @@ import { parseExcelFile, workbookToByteArray } from './spreadsheetImport.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
 import { config } from '../config.js'
 
-const [, , s3Bucket, s3Key, referenceNumber, organisationId, uploadType] = process.argv
+const [, , s3Bucket, s3Key, referenceNumber, organisationId, uploadType, traceId] = process.argv
 
 const writeResult = (result) => {
   //3 is fd 3, by contract
@@ -44,7 +45,8 @@ const fetchS3Object = async (s3Client, Bucket, Key) => {
 
 // TODO: make this unit testable
 const run = async () => {
-  const logger = createLogger()
+  // argv carries '' (no trace) or sometimes the literal string 'null'; treat both as no trace id.
+  const logger = createLogger(traceId && traceId !== 'null' ? traceId : null)
   const s3Client = constructS3Client()
   const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
   logger.info(`ReferenceNumber: ${referenceNumber} -- Fetching bytes: ${buffer.length}`)

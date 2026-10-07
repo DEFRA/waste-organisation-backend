@@ -63,7 +63,7 @@ describe('background processor', () => {
     sandboxS3Client = null
     // Default: run the real parse in-process from whatever S3 client the test set.
     // Tests that need a specific parse result override this spy in their body.
-    vi.spyOn(spreadsheetSandboxModule, 'downloadAndParseSpreadsheetInSandbox').mockImplementation(async (_bucket, _key, _ref, org, uploadType, log) => {
+    vi.spyOn(spreadsheetSandboxModule, 'downloadAndParseSpreadsheetInSandbox').mockImplementation(async ({ organisationId: org, uploadType, logger: log }) => {
       const { Body } = await sandboxS3Client.send()
       const chunks = []
       for await (const chunk of Body) chunks.push(chunk)

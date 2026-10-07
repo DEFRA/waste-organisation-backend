@@ -30,7 +30,15 @@ const settle = async () => {
 const startParse = async (s3Bucket = 'test-bucket', s3Key = 'test-key', referenceNumber = 'ref-1', org = 'org-123', uploadType = 'create') => {
   const child = makeChild()
   spawn.mockReturnValue(child)
-  const promise = downloadAndParseSpreadsheetInSandbox(s3Bucket, s3Key, referenceNumber, org, uploadType, logger, SANDBOX_MAX_TIME_MS)
+  const promise = downloadAndParseSpreadsheetInSandbox({
+    s3Bucket,
+    s3Key,
+    referenceNumber,
+    organisationId: org,
+    uploadType,
+    logger,
+    maxTimeMs: SANDBOX_MAX_TIME_MS
+  })
   await settle()
   return { child, promise }
 }
@@ -100,7 +108,15 @@ describe('downloadAndParseSpreadsheetInSandbox', () => {
   it('passes an empty string when uploadType is undefined', async () => {
     const child = makeChild()
     spawn.mockReturnValue(child)
-    const promise = downloadAndParseSpreadsheetInSandbox('b', 'k', 'r', 'org-1', undefined, logger)
+    const promise = downloadAndParseSpreadsheetInSandbox({
+      s3Bucket: 'b',
+      s3Key: 'k',
+      referenceNumber: 'r',
+      organisationId: 'org-1',
+      uploadType: undefined,
+      logger,
+      maxTimeMs: SANDBOX_MAX_TIME_MS
+    })
     await settle()
 
     expect(spawn.mock.calls[0][1][8]).toBe('')
