@@ -67,7 +67,7 @@ describe('backgroundProcessor integration', () => {
     notifyModule = await import('./services/notify/index.js')
     processor = await import('./backgroundProcessor.js')
     // Run the real parse in-process from the test's S3 client, as the worker would.
-    vi.spyOn(spreadsheetSandboxModule, 'downloadAndParseSpreadsheetInSandbox').mockImplementation(async (_bucket, _key, _ref, org, uploadType, log) => {
+    vi.spyOn(spreadsheetSandboxModule, 'downloadAndParseSpreadsheetInSandbox').mockImplementation(async ({ organisationId: org, uploadType, logger: log }) => {
       const { Body } = await sandboxS3Client.send()
       const chunks = []
       for await (const chunk of Body) chunks.push(chunk)

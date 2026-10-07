@@ -103,21 +103,34 @@ const processSpreadsheet = async (
   traceId,
   logger
 ) => {
+  const startTime = performance.now()
+  const logTime = (location) => {
+    const endTime = performance.now()
+    logger.info(`Total spreadsheet processing time (${location}): ${Math.ceil(endTime - startTime)} ms`)
+  }
+
   /* Parse in a separate, resource-limited process so a poisoned file can't
   blow up the node's RAM/disk/CPU. */
   const isUpdate = uploadType === 'update'
-  let { hasErrors, errors, movements, rowNumbers, workbookBytes } = await downloadAndParseSpreadsheetInSandbox(
+
+  /* We time the sandbox here rather than in spreadsheetSandbox because it's a lot
+  cleaner. We're off by up to a few ms, but it doesn't matter for our stats */
+  let { hasErrors, errors, movements, rowNumbers, workbookBytes } = await downloadAndParseSpreadsheetInSandbox({
     s3Bucket,
     s3Key,
     referenceNumber,
     organisationId,
     uploadType,
+    traceId,
     logger
-  )
+  })
+  logTime('sandbox')
 
   if (hasErrors) {
     logger.warn(`ReferenceNumber: ${referenceNumber} -- Errors before sending to import API ${JSON.stringify(errors)}`)
     await sendInitialFailedEmail({ s3Client, s3Bucket, s3Key, file: workbookBytes, decryptedEmail, decryptedName, referenceNumber, filename, logger })
+
+    logTime('hasErrors')
     return
   }
 
@@ -125,6 +138,7 @@ const processSpreadsheet = async (
 
   if (apiResponse.failed) {
     await sendEmail.sendFailed({ email: decryptedEmail, name: decryptedName, referenceNumber, filename })
+    logTime('apiResponse.failed')
     return
   }
 
@@ -143,6 +157,7 @@ const processSpreadsheet = async (
     await storeProcessedFile(s3Client, s3Bucket, s3Key, workbookBytes)
 
     await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file: workbookBytes, referenceNumber, filename })
+    logTime('apiResponse.errors')
     return
   }
 
@@ -160,8 +175,10 @@ const processSpreadsheet = async (
     await storeProcessedFile(s3Client, s3Bucket, s3Key, workbookBytes)
     logger.info(`ReferenceNumber: ${referenceNumber} organisationId: ${organisationId} - ${movements.length} waste movement records created successfully`)
     await sendEmail.sendSuccess({ email: decryptedEmail, name: decryptedName, file: workbookBytes, referenceNumber, filename })
+    logTime('apiResponse.movements')
     return
   }
+  logTime('unhandled')
   logger.error(`ReferenceNumber: ${referenceNumber} -- Unhandled case. No errors or waste tracking ids generated for ${referenceNumber}`)
 }
 
