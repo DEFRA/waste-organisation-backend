@@ -116,75 +116,88 @@ export const parseExcelFile = (() => {
   }
 })()
 
-const errorToCoords = (() => {
-  const cleanErrorMessage = ({ message, key }) => {
+const cleanErrorMessage = ({ message, key }) => {
+  if (key?.match(/^\d+$/)) {
+    const name = message?.split(' ')
+    if (Array.isArray(name)) {
+      name[0] = name[0]
+        ?.replaceAll('"', '')
+        ?.replaceAll(/([A-Z])/g, ' $1')
+        ?.toLowerCase()
+      return name.join(' ')
+    }
+  } else {
     const name = key
-      .split('.')
-      .reduce((n, x) => (x.match(/^[0-9]+$/) ? n : x), '')
-      .replace(/([A-Z])/g, ' $1')
-      .trim()
-      .toLowerCase()
+      ?.split('.')
+      ?.reduce((n, x) => (x.match(/^\d+$/) ? n : x), '')
+      ?.replaceAll(/([A-Z])/g, ' $1')
+      ?.trim()
+      ?.toLowerCase()
     return message.replace(/^"[^"]*"/, name)
   }
+  return message
+}
 
-  const keyPathToColNum = (path, mappings) => {
-    const numIdx = path.findIndex((x) => x.match(/^[0-9]+$/))
-    const p = numIdx >= 0 ? path.slice(0, numIdx + 1) : path
-    return mappings.findIndex((x) => {
-      if (x[0]) {
-        const cnt = Math.min(x[0].length, p.length)
-        for (let c = 0; c < cnt; c++) {
-          if (p[c] !== x[0][c]) {
-            return false
-          }
+const keyPathToColNum = (path, mappings) => {
+  const numIdx = path.findIndex((x) => x.match(/^\d+$/))
+  const p = numIdx >= 0 ? path.slice(0, numIdx + 1) : path
+  return mappings.findIndex((x) => {
+    if (x[0]) {
+      const cnt = Math.min(x[0].length, p.length)
+      for (let c = 0; c < cnt; c++) {
+        if (p[c] !== x[0][c]) {
+          return false
         }
-        return true
-      } else {
-        return false
       }
-    })
-  }
-
-  const wasteMovementErr = (movementData, rowNumbers, errKeyPath, error, { worksheetName, joinKey }, movementMapping) => {
-    const idx = errKeyPath[0]
-    const ref = getIn(movementData[idx], joinKey)
-    const msg = cleanErrorMessage(error)
-    const colNum = keyPathToColNum(errKeyPath.slice(1), movementMapping)
-    if (colNum < 0) {
-      return {}
+      return true
+    } else {
+      return false
     }
-    const errorValue = movementMapping[colNum][0].reduce((x, y) => x[y], movementData[idx])
-    return cellError(colNum, rowNumbers[ref].movementRow, msg, worksheetName, errorValue)
-  }
+  })
+}
 
-  const wasteItemErr = (movementData, rowNumbers, errKeyPath, error, { worksheetName, joinKey }, itemMapping) => {
-    const movementIdx = errKeyPath[0]
-    const itemIdx = errKeyPath[2]
-    // const ref = movementData[movementIdx]?.yourUniqueReference
-    const ref = getIn(movementData[movementIdx], joinKey)
-    const msg = cleanErrorMessage(error)
-    // prettier-ignore
-    const colNum = keyPathToColNum(errKeyPath.slice(3), itemMapping) // nosonar
-    if (colNum < 0) {
-      return {}
-    }
-    const wis = movementData[movementIdx]?.wasteItems
-    const errorValue = itemMapping[colNum][0].reduce((x, y) => (x ? x[y] : null), wis ? wis[itemIdx] : null)
-    return cellError(colNum, rowNumbers[ref].itemRows[itemIdx], msg, worksheetName, errorValue)
+const wasteMovementErr = (movementData, rowNumbers, errKeyPath, error, { worksheetName, joinKey }, movementMapping) => {
+  const idx = errKeyPath[0]
+  const ref = getIn(movementData[idx], joinKey)
+  const msg = cleanErrorMessage(error)
+  const colNum = keyPathToColNum(errKeyPath.slice(1), movementMapping)
+  if (colNum < 0) {
+    return {}
   }
+  const errorValue = movementMapping[colNum][0].reduce((x, y) => (x ? x[y] : null), movementData[idx])
+  return cellError(colNum, rowNumbers[ref].movementRow, msg, worksheetName, errorValue)
+}
 
+const wasteItemErr = (movementData, rowNumbers, errKeyPath, error, { worksheetName, joinKey }, itemMapping) => {
+  const movementIdx = errKeyPath[0]
+  const itemIdx = errKeyPath[2]
+  const ref = getIn(movementData[movementIdx], joinKey)
+  const msg = cleanErrorMessage(error)
+  // prettier-ignore
+  const colNum = keyPathToColNum(errKeyPath.slice(3), itemMapping) // nosonar
+  if (colNum < 0) {
+    return {}
+  }
+  const wis = movementData[movementIdx]?.wasteItems
+  const errorValue = itemMapping[colNum][0].reduce((x, y) => (x ? x[y] : null), wis ? wis[itemIdx] : null)
+  return cellError(colNum, rowNumbers[ref].itemRows[itemIdx], msg, worksheetName, errorValue)
+}
+
+const errorToCoords = (() => {
   return (movementData, rowNumbers, { defaultErrorWorksheet, worksheets, errorTargets }, error) => {
     const errKeyPath = error.key.split('.')
-    if (errKeyPath[0].match(/^[0-9]+$/)) {
+    if (errKeyPath?.[0]?.match(/^\d+$/)) {
       const joinErrorTarget = errorTargets.reduce((err, errTarget) => {
         if (err?.coords) {
           return err
         }
-        if (errKeyPath[1] === errTarget.target[0] && errKeyPath[2].match(/^[0-9]+$/)) {
-          return wasteItemErr(movementData, rowNumbers, errKeyPath, error, errTarget, worksheets[errTarget.worksheetName].mapping)
-        }
-        if (Array.isArray(errTarget.target) && errTarget.target.length === 0) {
-          return wasteMovementErr(movementData, rowNumbers, errKeyPath, error, errTarget, worksheets[errTarget.worksheetName].mapping)
+        if (Array.isArray(errTarget.target)) {
+          if (errKeyPath[1] === errTarget.target[0] && errKeyPath?.[2]?.match(/^\d+$/)) {
+            return wasteItemErr(movementData, rowNumbers, errKeyPath, error, errTarget, worksheets[errTarget.worksheetName].mapping)
+          }
+          if (errTarget.target.length === 0) {
+            return wasteMovementErr(movementData, rowNumbers, errKeyPath, error, errTarget, worksheets[errTarget.worksheetName].mapping)
+          }
         }
         return err
       }, {})
@@ -192,7 +205,12 @@ const errorToCoords = (() => {
         return joinErrorTarget
       }
     }
-    return cellError(worksheets[defaultErrorWorksheet].defaultErrorCol, worksheets[defaultErrorWorksheet].firstRowOfData, error.message, defaultErrorWorksheet)
+    return cellError(
+      worksheets[defaultErrorWorksheet].defaultErrorCol,
+      worksheets[defaultErrorWorksheet].firstRowOfData,
+      cleanErrorMessage(error),
+      defaultErrorWorksheet
+    )
   }
 })()
 
