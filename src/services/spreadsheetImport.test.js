@@ -593,10 +593,11 @@ describe('transformBulkApiErrors', () => {
       }
     }
   ])('should add default error message when col not matched', ({ apiErrors, expected }) => {
-    const movementData = [{ yourUniqueReference: 'REF1', carrier: { organisationName: 'Carrier Ltd' } }]
+    const movementData1 = [{ yourUniqueReference: 'REF1', carrier: { organisationName: 'Carrier Ltd' } }]
+    const movementData2 = [{ yourUniqueReference: 'REF1' }]
     const rowNumbers = { REF1: { movementRow: 9 } }
-    const result = transformBulkApiErrors(movementData, rowNumbers, worksheetMetadata, apiErrors)
-    expect(result).toEqual(expected)
+    expect(transformBulkApiErrors(movementData1, rowNumbers, worksheetMetadata, apiErrors)).toEqual(expected)
+    expect(transformBulkApiErrors(movementData2, rowNumbers, worksheetMetadata, apiErrors)).toEqual(expected)
   })
 
   test('should partially match error key', () => {
