@@ -111,6 +111,45 @@ const sendInitialFailedEmail = async ({
   }
 }
 
+const anotherRandomNameForAPrivateFunc = async ({
+  logger,
+  organisationId,
+  referenceNumber,
+  apiResponse,
+  rowNumbers,
+  workbookBytes,
+  movements,
+  uploadType,
+  s3Client,
+  s3Bucket,
+  s3Key,
+  decryptedEmail,
+  decryptedName,
+  filename,
+  logTime
+}) => {
+  logger.info(`GRAFANA_REPORT >> spreadsheet_submission_processed >> failed `, {
+    organisationId,
+    referenceNumber,
+    spreadsheetRejectionReasion: 'BulkImportApiReturnedValidationErrors'
+  })
+  logger.warn(`ReferenceNumber: ${referenceNumber} -- Errors from import API ${JSON.stringify(apiResponse.errors)}`)
+  logger.debug(`ReferenceNumber: ${referenceNumber} -- rowNumbers: ${JSON.stringify(rowNumbers)}`)
+  const workbook = await readExcelBuffer(Buffer.from(workbookBytes), logger)
+  workbookBytes = null
+  const worksheetMetadata = getWorksheetMeta(workbook, uploadType, organisationId, logger)
+  const errs = transformBulkApiErrors(movements, rowNumbers, worksheetMetadata, apiResponse.errors)
+
+  logger.debug(`ReferenceNumber: ${referenceNumber} -- Cells to update with errors: ${JSON.stringify(errs)}`)
+  updateErrors(workbook, errs, worksheetMetadata, logger)
+
+  workbookBytes = await workbookToByteArray(workbook, logger)
+  await storeProcessedFile(s3Client, s3Bucket, s3Key, workbookBytes)
+
+  await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file: workbookBytes, referenceNumber, filename })
+  logTime('apiResponse.errors')
+}
+
 const processSpreadsheet = async (
   s3Client,
   { s3Bucket, s3Key, organisationId, referenceNumber, uploadType, filename },
@@ -175,26 +214,23 @@ const processSpreadsheet = async (
   }
 
   if (apiResponse.errors) {
-    logger.info(`GRAFANA_REPORT >> spreadsheet_submission_processed >> failed `, {
+    await anotherRandomNameForAPrivateFunc({
+      logger,
       organisationId,
       referenceNumber,
-      spreadsheetRejectionReasion: 'BulkImportApiReturnedValidationErrors'
+      apiResponse,
+      rowNumbers,
+      workbookBytes,
+      movements,
+      uploadType,
+      s3Client,
+      s3Bucket,
+      s3Key,
+      decryptedEmail,
+      decryptedName,
+      filename,
+      logTime
     })
-    logger.warn(`ReferenceNumber: ${referenceNumber} -- Errors from import API ${JSON.stringify(apiResponse.errors)}`)
-    logger.debug(`ReferenceNumber: ${referenceNumber} -- rowNumbers: ${JSON.stringify(rowNumbers)}`)
-    const workbook = await readExcelBuffer(Buffer.from(workbookBytes), logger)
-    workbookBytes = null
-    const worksheetMetadata = getWorksheetMeta(workbook, uploadType, organisationId, logger)
-    const errs = transformBulkApiErrors(movements, rowNumbers, worksheetMetadata, apiResponse.errors)
-
-    logger.debug(`ReferenceNumber: ${referenceNumber} -- Cells to update with errors: ${JSON.stringify(errs)}`)
-    updateErrors(workbook, errs, worksheetMetadata, logger)
-
-    workbookBytes = await workbookToByteArray(workbook, logger)
-    await storeProcessedFile(s3Client, s3Bucket, s3Key, workbookBytes)
-
-    await sendEmail.sendValidationFailed({ email: decryptedEmail, name: decryptedName, file: workbookBytes, referenceNumber, filename })
-    logTime('apiResponse.errors')
     return
   }
 
