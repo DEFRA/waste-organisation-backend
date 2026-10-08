@@ -17,15 +17,16 @@
     "lint": "eslint --cache --cache-strategy content \"**/*.{cjs,js}\"",
     "lint:fix": "npm run lint -- --fix",
     "postinstall": "npm run setup:husky",
-    "server:debug": "nodemon --inspect-brk=0.0.0.0 --ext js,json --legacy-watch ./src",
-    "server:watch": "nodemon --inspect=0.0.0.0 --ext js,json --legacy-watch --no-warnings ./src",
+    "server:debug": "node --watch --watch-path=./src --inspect-brk=0.0.0.0 ./src",
+    "server:watch": "node --watch --watch-path=./src --inspect=0.0.0.0 --no-warnings ./src",
     "setup:husky": "node -e \"try { (await import('husky')).default() } catch (e) { if (e.code !== 'ERR_MODULE_NOT_FOUND') throw e }\" --input-type module",
     "start": "NODE_ENV=production node --use-strict .",
     "start:docker": "docker compose up --build",
     "stop:docker": "docker compose down",
     "test": "TZ=UTC vitest run --coverage",
     "test-long-timeout": "TZ=UTC vitest run --coverage --hook-timeout=1000000 --testTimeout=10000000",
-    "test:watch": "TZ=UTC vitest"
+    "test:watch": "TZ=UTC vitest",
+    "test:quiet": "TZ=UTC vitest run --coverage --silent=passed-only"
   },
   "author": "Defra DDTS",
   "license": "OGL-UK-3.0",
@@ -67,7 +68,6 @@
     "eslint": "9.39.5",
     "husky": "9.1.7",
     "neostandard": "0.13.0",
-    "nodemon": "3.1.14",
     "npm-run-all": "4.1.5",
     "prettier": "3.9.6",
     "vitest": "5.0.0",
@@ -75,14 +75,11 @@
     "vitest-mongodb": "1.0.3"
   },
   "overrides": {
-    "notifications-node-client": {
-      "axios": "1.16.0"
-    },
     "exceljs": {
       "archiver": "8.0.0",
       "uuid": "14.0.0",
       "unzipper": "0.12.3",
-      "brace-expansion": "5.0.9"
+      "brace-expansion": "5.0.12"
     },
     "fast-xml-parser": "5.7.3",
     "hapi-swagger": {
@@ -91,12 +88,10 @@
     "hapi-pulse": {
       "joi": "18.2.9"
     },
-    "nodemon": {
-      "minimatch": {
-        "brace-expansion": "5.0.9"
-      }
-    },
-    "js-yaml": "4.3.2"
+    "js-yaml": "4.3.2",
+    "notifications-node-client": {
+      "axios": "1.16.0"
+    }
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "4.63.1"

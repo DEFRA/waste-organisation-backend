@@ -90,7 +90,7 @@ export const worksheetToArray = ({ worksheet, keyCols, updateFn, minRow, maxCol 
 }
 
 export const readExcelBuffer = async (buffer, logger) => {
-  logger.info('Starting parsing spreadsheet')
+  logger.info('Loading spreadsheet')
   try {
     const workbook = new Excel.Workbook()
     return await workbook.xlsx.load(buffer, {
