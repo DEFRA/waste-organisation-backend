@@ -72,9 +72,7 @@ export const apiCodeRoutes = [
     options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: apiCodeSchema, sample: 0 } },
     handler: async (request, h) => {
       try {
-        const organisation = await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId: request.params.organisationId }, (dbOrg) =>
-          createApiCode(dbOrg, request.payload?.apiCode?.name)
-        )
+        const organisation = await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId: request.params.organisationId }, (dbOrg) => createApiCode(dbOrg, request.payload?.apiCode?.name))
         const apiCode = organisation.apiCodes[organisation.apiCodes.length - 1]
         request.logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> created`, { organisationId: organisation.organisationId })
         return h.response(apiCode)
@@ -90,14 +88,10 @@ export const apiCodeRoutes = [
     handler: async (request, h) => {
       try {
         let oldApiCode = null
-        const organisation = await updateWithOptimisticLock(
-          request.db.collection(orgCollection),
-          { organisationId: request.params.organisationId },
-          (dbOrg) => {
-            oldApiCode = { ...dbOrg.apiCodes.find(({ code }) => code === request.params.apiCode) }
-            return updateApiCode(dbOrg, request.params.apiCode, request.payload?.apiCode?.name, request.payload?.apiCode?.isDisabled)
-          }
-        )
+        const organisation = await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId: request.params.organisationId }, (dbOrg) => {
+          oldApiCode = { ...dbOrg.apiCodes.find(({ code }) => code === request.params.apiCode) }
+          return updateApiCode(dbOrg, request.params.apiCode, request.payload?.apiCode?.name, request.payload?.apiCode?.isDisabled)
+        })
         const apiCode = organisation.apiCodes.find(({ code }) => code === request.params.apiCode)
         if (oldApiCode.isDisabled !== apiCode.isDisabled) {
           request.logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> ${apiCode.isDisabled ? 'revoked' : 're-enabled'}`, {

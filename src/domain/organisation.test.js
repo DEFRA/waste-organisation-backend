@@ -1,12 +1,4 @@
-import {
-  mergeAndValidate,
-  disableOrg,
-  enableOrg,
-  isEnabled,
-  updateDisableAfter,
-  calculateNextPaymentPeriod,
-  updateOrganisationPaymentStatus
-} from './organisation.js'
+import { mergeAndValidate, disableOrg, enableOrg, isEnabled, updateDisableAfter, calculateNextPaymentPeriod, updateOrganisationPaymentStatus } from './organisation.js'
 import { config } from '../config.js'
 import { faker } from '@faker-js/faker'
 
@@ -173,15 +165,11 @@ describe('calculate payment period', () => {
   })
 
   test('paid for last year, payment window open', () => {
-    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october26), may27).paymentPeriods).toEqual([
-      { from: october26, to: october27, priceInPence: 100 }
-    ])
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october26), may27).paymentPeriods).toEqual([{ from: october26, to: october27, priceInPence: 100 }])
   })
 
   test('paid for current year, payment window open', () => {
-    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october26), may26).paymentPeriods).toEqual([
-      { from: october26, to: october27, priceInPence: 100 }
-    ])
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october26), may26).paymentPeriods).toEqual([{ from: october26, to: october27, priceInPence: 100 }])
   })
 
   test('paid for next year, payment window open', () => {
@@ -194,21 +182,15 @@ describe('calculate payment period', () => {
   })
 
   test('paid for last year, payment window closed', () => {
-    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october26), november26).paymentPeriods).toEqual([
-      { from: october26, to: october27, priceInPence: 100 }
-    ])
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, october26), november26).paymentPeriods).toEqual([{ from: october26, to: october27, priceInPence: 100 }])
   })
 
   test('paid for some time way in the past, payment window closed', () => {
-    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, new Date('1991-10-01T00:00:00.000Z')), november26).paymentPeriods).toEqual([
-      { from: october26, to: october27, priceInPence: 100 }
-    ])
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, new Date('1991-10-01T00:00:00.000Z')), november26).paymentPeriods).toEqual([{ from: october26, to: october27, priceInPence: 100 }])
   })
 
   test('paid for some time way in the past, payment window open', () => {
-    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, new Date('1991-10-01T00:00:00.000Z')), may26).paymentPeriods).toEqual([
-      { from: october25, to: october26, priceInPence: 100 }
-    ])
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, new Date('1991-10-01T00:00:00.000Z')), may26).paymentPeriods).toEqual([{ from: october25, to: october26, priceInPence: 100 }])
   })
 
   test('config validator throws on invalid data', () => {
@@ -219,9 +201,7 @@ describe('calculate payment period', () => {
     config.set('govPay.serviceChargePaymentWindowStart', '1-11') // first of Nov
     config.set('govPay.serviceChargeFreePeriodEnd', new Date('1991-01-01T00:00:00.000Z'))
     const now = new Date('1990-11-11T00:00:00.000Z')
-    expect(calculateNextPaymentPeriod(testOrganisation, now).paymentPeriods).toEqual([
-      { from: new Date('1991-01-01T00:00:00.000Z'), to: new Date('1992-01-01T00:00:00.000Z'), priceInPence: 100 }
-    ])
+    expect(calculateNextPaymentPeriod(testOrganisation, now).paymentPeriods).toEqual([{ from: new Date('1991-01-01T00:00:00.000Z'), to: new Date('1992-01-01T00:00:00.000Z'), priceInPence: 100 }])
   })
 
   test('overlapping years and has paid for last year', () => {
@@ -229,30 +209,22 @@ describe('calculate payment period', () => {
     config.set('govPay.serviceChargeFreePeriodEnd', new Date('1989-01-01T00:00:00.000Z'))
     const now = new Date('1990-11-11T00:00:00.000Z')
     const paidUpTo = new Date('1990-01-01T00:00:00.000Z')
-    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, paidUpTo), now).paymentPeriods).toEqual([
-      { from: new Date('1990-01-01T00:00:00.000Z'), to: new Date('1991-01-01T00:00:00.000Z'), priceInPence: 100 }
-    ])
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, paidUpTo), now).paymentPeriods).toEqual([{ from: new Date('1990-01-01T00:00:00.000Z'), to: new Date('1991-01-01T00:00:00.000Z'), priceInPence: 100 }])
   })
 
   test(`You can always pay during the free period`, () => {
     config.set('govPay.serviceChargePaymentWindowStart', '03-01')
     config.set('govPay.serviceChargeFreePeriodEnd', new Date('2027-01-30T00:00:00.000Z'))
     const now = new Date('2026-08-20T11:18:48.417Z')
-    expect(calculateNextPaymentPeriod(testOrganisation, now).paymentPeriods).toEqual([
-      { priceInPence: 100, from: new Date('2027-01-30T00:00:00.000Z'), to: new Date('2028-01-30T00:00:00.000Z') }
-    ])
+    expect(calculateNextPaymentPeriod(testOrganisation, now).paymentPeriods).toEqual([{ priceInPence: 100, from: new Date('2027-01-30T00:00:00.000Z'), to: new Date('2028-01-30T00:00:00.000Z') }])
   })
 
   test('new signups can pay for two years on the same day if the payment period is open', () => {
     config.set('govPay.serviceChargePaymentWindowStart', '01-08')
     config.set('govPay.serviceChargeFreePeriodEnd', new Date('2012-01-30T00:00:00.000Z'))
     const now = new Date('2026-09-20T11:18:48.417Z')
-    expect(calculateNextPaymentPeriod(testOrganisation, now).paymentPeriods).toEqual([
-      { priceInPence: 100, from: new Date('2026-01-30T00:00:00.000Z'), to: new Date('2027-01-30T00:00:00.000Z') }
-    ])
-    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, new Date('2027-01-30T00:00:00.000Z')), now).paymentPeriods).toEqual([
-      { priceInPence: 100, from: new Date('2027-01-30T00:00:00.000Z'), to: new Date('2028-01-30T00:00:00.000Z') }
-    ])
+    expect(calculateNextPaymentPeriod(testOrganisation, now).paymentPeriods).toEqual([{ priceInPence: 100, from: new Date('2026-01-30T00:00:00.000Z'), to: new Date('2027-01-30T00:00:00.000Z') }])
+    expect(calculateNextPaymentPeriod(updateDisableAfter(testOrganisation, new Date('2027-01-30T00:00:00.000Z')), now).paymentPeriods).toEqual([{ priceInPence: 100, from: new Date('2027-01-30T00:00:00.000Z'), to: new Date('2028-01-30T00:00:00.000Z') }])
   })
 
   test('moving the end of the free period does not affect people that have already paid', () => {
@@ -265,9 +237,7 @@ describe('calculate payment period', () => {
     config.set('govPay.serviceChargePaymentWindowStart', '1-12') // first of Dec
     config.set('govPay.serviceChargeFreePeriodEnd', new Date('1992-01-31T00:00:00.000Z'))
     const now = new Date('1992-09-25T00:00:00.000Z')
-    expect(calculateNextPaymentPeriod(org, now).paymentPeriods).toEqual([
-      { from: new Date('1992-10-01T00:00:00.000Z'), to: new Date('1993-10-01T00:00:00.000Z'), priceInPence: 100 }
-    ])
+    expect(calculateNextPaymentPeriod(org, now).paymentPeriods).toEqual([{ from: new Date('1992-10-01T00:00:00.000Z'), to: new Date('1993-10-01T00:00:00.000Z'), priceInPence: 100 }])
   })
 })
 
@@ -322,11 +292,7 @@ describe('updateOrganisationPaymentStatus', () => {
   it('should set disabledAfter to last successfull payment', () => {
     const initialOrganisation = createOrganisation()
     const date = new Date()
-    const payments = [
-      createPayment('payment_succeeded', addYears(date, 1)),
-      createPayment('payment_succeeded', addYears(date, 1)),
-      createPayment('payment_succeeded', addYears(date, 1))
-    ]
+    const payments = [createPayment('payment_succeeded', addYears(date, 1)), createPayment('payment_succeeded', addYears(date, 1)), createPayment('payment_succeeded', addYears(date, 1))]
     const updatedOrganisation = createPaymentEvents(initialOrganisation, payments)
     expect(updatedOrganisation.disableAfter).toEqual(payments[2].servicePeriodEnd)
     expect(isEnabled(updatedOrganisation)).toBe(true)
@@ -335,11 +301,7 @@ describe('updateOrganisationPaymentStatus', () => {
   it('should set disabledAfter to last successfull payment when last payments failed', () => {
     const initialOrganisation = createOrganisation()
     const date = new Date()
-    const payments = [
-      createPayment('payment_succeeded', addYears(date, 1)),
-      createPayment('payment_succeeded', addYears(date, 1)),
-      createPayment('payment_failed', addYears(date, 1))
-    ]
+    const payments = [createPayment('payment_succeeded', addYears(date, 1)), createPayment('payment_succeeded', addYears(date, 1)), createPayment('payment_failed', addYears(date, 1))]
     const updatedOrganisation = createPaymentEvents(initialOrganisation, payments)
     expect(updatedOrganisation.disableAfter).toEqual(payments[1].servicePeriodEnd)
     expect(isEnabled(updatedOrganisation)).toBe(true)
@@ -348,25 +310,18 @@ describe('updateOrganisationPaymentStatus', () => {
   it('should set disabledAfter to last successfull payment when last payments pending', () => {
     const initialOrganisation = createOrganisation()
     const date = new Date()
-    const payments = [
-      createPayment('payment_succeeded', addYears(date, 1)),
-      createPayment('payment_succeeded', addYears(date, 2)),
-      createPayment('payment_in_progress', addYears(date, 3))
-    ]
+    const payments = [createPayment('payment_succeeded', addYears(date, 1)), createPayment('payment_succeeded', addYears(date, 2)), createPayment('payment_in_progress', addYears(date, 3))]
     const updatedOrganisation = createPaymentEvents(initialOrganisation, payments)
     expect(updatedOrganisation.disableAfter).toEqual(payments[1].servicePeriodEnd)
     expect(isEnabled(updatedOrganisation)).toBe(true)
   })
 
-  it.each(['payment_in_progress', 'payment_succeeded', 'payment_failed'])(
-    'should not update the disabled status of a disabled organisation',
-    (paymentStatus) => {
-      const payment = createPayment(paymentStatus)
-      const org = createOrganisation(true)
-      const organisation = updateOrganisationPaymentStatus(org, payment)
-      expect(isEnabled(organisation)).toBe(false)
-    }
-  )
+  it.each(['payment_in_progress', 'payment_succeeded', 'payment_failed'])('should not update the disabled status of a disabled organisation', (paymentStatus) => {
+    const payment = createPayment(paymentStatus)
+    const org = createOrganisation(true)
+    const organisation = updateOrganisationPaymentStatus(org, payment)
+    expect(isEnabled(organisation)).toBe(false)
+  })
 })
 
 const createOrganisation = (isDisabled = false) => ({

@@ -139,10 +139,7 @@ export const updateErrors = (() => {
           updateCell(worksheet, coords, message, worksheetMetadata?.errors[worksheetName] ?? 1)
         }
       } else {
-        l.error(
-          `Cannot update errors - worksheet not fonud "${worksheetName}" not in ${workbook.worksheets.map((ws) => ws.name).join(', ')}` +
-            `parsed worksheets: ${JSON.stringify(Object.keys(cellsAndMessages))}`
-        )
+        l.error(`Cannot update errors - worksheet not fonud "${worksheetName}" not in ${workbook.worksheets.map((ws) => ws.name).join(', ')}` + `parsed worksheets: ${JSON.stringify(Object.keys(cellsAndMessages))}`)
       }
     }
     return workbook
@@ -166,10 +163,7 @@ export const updateCellContent = (() => {
           updateCell(worksheet, coords, value)
         }
       } else {
-        l.error(
-          `Cannot update cell content - worksheet not fonud "${worksheetName}" not in ` +
-            `${workbook.worksheets.map((ws) => ws.name).join(', ')} parsed worksheets: ${JSON.stringify(Object.keys(cellsAndValues))}`
-        )
+        l.error(`Cannot update cell content - worksheet not fonud "${worksheetName}" not in ` + `${workbook.worksheets.map((ws) => ws.name).join(', ')} parsed worksheets: ${JSON.stringify(Object.keys(cellsAndValues))}`)
       }
     }
     return workbook

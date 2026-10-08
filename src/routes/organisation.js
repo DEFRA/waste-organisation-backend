@@ -119,38 +119,34 @@ export const organisations = [
       try {
         let transactionType = 'updated'
         let oldApiCodes = {}
-        const organisation = await updateWithOptimisticLock(
-          request.db.collection(orgCollection),
-          { organisationId: request.params.organisationId },
-          (dbOrg) => {
-            let paramOrg = request?.payload?.organisation
-            if (dbOrg?.apiCodes != null) {
-              oldApiCodes = dbOrg.apiCodes.reduce((acc, c) => {
-                acc[c.code] = { ...c }
-                return acc
-              }, {})
-            }
+        const organisation = await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId: request.params.organisationId }, (dbOrg) => {
+          let paramOrg = request?.payload?.organisation
+          if (dbOrg?.apiCodes != null) {
+            oldApiCodes = dbOrg.apiCodes.reduce((acc, c) => {
+              acc[c.code] = { ...c }
+              return acc
+            }, {})
+          }
 
-            if (!dbOrg._id) {
-              transactionType = 'created'
-              paramOrg = { ...request?.payload?.initialValues, ...paramOrg }
-            }
+          if (!dbOrg._id) {
+            transactionType = 'created'
+            paramOrg = { ...request?.payload?.initialValues, ...paramOrg }
+          }
 
-            const organisationId = request.params.organisationId
-            const userId = request.params.userId
-            const org = mergeAndValidate(
-              dbOrg,
-              {
-                ...paramOrg,
-                organisationId,
-                userId
-              },
+          const organisationId = request.params.organisationId
+          const userId = request.params.userId
+          const org = mergeAndValidate(
+            dbOrg,
+            {
+              ...paramOrg,
               organisationId,
               userId
-            )
-            return ensureAtLeastOneApiCodeExists(org)
-          }
-        )
+            },
+            organisationId,
+            userId
+          )
+          return ensureAtLeastOneApiCodeExists(org)
+        })
         logPutMessages(organisation, transactionType, oldApiCodes, request.logger)
         delete organisation.apiCodes
         return h.response({ message: 'success', organisation })

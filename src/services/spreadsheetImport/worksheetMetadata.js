@@ -14,15 +14,7 @@ import {
   parseToString,
   requiredString
 } from './parsers.js'
-import {
-  compose,
-  coerceRegistrationNumberWhenReasonSupplied,
-  validateMovementHasWasteItems,
-  validateUniqueReference,
-  populateWholeItemDisposalCodes,
-  validateWasteTrackingIdExists,
-  validateWasteTrackingIdMissing
-} from './transforms.js'
+import { compose, coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems, validateUniqueReference, populateWholeItemDisposalCodes, validateWasteTrackingIdExists, validateWasteTrackingIdMissing } from './transforms.js'
 import { cellValueText } from './excel.js'
 import { updateIn } from './utils.js'
 
@@ -274,20 +266,14 @@ export const getWorksheetMeta = (() => {
     const templateKey = cellValueText(workbook.getWorksheet(workbook.worksheets[0].name).getRow(1).getCell(1).value)
     const metadata = knownTemplateVersions[templateKey]
     if (metadata == null) {
-      logger.error(
-        `Unknown template key - '${templateKey}' taken from worksheet named '${workbook.worksheets[0].name}'` +
-          ` with worksheets: ${workbook.worksheets.map((ws) => ws.name).join(', ')}`
-      )
+      logger.error(`Unknown template key - '${templateKey}' taken from worksheet named '${workbook.worksheets[0].name}'` + ` with worksheets: ${workbook.worksheets.map((ws) => ws.name).join(', ')}`)
       return null
     }
     if (Object.keys(metadata.worksheets).some((w) => workbook.getWorksheet(w) == null)) {
       logger.error(`Excel Workbook lacks the correct worksheets: ${workbook.worksheets.map((ws) => ws.name).join(', ')}`)
       return null
     } else {
-      logger.info(
-        `Selecting template version ${metadata.version} from template key ${templateKey}` +
-          ` with worksheets: ${workbook.worksheets.map((ws) => ws.name).join(', ')}`
-      )
+      logger.info(`Selecting template version ${metadata.version} from template key ${templateKey}` + ` with worksheets: ${workbook.worksheets.map((ws) => ws.name).join(', ')}`)
     }
     const m = constructUpdateFns(constructErrorMatchers(constructJoins(metadata, { defraCustomerOrganisationId })))
     return { ...m, transform: metadata.transform(validateFn) }

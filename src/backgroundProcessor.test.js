@@ -811,9 +811,7 @@ describe('background processor', () => {
     })
     const { processPaymentJob, constructMongoClient } = await import('./backgroundProcessor.js')
     const db = await constructMongoClient()
-    await db
-      .collection(paymentCollection)
-      .insertOne({ paymentId: 'abc123', organisationId: 'org-id', status: 'payment_in_progress', idempotencyKey: randomUUID(), period: '2026/2027' })
+    await db.collection(paymentCollection).insertOne({ paymentId: 'abc123', organisationId: 'org-id', status: 'payment_in_progress', idempotencyKey: randomUUID(), period: '2026/2027' })
     const result = await processPaymentJob(db, {
       paymentId: 'abc123',
       organisationId: 'org-id',
@@ -852,9 +850,7 @@ describe('background processor', () => {
     })
     const { dispatchProcessJob, constructMongoClient } = await import('./backgroundProcessor.js')
     const db = await constructMongoClient()
-    await db
-      .collection(paymentCollection)
-      .insertOne({ paymentId, organisationId, status: 'payment_in_progress', idempotencyKey: randomUUID(), period: '2026/2027' })
+    await db.collection(paymentCollection).insertOne({ paymentId, organisationId, status: 'payment_in_progress', idempotencyKey: randomUUID(), period: '2026/2027' })
     await db.collection(orgCollection).insertOne({ organisationId, disableAfter: new Date() })
     const processPaymentJob = dispatchProcessJob(vi.fn(), db)
     const result = await processPaymentJob({ Body: JSON.stringify({ paymentId, organisationId, initiatedAt: threeDaysAgo }) })
@@ -896,9 +892,7 @@ describe('background processor', () => {
 
     const { dispatchProcessJob, constructMongoClient } = await import('./backgroundProcessor.js')
     const db = await constructMongoClient()
-    await db
-      .collection(paymentCollection)
-      .insertOne({ paymentId, organisationId, status: 'payment_succeeded', idempotencyKey: randomUUID(), period: '2026/2027' })
+    await db.collection(paymentCollection).insertOne({ paymentId, organisationId, status: 'payment_succeeded', idempotencyKey: randomUUID(), period: '2026/2027' })
     const processRefundJob = dispatchProcessJob(vi.fn(), db)
     const message = {
       refundQuery: 'initiate polling',

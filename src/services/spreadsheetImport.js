@@ -1,12 +1,4 @@
-import {
-  readExcelBuffer,
-  cellError,
-  collectCellErrors,
-  worksheetToArray,
-  updateErrors as xlUpdateErrors,
-  updateCellContent as xlUpdateCellContent,
-  workbookToByteArray as xlWorkbookToByteArray
-} from './spreadsheetImport/excel.js'
+import { readExcelBuffer, cellError, collectCellErrors, worksheetToArray, updateErrors as xlUpdateErrors, updateCellContent as xlUpdateCellContent, workbookToByteArray as xlWorkbookToByteArray } from './spreadsheetImport/excel.js'
 import { updateIn, getIn, deleteLeaf, distinct } from './spreadsheetImport/utils.js'
 import { getWorksheetMeta } from './spreadsheetImport/worksheetMetadata.js'
 
@@ -204,8 +196,7 @@ const errorToCoords = (() => {
   }
 })()
 
-export const transformBulkApiErrors = (movementData, rowNumbers, worksheetMetadata, errors) =>
-  Object.groupBy(distinct(errors.map((e) => errorToCoords(movementData, rowNumbers, worksheetMetadata, e))), ({ sheet }) => sheet)
+export const transformBulkApiErrors = (movementData, rowNumbers, worksheetMetadata, errors) => Object.groupBy(distinct(errors.map((e) => errorToCoords(movementData, rowNumbers, worksheetMetadata, e))), ({ sheet }) => sheet)
 
 export const wasteTrackingIdsToCoords = (movementData, rowNumbers, apiResultData, { copyFromResult }) =>
   copyFromResult.reduce((result, { source, target }) => {
