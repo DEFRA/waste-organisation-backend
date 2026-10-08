@@ -172,7 +172,7 @@ const wasteMovementErr = (movementData, rowNumbers, errKeyPath, error, { workshe
   if (colNum < 0) {
     return {}
   }
-  const errorValue = movementMapping[colNum][0].reduce((x, y) => x[y], movementData[idx])
+  const errorValue = movementMapping[colNum][0].reduce((x, y) => (x ? x[y] : null), movementData[idx])
   return cellError(colNum, rowNumbers[ref].movementRow, msg, worksheetName, errorValue)
 }
 
