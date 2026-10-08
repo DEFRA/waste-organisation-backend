@@ -32,7 +32,9 @@ jobs:
         run: |
           npm audit --audit-level=high --omit=dev
           npm audit --audit-level=critical
+          which prettier
           npm ci
+          which prettier
           npm run format:check
           npm run lint
           # docker compose up -d azure-service-bus
