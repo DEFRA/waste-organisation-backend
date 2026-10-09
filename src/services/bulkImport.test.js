@@ -308,11 +308,7 @@ describe('Error transforms bulk import data', () => {
     ]
   ])('should convert error messages from data import', { timeout: 100000 }, async (fileName, errs, result) => {
     const buffer = await fs.readFile(fileName)
-    const { workbook, hasErrors, movements, rowNumbers, errors, worksheetMetadata } = await parseExcelFile(
-      buffer,
-      '8194cecf-da10-4698-aaaf-f06d2e54ac44',
-      logger
-    )
+    const { workbook, hasErrors, movements, rowNumbers, errors, worksheetMetadata } = await parseExcelFile(buffer, '8194cecf-da10-4698-aaaf-f06d2e54ac44', logger)
     if (hasErrors) {
       expect({ fileName, errors, movements, rowNumbers, hasErrors }).toBe({})
     }

@@ -10,16 +10,7 @@ export const SANDBOX_MAX_TIME_MS = 300000 // enforced by timed signal on parent 
 const parseWorkerPath = fileURLToPath(new URL('./spreadsheetParseWorker.js', import.meta.url))
 
 // Parse the spreadsheet in a separate, resource-limited process.
-export const downloadAndParseSpreadsheetInSandbox = async ({
-  s3Bucket,
-  s3Key,
-  referenceNumber,
-  organisationId,
-  uploadType,
-  traceId,
-  logger,
-  maxTimeMs = SANDBOX_MAX_TIME_MS
-}) => {
+export const downloadAndParseSpreadsheetInSandbox = async ({ s3Bucket, s3Key, referenceNumber, organisationId, uploadType, traceId, logger, maxTimeMs = SANDBOX_MAX_TIME_MS }) => {
   logger.info(`Parsing spreadsheet in sandbox (limits: ${SANDBOX_MAX_HEAP_MB}MB heap, ${SANDBOX_MAX_FILE_BLOCKS / 2048}MB disk, ${maxTimeMs}ms max runtime)`)
   return await new Promise((resolve, reject) => {
     /* ulimit caps disk writes, --max-old-space-size caps the V8 heap. We use exec so node takes on the process' PID, and the potential SIGKILL to the shell does not leave an orphan; the file descriptors can be inherited, no problem. */

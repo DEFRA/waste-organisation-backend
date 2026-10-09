@@ -1,27 +1,8 @@
 import fs from 'node:fs/promises'
 import { parseExcelFile, transformBulkApiErrors, updateCellContent, wasteTrackingIdsToCoords, joinWasteItems } from './spreadsheetImport.js'
-import {
-  parseBoolean,
-  parseComponentCodes,
-  parseComponentNames,
-  parseContainerType,
-  parseDisposalCodes,
-  parseEstimate,
-  parseEWCCodes,
-  parseHazCodes,
-  parseRegStatements,
-  parseTitleCase,
-  parseToString,
-  requiredString
-} from './spreadsheetImport/parsers.js'
+import { parseBoolean, parseComponentCodes, parseComponentNames, parseContainerType, parseDisposalCodes, parseEstimate, parseEWCCodes, parseHazCodes, parseRegStatements, parseTitleCase, parseToString, requiredString } from './spreadsheetImport/parsers.js'
 import { appendMessageToCell, cellValueText } from './spreadsheetImport/excel.js'
-import {
-  coerceRegistrationNumberWhenReasonSupplied,
-  validateMovementHasWasteItems,
-  validateWasteTrackingIdExists,
-  validateWasteTrackingIdMissing,
-  populateWholeItemDisposalCodes
-} from './spreadsheetImport/transforms.js'
+import { coerceRegistrationNumberWhenReasonSupplied, validateMovementHasWasteItems, validateWasteTrackingIdExists, validateWasteTrackingIdMissing, populateWholeItemDisposalCodes } from './spreadsheetImport/transforms.js'
 import { expect } from 'vitest'
 import * as excelImportModule from './spreadsheetImport/excel.js'
 import { createLogger } from '../common/helpers/logging/logger.js'
@@ -327,9 +308,7 @@ describe('validateWasteTrackingIds', () => {
 
 describe('validateNoWasteTrackingIds', () => {
   test('returns errors when wasteTrackingId is present', () => {
-    expect(() => validateWasteTrackingIdMissing(2)({ yourUniqueReference: 'REF2', wasteTrackingId: 'WTID123' })).toThrow(
-      'Waste Tracking ID must not be present on a create upload'
-    )
+    expect(() => validateWasteTrackingIdMissing(2)({ yourUniqueReference: 'REF2', wasteTrackingId: 'WTID123' })).toThrow('Waste Tracking ID must not be present on a create upload')
   })
 
   test('returns empty array when no wasteTrackingIds are present', () => {
@@ -508,17 +487,14 @@ describe('transformBulkApiErrors', () => {
         {
           key: '0',
           errorType: 'BusinessRuleViolation',
-          message:
-            '"reasonForNoConsignmentCode" is required when wasteItems[*].ewcCodes contains a hazardous code and hazardousWasteConsignmentCode is not provided'
+          message: '"reasonForNoConsignmentCode" is required when wasteItems[*].ewcCodes contains a hazardous code and hazardousWasteConsignmentCode is not provided'
         }
       ],
       expected: {
         '7. Waste movement level': [
           {
             coords: [2, 9],
-            message:
-              'reason for no consignment code is required when wasteItems[*].ewcCodes ' +
-              'contains a hazardous code and hazardousWasteConsignmentCode is not provided',
+            message: 'reason for no consignment code is required when wasteItems[*].ewcCodes ' + 'contains a hazardous code and hazardousWasteConsignmentCode is not provided',
             sheet: '7. Waste movement level'
           }
         ]
@@ -644,8 +620,7 @@ describe('transformBulkApiErrors', () => {
 })
 
 describe('excel proccessor', () => {
-  const setupMockWorkbook = (buffer, movementData, itemData) =>
-    vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue(mockWorkbook(buffer, movementData, itemData))
+  const setupMockWorkbook = (buffer, movementData, itemData) => vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue(mockWorkbook(buffer, movementData, itemData))
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -906,46 +881,8 @@ describe('excel proccessor', () => {
         ]
       ],
       [
-        [
-          '',
-          '',
-          '200135',
-          'WEEE WASTE',
-          'Solid',
-          '1',
-          'IBC',
-          'Kilograms',
-          '1000',
-          'Yes',
-          'No',
-          '',
-          'PROVIDED_WITH_WASTE',
-          'Yes',
-          'HP14',
-          '',
-          'PROVIDED_WITH_WASTE',
-          'R13;R14'
-        ],
-        [
-          '',
-          '',
-          '191201',
-          'Paper',
-          'Solid',
-          '1',
-          'IBC',
-          'Kilograms',
-          '1000',
-          'Yes',
-          'No',
-          '',
-          'PROVIDED_WITH_WASTE',
-          'No',
-          'N/H',
-          '',
-          'PROVIDED_WITH_WASTE',
-          'D15'
-        ]
+        ['', '', '200135', 'WEEE WASTE', 'Solid', '1', 'IBC', 'Kilograms', '1000', 'Yes', 'No', '', 'PROVIDED_WITH_WASTE', 'Yes', 'HP14', '', 'PROVIDED_WITH_WASTE', 'R13;R14'],
+        ['', '', '191201', 'Paper', 'Solid', '1', 'IBC', 'Kilograms', '1000', 'Yes', 'No', '', 'PROVIDED_WITH_WASTE', 'No', 'N/H', '', 'PROVIDED_WITH_WASTE', 'D15']
       ]
     )
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)
@@ -1041,46 +978,8 @@ describe('excel proccessor', () => {
         ]
       ],
       [
-        [
-          '',
-          'test1',
-          '200135',
-          'WEEE WASTE',
-          'Solid',
-          '1',
-          'IBC',
-          'Kilograms',
-          '1000',
-          'Yes',
-          'No',
-          '',
-          'PROVIDED_WITH_WASTE',
-          'Yes',
-          'HP14',
-          '',
-          'PROVIDED_WITH_WASTE',
-          'R13'
-        ],
-        [
-          '',
-          'test1',
-          '191201',
-          'Paper',
-          'Solid',
-          '1',
-          'IBC',
-          'Kilograms',
-          '1000',
-          'Yes',
-          'No',
-          '',
-          'PROVIDED_WITH_WASTE',
-          'No',
-          'N/H',
-          '',
-          'PROVIDED_WITH_WASTE',
-          'D15qqq'
-        ]
+        ['', 'test1', '200135', 'WEEE WASTE', 'Solid', '1', 'IBC', 'Kilograms', '1000', 'Yes', 'No', '', 'PROVIDED_WITH_WASTE', 'Yes', 'HP14', '', 'PROVIDED_WITH_WASTE', 'R13'],
+        ['', 'test1', '191201', 'Paper', 'Solid', '1', 'IBC', 'Kilograms', '1000', 'Yes', 'No', '', 'PROVIDED_WITH_WASTE', 'No', 'N/H', '', 'PROVIDED_WITH_WASTE', 'D15qqq']
       ]
     )
     const mockUpdateErrors = vi.spyOn(excelImportModule, 'updateErrors').mockImplementation((workbook, _errors) => workbook)

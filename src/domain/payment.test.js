@@ -21,9 +21,7 @@ describe('payment domain', () => {
       idempotencyKey: faker.string.uuid()
     })
     const org = updateFromGovPayEvent({ ...o, status }, { state: { status: payment }, refund_summary: { status: refund } }, console)
-    expect(predicate(org), `Transition from ${status} should match ${predicate} but is ${org.status} when payment ${payment} and refund ${refund}`).toEqual(
-      true
-    )
+    expect(predicate(org), `Transition from ${status} should match ${predicate} but is ${org.status} when payment ${payment} and refund ${refund}`).toEqual(true)
   })
 
   test('payment status should not update when unknown status', () => {

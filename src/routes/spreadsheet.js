@@ -55,7 +55,11 @@ const putHandler = async (request, h) => {
     return h.response({ message: 'success', spreadsheet: data })
   } catch (e) {
     request.logger.error(`Error storing spreadsheet info ${e}`)
-    request.logger.info(`GRAFANA_REPORT >> spreadsheet_submission_processed >> rejected`, { organisationId, uploadId })
+    request.logger.info(`GRAFANA_REPORT >> spreadsheet_submission_processed >> rejected`, {
+      organisationId,
+      uploadId,
+      spreadsheetRejectionReasion: 'putHandlerError'
+    })
     return h.response({
       message: 'error',
       errors: e.isJoi ? e.details : [`${e}`]
@@ -106,10 +110,7 @@ const getUploadsByFilenameOptions = {
   auth: apiKeyAuthStrategy,
   tags: ['api', 'test'],
   description: 'Get uploads by filename',
-  notes: [
-    'Returns uploads matching the given filename for an organisation.',
-    'Includes hasError/errorMessage when the CDP uploader rejected a file due to errors or incompatible type.'
-  ],
+  notes: ['Returns uploads matching the given filename for an organisation.', 'Includes hasError/errorMessage when the CDP uploader rejected a file due to errors or incompatible type.'],
   validate: {
     query: joi.object({ filename: joi.string().required().description('The original filename of the uploaded spreadsheet') }),
     params: joi.object({ organisationId: joi.string().required().description('The organisation identifier') })

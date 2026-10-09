@@ -84,7 +84,8 @@
     },
     "fast-xml-parser": "5.7.3",
     "hapi-swagger": {
-      "joi": "18.2.9"
+      "joi": "18.2.9",
+      "handlebars": "4.7.10"
     },
     "hapi-pulse": {
       "joi": "18.2.9"

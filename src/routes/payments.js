@@ -1,16 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { paths } from '../config/paths.js'
 import { config } from '../config.js'
-import {
-  paymentSchema,
-  initiatePayment,
-  updateFromGovPayEvent,
-  constructFromGovPayment,
-  hasStatusChanged,
-  isFailed,
-  isRefunded,
-  isPaid
-} from '../domain/payment.js'
+import { paymentSchema, initiatePayment, updateFromGovPayEvent, constructFromGovPayment, hasStatusChanged, isFailed, isRefunded, isPaid } from '../domain/payment.js'
 import { paymentCollection, findMatchingPayments, createStubPayment, deleteStubPayment } from '../repositories/payment.js'
 import { orgCollection } from '../repositories/organisation.js'
 import { updateOrganisationPaymentStatus, updateDisableAfter } from '../domain/organisation.js'
@@ -111,9 +102,7 @@ export const payments = [
     path: paths.payment,
     options: { auth: apiKeyAuthStrategy, tags: ['api'], response: { schema: swaggerResponse({ payment: addVersionField(paymentSchema) }), sample: 0 } },
     handler: async (request, h) => {
-      const payment = await request.db
-        .collection(paymentCollection)
-        .findOne({ paymentId: request.params.paymentId, organisationId: request.params.organisationId })
+      const payment = await request.db.collection(paymentCollection).findOne({ paymentId: request.params.paymentId, organisationId: request.params.organisationId })
       delete payment._id
       return h.response({ message: 'success', payment })
     }
@@ -136,14 +125,7 @@ export const payments = [
       const { paymentId, organisationId } = request.params
       const govPayment = await getPaymentStatus(paymentId, request.logger)
       if (govPayment.status === 'success') {
-        const { payment, createdOrganisation } = await updatePaymentStatus(
-          paymentId,
-          organisationId,
-          govPayment.payload,
-          request?.payload?.restoreValues,
-          request.db,
-          request.logger
-        )
+        const { payment, createdOrganisation } = await updatePaymentStatus(paymentId, organisationId, govPayment.payload, request?.payload?.restoreValues, request.db, request.logger)
         return h.response({ message: 'success', payment, ...(createdOrganisation ? { createdOrganisation } : {}) })
       } else {
         return h.response({ message: 'error', error: govPayment?.error?.toString() })
@@ -174,8 +156,7 @@ export const payments = [
           async (idempotencyKey) => await createStubPayment(request.db, organisationId, period, idempotencyKey),
           async () => await findMatchingPayments(request.db, organisationId, period),
           async (idempotencyKey) => await deleteStubPayment(request.db, organisationId, idempotencyKey),
-          async (idempotencyKey) =>
-            await createGovPayPayment({ reference, amount, description, returnUrl, metadata, idempotencyKey, language: govPayLanguage }, request.logger),
+          async (idempotencyKey) => await createGovPayPayment({ reference, amount, description, returnUrl, metadata, idempotencyKey, language: govPayLanguage }, request.logger),
           async (idempotencyKey, paymentId, govPayLinks) => {
             const payment = await updateWithOptimisticLock(request.db.collection(paymentCollection), { idempotencyKey, organisationId }, (dbPayment) => {
               return initiatePayment({ ...dbPayment, paymentId, amount, description, returnUrl, metadata, reference, govPayLinks })
