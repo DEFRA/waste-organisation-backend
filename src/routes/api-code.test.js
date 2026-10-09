@@ -196,6 +196,31 @@ describe('api codes', () => {
     expect(statusCode).toBe(400)
   })
 
+  test.each([true, false])('should return the org name and isLocalAuthority (%s) when resolving org from api code', async (isLocalAuthority) => {
+    const apiCode = faker.string.uuid()
+    await updateOrganisation(server, USER_ID, `local-authority-${isLocalAuthority}`, {
+      name: 'Local Authority Test Org',
+      isLocalAuthority,
+      disableAfter: faker.date.future(),
+      apiCodes: [{ code: apiCode, name: 'Test', isDisabled: false }]
+    })
+
+    const { result, statusCode } = await server.inject({
+      method: 'GET',
+      url: pathTo(paths.lookupOrgFromApiCode, { apiCode }),
+      headers: {
+        'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
+      }
+    })
+
+    expect(statusCode).toBe(200)
+    expect(result).toMatchObject({
+      defraCustomerOrganisationId: `local-authority-${isLocalAuthority}`,
+      name: 'Local Authority Test Org',
+      isLocalAuthority
+    })
+  })
+
   test('should resolve org from api code - supporting basic auth', async () => {
     const testDateFuture = faker.date.future()
     await updateOrganisation(server, USER_ID, ORGANISATION_ID, {
@@ -222,7 +247,7 @@ describe('api codes', () => {
         'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
       }
     })
-    expect(result).toEqual({ defraCustomerOrganisationId: '456', metaData: { disableAfter: testDateFuture } })
+    expect(result).toEqual({ defraCustomerOrganisationId: '456', name: 'Bob', metaData: { disableAfter: testDateFuture } })
     expect(statusCode).toBe(200)
   })
 
@@ -255,7 +280,7 @@ describe('api codes', () => {
         'x-auth-token': WASTE_CLIENT_AUTH_TEST_TOKEN
       }
     })
-    expect(result).toEqual({ defraCustomerOrganisationId: '456', metaData: { disableAfter: testDateFuture } })
+    expect(result).toEqual({ defraCustomerOrganisationId: '456', name: 'Bob', metaData: { disableAfter: testDateFuture } })
     expect(statusCode).toBe(200)
   })
 
