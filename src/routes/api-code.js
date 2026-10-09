@@ -43,7 +43,12 @@ export const apiCodeRoutes = [
       }
 
       if (isEnabled(org) && org?.apiCodes.find(({ code }) => code === apiCode).isDisabled === false) {
-        return h.response({ defraCustomerOrganisationId: org.organisationId, metaData: { disableAfter: org.disableAfter || freePeriodEnd() } })
+        return h.response({
+          defraCustomerOrganisationId: org.organisationId,
+          name: org.name,
+          isLocalAuthority: org.isLocalAuthority,
+          metaData: { disableAfter: org.disableAfter || freePeriodEnd() }
+        })
       } else {
         throw Boom.notFound()
       }
