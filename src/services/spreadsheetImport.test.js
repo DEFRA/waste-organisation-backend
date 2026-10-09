@@ -487,17 +487,14 @@ describe('transformBulkApiErrors', () => {
         {
           key: '0',
           errorType: 'BusinessRuleViolation',
-          message:
-            '"reasonForNoConsignmentCode" is required when wasteItems[*].ewcCodes contains a hazardous code and hazardousWasteConsignmentCode is not provided'
+          message: '"reasonForNoConsignmentCode" is required when wasteItems[*].ewcCodes contains a hazardous code and hazardousWasteConsignmentCode is not provided'
         }
       ],
       expected: {
         '7. Waste movement level': [
           {
             coords: [2, 9],
-            message:
-              'reason for no consignment code is required when wasteItems[*].ewcCodes ' +
-              'contains a hazardous code and hazardousWasteConsignmentCode is not provided',
+            message: 'reason for no consignment code is required when wasteItems[*].ewcCodes ' + 'contains a hazardous code and hazardousWasteConsignmentCode is not provided',
             sheet: '7. Waste movement level'
           }
         ]

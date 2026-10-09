@@ -205,12 +205,7 @@ const errorToCoords = (() => {
         return joinErrorTarget
       }
     }
-    return cellError(
-      worksheets[defaultErrorWorksheet].defaultErrorCol,
-      worksheets[defaultErrorWorksheet].firstRowOfData,
-      cleanErrorMessage(error),
-      defaultErrorWorksheet
-    )
+    return cellError(worksheets[defaultErrorWorksheet].defaultErrorCol, worksheets[defaultErrorWorksheet].firstRowOfData, cleanErrorMessage(error), defaultErrorWorksheet)
   }
 })()
 

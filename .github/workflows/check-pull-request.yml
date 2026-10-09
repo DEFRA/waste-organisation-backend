@@ -31,9 +31,7 @@ jobs:
           GOV_NOTIFY_KEY: ${{ secrets.GOV_NOTIFY_KEY }}
         run: |
           npm audit --audit-level=high --omit=dev
-          which prettier || true
           npm ci
-          which prettier || true
           npm run format:check
           npm run lint
           # docker compose up -d azure-service-bus
