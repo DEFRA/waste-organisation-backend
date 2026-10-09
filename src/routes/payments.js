@@ -34,7 +34,7 @@ const updatePaymentStatus = async (paymentId, organisationId, govPayment, restor
     }
   })
   if (shouldUpdateOrg) {
-    logger.info(`GRAFANA_REPORT >> service_charge_payment_outcome >> ${payment.status}`, {
+    logger.info(`GRAFANA_REPORT >> service_charge_payment_outcome >> ${status.payment}`, {
       organisationId: payment.organisationId,
       paymentId: payment.paymentId
     })
