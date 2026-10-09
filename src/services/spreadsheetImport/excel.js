@@ -1,6 +1,7 @@
 import Excel from 'exceljs'
 import { config } from '../../config.js'
 import crypto from 'node:crypto'
+import { clampWildRanges } from './clampWildRanges.js'
 
 export const cellError = (colNumber, rowNumber, message, sheet, errorValue) => {
   const x = { coords: [colNumber, rowNumber], message }
@@ -93,7 +94,8 @@ export const readExcelBuffer = async (buffer, logger) => {
   logger.info('Loading spreadsheet')
   try {
     const workbook = new Excel.Workbook()
-    return await workbook.xlsx.load(buffer, {
+    const clamped = await clampWildRanges(buffer)
+    return await workbook.xlsx.load(clamped, {
       ignoreNodes: [
         'conditionalFormatting', // breaks generated excel file
         'tableParts', // errors on opening
