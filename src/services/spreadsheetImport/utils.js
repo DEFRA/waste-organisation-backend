@@ -1,20 +1,23 @@
+export const getIn = (obj, path) => path?.reduce((x, k) => x?.[k], obj)
+
 export const updateIn = (data, path, v, func) => {
-  if (path) {
-    path.reduce((acc, x, i) => {
-      // prettier-ignore
-      if (i === path.length - 1) {
-          const value = func ? func(acc[x], v) : v
-          acc[x] = value
-        } else if (acc[x] == null) { // nosonar
-          acc[x] = {}
-        }
-      return acc[x]
-    }, data)
+  if (!path?.length) {
+    return data
   }
+  const value = func ? func(getIn(data, path), v) : v
+  if (value === undefined) {
+    return data
+  }
+  path.reduce((acc, x, i) => {
+    if (i === path.length - 1) {
+      acc[x] = value
+    } else if (acc[x] == null) {
+      acc[x] = {}
+    }
+    return acc[x]
+  }, data)
   return data
 }
-
-export const getIn = (obj, path) => path?.reduce((x, k) => x?.[k], obj)
 
 export const deleteLeaf = (data, path) => {
   if (path) {
