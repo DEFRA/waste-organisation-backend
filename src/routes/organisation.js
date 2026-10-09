@@ -29,25 +29,31 @@ const logPutMessages = (organisation, transactionType, oldApiCodes, logger) => {
     const apiCodeEvent = getApiCodeEvent(code, oldApiCodes)
 
     if (apiCodeEvent) {
-      logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> ${apiCodeEvent}`, {
-        organisationId: organisation.organisationId,
-        apiCodeEvent
-      })
+      logger.info(
+        {
+          organisationId: organisation.organisationId,
+          apiCodeEvent
+        },
+        `GRAFANA_REPORT >> api_code_lifecycle_changed >> ${apiCodeEvent}`
+      )
     }
   }
   // prettier-ignore
   for (const _ in oldApiCodes) { // nosonar
-    logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> deleted`, {
+    logger.info({
       organisationId: organisation.organisationId,
       apiCodeEvent: 'deleted'
-    })
+    }, `GRAFANA_REPORT >> api_code_lifecycle_changed >> deleted`)
   }
 
-  logger.info(`GRAFANA_REPORT >> organisation >> organisation_${transactionType} >> Organisation ${transactionType}`, {
-    organisationId: organisation.organisationId,
-    isLocalAuthority: organisation.isLocalAuthority,
-    createdAt: organisation.createdAt
-  })
+  logger.info(
+    {
+      organisationId: organisation.organisationId,
+      isLocalAuthority: organisation.isLocalAuthority,
+      createdAt: organisation.createdAt
+    },
+    `GRAFANA_REPORT >> organisation >> organisation_${transactionType} >> Organisation ${transactionType}`
+  )
 }
 
 export const organisations = [

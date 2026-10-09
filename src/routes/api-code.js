@@ -79,7 +79,7 @@ export const apiCodeRoutes = [
       try {
         const organisation = await updateWithOptimisticLock(request.db.collection(orgCollection), { organisationId: request.params.organisationId }, (dbOrg) => createApiCode(dbOrg, request.payload?.apiCode?.name))
         const apiCode = organisation.apiCodes[organisation.apiCodes.length - 1]
-        request.logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> created`, { organisationId: organisation.organisationId })
+        request.logger.info({ organisationId: organisation.organisationId }, `GRAFANA_REPORT >> api_code_lifecycle_changed >> created`)
         return h.response(apiCode)
       } catch (e) {
         return handleErr(e, request.logger)
