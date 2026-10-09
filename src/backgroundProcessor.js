@@ -270,7 +270,7 @@ const updatePaymentStatus = async (paymentId, govPayment, db, logger) => {
     }
   })
   if (shouldUpdateOrg) {
-    logger.info(`GRAFANA_REPORT >> service_charge_payment_outcome >> ${status.payment}`, {
+    logger.info(`GRAFANA_REPORT >> service_charge_payment_outcome >> ${payment.status}`, {
       paymentStatus: payment.status,
       organisationId: payment.organisationId,
       paymentId: payment.paymentId

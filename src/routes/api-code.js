@@ -99,7 +99,7 @@ export const apiCodeRoutes = [
         })
         const apiCode = organisation.apiCodes.find(({ code }) => code === request.params.apiCode)
         if (oldApiCode.isDisabled !== apiCode.isDisabled) {
-          request.logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> ${isDisabled.apiCode ? 'revoked' : 're-enabled'}`, {
+          request.logger.info(`GRAFANA_REPORT >> api_code_lifecycle_changed >> ${apiCode.isDisabled ? 'revoked' : 're-enabled'}`, {
             organisationId: organisation.organisationId
           })
         }
