@@ -123,10 +123,20 @@ export const parseEWCCodes = (existing, data) => {
   }
 }
 
+const isMissing = (data) => data == null || (typeof data === 'string' && data.trim() === '')
+
 export const parseHazCodes = (existing, data) => {
   const result = existing ?? []
   try {
-    return result.concat(data.split(/[,;]/).map((y) => y.trim().replace(/^HP([0_ ]*)([1-9][0-9]*)$/, 'HP_$2')))
+    if (typeof data === 'string' && data.trim() === '') {
+      return result
+    }
+    return result.concat(
+      data
+        .split(/[,;]/)
+        .map((y) => y.trim().replace(/^HP([0_ ]*)([1-9][0-9]*)$/, 'HP_$2'))
+        .filter((y) => y)
+    )
   } catch {
     throw new Error('Cannot parse Haz codes')
   }
@@ -152,7 +162,11 @@ export const parseTitleCase = (existing, data) => {
 }
 
 export const parseToString = (existing, data) => {
-  return data ? data.toString().trim() : existing
+  if (isMissing(data)) {
+    return existing
+  }
+  const trimmed = data.toString().trim()
+  return trimmed || existing
 }
 
 export const requiredString = (existing, data) => {
@@ -165,7 +179,10 @@ export const requiredString = (existing, data) => {
 }
 
 export const parseToNumber = (existing, data) => {
-  return data ? Number(data) : existing
+  if (isMissing(data)) {
+    return existing
+  }
+  return Number(data)
 }
 
 export const parseRegStatements = (existing, data) => {
@@ -182,6 +199,42 @@ export const parseRegStatements = (existing, data) => {
   }
 }
 
+const parseWholeNumber = (part) => {
+  if (part == null || part === '') {
+    return null
+  }
+  const n = Number(part)
+  return Number.isInteger(n) ? n : null
+}
+
+const parseUkDateTime = (text) => {
+  const [datePart, timePart, extra] = text.trim().split(/\s+/)
+  if (!datePart || extra) {
+    return null
+  }
+  const [day, month, year] = datePart.split('/').map(parseWholeNumber)
+  if (day == null || month == null || year == null || year < 1000) {
+    return null
+  }
+
+  let hours = 0
+  let minutes = 0
+  let seconds = 0
+  if (timePart) {
+    const timeBits = timePart.split(':').map(parseWholeNumber)
+    if (timeBits.length < 2 || timeBits.length > 3 || timeBits.some((part) => part == null)) {
+      return null
+    }
+    hours = timeBits[0]
+    minutes = timeBits[1]
+    seconds = timeBits[2] ?? 0
+  }
+
+  const parsed = new Date(year, month - 1, day, hours, minutes, seconds)
+  const matchesParts = parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day && parsed.getHours() === hours && parsed.getMinutes() === minutes && parsed.getSeconds() === seconds
+  return matchesParts ? parsed : null
+}
+
 export const correctDateTimezone = (existing, data) => {
   if (data instanceof Date) {
     // Warning: assumes Europe/London timezone
@@ -190,7 +243,12 @@ export const correctDateTimezone = (existing, data) => {
     } else {
       return data
     }
-  } else {
-    return data || existing
   }
+  if (typeof data === 'string') {
+    const parsed = parseUkDateTime(data)
+    if (parsed) {
+      return parsed
+    }
+  }
+  return data || existing
 }
