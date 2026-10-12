@@ -207,6 +207,18 @@ const parseWholeNumber = (part) => {
   return Number.isInteger(n) ? n : null
 }
 
+const parseUkTime = (timePart) => {
+  if (!timePart) {
+    return { hours: 0, minutes: 0, seconds: 0 }
+  }
+  const bits = timePart.split(':').map(parseWholeNumber)
+  const [hours, minutes, seconds, extraTime] = bits
+  if (minutes == null || extraTime !== undefined || bits.some((part) => part == null)) {
+    return null
+  }
+  return { hours, minutes, seconds: seconds ?? 0 }
+}
+
 const parseUkDateTime = (text) => {
   const [datePart, timePart, extra] = text.trim().split(/\s+/)
   if (!datePart || extra) {
@@ -217,19 +229,12 @@ const parseUkDateTime = (text) => {
     return null
   }
 
-  let hours = 0
-  let minutes = 0
-  let seconds = 0
-  if (timePart) {
-    const timeBits = timePart.split(':').map(parseWholeNumber)
-    if (timeBits.length < 2 || timeBits.length > 3 || timeBits.some((part) => part == null)) {
-      return null
-    }
-    hours = timeBits[0]
-    minutes = timeBits[1]
-    seconds = timeBits[2] ?? 0
+  const time = parseUkTime(timePart)
+  if (!time) {
+    return null
   }
 
+  const { hours, minutes, seconds } = time
   const parsed = new Date(year, month - 1, day, hours, minutes, seconds)
   const matchesParts = parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day && parsed.getHours() === hours && parsed.getMinutes() === minutes && parsed.getSeconds() === seconds
   return matchesParts ? parsed : null

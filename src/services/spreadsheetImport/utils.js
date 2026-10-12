@@ -11,8 +11,8 @@ export const updateIn = (data, path, v, func) => {
   path.reduce((acc, x, i) => {
     if (i === path.length - 1) {
       acc[x] = value
-    } else if (acc[x] == null) {
-      acc[x] = {}
+    } else {
+      acc[x] ??= {}
     }
     return acc[x]
   }, data)

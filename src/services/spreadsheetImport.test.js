@@ -263,6 +263,7 @@ describe('some unit tests for parsers', () => {
     expect(parseToString(null, 123)).toEqual('123')
     expect(parseToString('ABC', null)).toEqual('ABC')
     expect(parseToString(null, ' ABC ')).toEqual('ABC')
+    expect(parseToString(5, '   ')).toEqual(5)
   })
 
   test('parseToNumber keeps numeric zero', () => {
@@ -283,7 +284,33 @@ describe('some unit tests for parsers', () => {
   test('correctDateTimezone parses UK datetime text to a Date', () => {
     const parsed = correctDateTimezone(null, '01/10/2026 07:42:26')
     expect(parsed).toBeInstanceOf(Date)
-    expect(parsed.toISOString()).toBe('2026-10-01T07:42:26.000Z')
+    expect(parsed.getFullYear()).toBe(2026)
+    expect(parsed.getMonth()).toBe(9)
+    expect(parsed.getDate()).toBe(1)
+    expect(parsed.getHours()).toBe(7)
+    expect(parsed.getMinutes()).toBe(42)
+    expect(parsed.getSeconds()).toBe(26)
+    const dateOnly = correctDateTimezone(null, '01/10/2026')
+    expect(dateOnly).toBeInstanceOf(Date)
+    expect(dateOnly.getFullYear()).toBe(2026)
+    expect(dateOnly.getMonth()).toBe(9)
+    expect(dateOnly.getDate()).toBe(1)
+    expect(dateOnly.getHours()).toBe(0)
+    const withoutSeconds = correctDateTimezone(null, '01/10/2026 07:42')
+    expect(withoutSeconds.getHours()).toBe(7)
+    expect(withoutSeconds.getMinutes()).toBe(42)
+    expect(withoutSeconds.getSeconds()).toBe(0)
+  })
+
+  test('correctDateTimezone leaves unparseable UK datetime text unchanged', () => {
+    expect(correctDateTimezone('existing', '31/02/2026')).toBe('31/02/2026')
+    expect(correctDateTimezone('existing', '01/10/2026 07:42:26 extra')).toBe('01/10/2026 07:42:26 extra')
+    expect(correctDateTimezone('existing', '99/99/99')).toBe('99/99/99')
+    expect(correctDateTimezone('existing', '01/10/2026 07')).toBe('01/10/2026 07')
+    expect(correctDateTimezone('existing', '01/10/2026 07:42:xx')).toBe('01/10/2026 07:42:xx')
+    expect(correctDateTimezone('existing', '01/10/2026 07:42:26:01')).toBe('01/10/2026 07:42:26:01')
+    expect(correctDateTimezone('existing', '01/10/0999')).toBe('01/10/0999')
+    expect(correctDateTimezone('existing', '')).toBe('existing')
   })
 
   test('correctDateTimezone leaves Excel Date objects as dates', () => {
