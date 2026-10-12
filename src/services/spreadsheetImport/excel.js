@@ -135,7 +135,7 @@ export const updateErrors = (() => {
       if (worksheet) {
         for (const { coords, message } of cellsAndMessages[worksheetName]) {
           const logMsg = worksheetMetadata?.worksheets?.[worksheetName]?.mapping?.[coords[0]]?.[0]?.join('.')
-          l.info({ spreadsheetValidationField: logMsg }, `GRAFANA_REPORT >> spreadsheet_validation_failure >> ${logMsg} >> ${message}`)
+          l.info({ 'event/reason': logMsg }, `GRAFANA_REPORT >> spreadsheet_validation_failure >> ${logMsg} >> ${message}`)
           updateCell(worksheet, coords, message, worksheetMetadata?.errors[worksheetName] ?? 1)
         }
       } else {
