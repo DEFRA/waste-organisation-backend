@@ -219,25 +219,30 @@ const parseUkTime = (timePart) => {
   return { hours, minutes, seconds: seconds ?? 0 }
 }
 
+const parseUkDate = (datePart) => {
+  const [day, month, year] = datePart.split('/').map(parseWholeNumber)
+  if (day == null || month == null || year == null || year < 1000) {
+    return null
+  }
+  return { day, month, year }
+}
+
+const dateTimeMatchesParts = (parsed, { day, month, year, hours, minutes, seconds }) =>
+  parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day && parsed.getHours() === hours && parsed.getMinutes() === minutes && parsed.getSeconds() === seconds
+
 const parseUkDateTime = (text) => {
   const [datePart, timePart, extra] = text.trim().split(/\s+/)
   if (!datePart || extra) {
     return null
   }
-  const [day, month, year] = datePart.split('/').map(parseWholeNumber)
-  if (day == null || month == null || year == null || year < 1000) {
-    return null
-  }
-
+  const date = parseUkDate(datePart)
   const time = parseUkTime(timePart)
-  if (!time) {
+  if (!date || !time) {
     return null
   }
-
-  const { hours, minutes, seconds } = time
-  const parsed = new Date(year, month - 1, day, hours, minutes, seconds)
-  const matchesParts = parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day && parsed.getHours() === hours && parsed.getMinutes() === minutes && parsed.getSeconds() === seconds
-  return matchesParts ? parsed : null
+  const parts = { ...date, ...time }
+  const parsed = new Date(parts.year, parts.month - 1, parts.day, parts.hours, parts.minutes, parts.seconds)
+  return dateTimeMatchesParts(parsed, parts) ? parsed : null
 }
 
 export const correctDateTimezone = (existing, data) => {
