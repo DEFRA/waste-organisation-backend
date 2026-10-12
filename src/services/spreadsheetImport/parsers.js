@@ -128,9 +128,6 @@ const isMissing = (data) => data == null || (typeof data === 'string' && data.tr
 export const parseHazCodes = (existing, data) => {
   const result = existing ?? []
   try {
-    if (typeof data === 'string' && data.trim() === '') {
-      return result
-    }
     return result.concat(
       data
         .split(/[,;]/)
