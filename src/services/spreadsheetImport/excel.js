@@ -66,7 +66,7 @@ export const worksheetToArray = ({ worksheet, keyCols, updateFn, minRow, maxCol 
   const elements = []
   const errors = []
   worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber > minRow && keyCols.some((keyCol) => row.getCell(keyCol).value)) {
+    if (rowNumber > minRow && keyCols.some((keyCol) => `${cellValueText(row.getCell(keyCol).value)}`.trim())) {
       row.getCell(1).value = emptyCell() // wipe error cells
       const r = {}
       // initialse missing keyCols with empty data
