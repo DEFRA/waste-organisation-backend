@@ -67,6 +67,30 @@ describe('excel proccessor', () => {
     expect(errors).toEqual([])
   })
 
+  test('highlights only the failed cell when other cells share its style', () => {
+    const sharedStyle = {}
+    const cells = {
+      1: { value: null, style: {} },
+      3: { value: 'AB12 CDE', style: sharedStyle },
+      4: { value: 'Road', style: sharedStyle }
+    }
+    const workbook = {
+      getWorksheet: () => ({
+        getRow: () => ({
+          getCell: (col) => cells[col]
+        })
+      })
+    }
+
+    updateErrors(workbook, {
+      '7. Waste movement level': [{ coords: [3, 9], message: 'vehicle registration is invalid' }]
+    })
+
+    expect(cells[3].style.fill.fgColor.argb).toBe('FFFFCCCC')
+    expect(cells[4].style).toBe(sharedStyle)
+    expect(sharedStyle.fill).toBeUndefined()
+  })
+
   test("excel worksheets disappearing during processing get logged and don't throw errors", () => {
     const x = randomUUID()
     expect(updateCellContent({ worksheets: [{ name: 'alice' }], getWorksheet: () => null, x }, { bob: null }, console).x).toBe(x)

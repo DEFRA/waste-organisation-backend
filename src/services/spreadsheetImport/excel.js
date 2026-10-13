@@ -129,7 +129,7 @@ export const updateErrors = (() => {
     }
     if (cell?.value) {
       cell.value = { richText: [{ font, text: cellValueText(cell.value) }] }
-      cell.style.fill = { ...fillStyle }
+      cell.style = { ...cell.style, fill: { ...fillStyle } }
     } else {
       cell.value = { richText: [{ font, text: 'Please provide a value' }] }
     }
