@@ -188,7 +188,7 @@ const wasteItemErr = (movementData, rowNumbers, errKeyPath, error, { worksheetNa
     return {}
   }
   const wis = movementData[movementIdx]?.wasteItems
-  const errorValue = colNum ? itemMapping[colNum][0].reduce((x, y) => (x ? x[y] : null), wis ? wis[itemIdx] : null) : null
+  const errorValue = colNum ? itemMapping[colNum][0].reduce((x, y) => (x ? x[y] : null), wis?.[itemIdx]) : null
   return cellError(colNum, rowNumbers[ref].itemRows[itemIdx], msg, worksheetName, errorValue)
 }
 
