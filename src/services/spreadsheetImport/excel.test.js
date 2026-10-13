@@ -1,5 +1,4 @@
 import fs from 'node:fs/promises'
-import Excel from 'exceljs'
 import { parseExcelFile, updateCellContent } from '../spreadsheetImport.js'
 import { updateErrors, worksheetToArray } from './excel.js'
 import { createLogger } from '../../common/helpers/logging/logger.js'
@@ -44,9 +43,17 @@ describe('excel proccessor', () => {
   })
 
   test('ignores a data row whose only key-column content is whitespace', () => {
-    const workbook = new Excel.Workbook()
-    const worksheet = workbook.addWorksheet('7. Waste movement level')
-    worksheet.getRow(9).getCell(4).value = ' '
+    const worksheet = {
+      eachRow: (callback) => {
+        callback(
+          {
+            getCell: (col) => ({ value: col === 4 ? ' ' : null }),
+            eachCell: () => {}
+          },
+          9
+        )
+      }
+    }
 
     const { elements, errors } = worksheetToArray({
       worksheet,
