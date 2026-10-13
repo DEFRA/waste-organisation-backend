@@ -138,6 +138,15 @@ const cleanErrorMessage = ({ message, key }) => {
   return message
 }
 
+const extractKeyPathFromMsg = (msg, mappings) => {
+  const p = msg?.match(/^"([^"]*)"/)
+  if (p?.[1]) {
+    return keyPathToColNum(p[1].split('.'), mappings)
+  } else {
+    return null
+  }
+}
+
 const keyPathToColNum = (path, mappings) => {
   const numIdx = path.findIndex((x) => x.match(/^\d+$/))
   const p = numIdx >= 0 ? path.slice(0, numIdx + 1) : path
@@ -160,11 +169,11 @@ const wasteMovementErr = (movementData, rowNumbers, errKeyPath, error, { workshe
   const idx = errKeyPath[0]
   const ref = getIn(movementData[idx], joinKey)
   const msg = cleanErrorMessage(error)
-  const colNum = keyPathToColNum(errKeyPath.slice(1), movementMapping)
+  const colNum = errKeyPath.slice(1).length === 0 ? extractKeyPathFromMsg(error.message, movementMapping) : keyPathToColNum(errKeyPath.slice(1), movementMapping)
   if (colNum < 0) {
     return {}
   }
-  const errorValue = movementMapping[colNum][0].reduce((x, y) => (x ? x[y] : null), movementData[idx])
+  const errorValue = colNum ? movementMapping[colNum][0].reduce((x, y) => (x ? x[y] : null), movementData[idx]) : null
   return cellError(colNum, rowNumbers[ref].movementRow, msg, worksheetName, errorValue)
 }
 
@@ -179,7 +188,7 @@ const wasteItemErr = (movementData, rowNumbers, errKeyPath, error, { worksheetNa
     return {}
   }
   const wis = movementData[movementIdx]?.wasteItems
-  const errorValue = itemMapping[colNum][0].reduce((x, y) => (x ? x[y] : null), wis ? wis[itemIdx] : null)
+  const errorValue = colNum ? itemMapping[colNum][0].reduce((x, y) => (x ? x[y] : null), wis ? wis[itemIdx] : null) : null
   return cellError(colNum, rowNumbers[ref].itemRows[itemIdx], msg, worksheetName, errorValue)
 }
 
@@ -201,7 +210,7 @@ const errorToCoords = (() => {
         }
         return err
       }, {})
-      if (joinErrorTarget?.coords) {
+      if (joinErrorTarget?.message) {
         return joinErrorTarget
       }
     }

@@ -14,16 +14,14 @@ describe('excel proccessor', () => {
   test('errors should be added to the correct cells', { timeout: 50000 }, async () => {
     const buffer = await fs.readFile('./test-resources/valid-spreadsheet.xlsx')
     const { workbook } = await parseExcelFile(buffer, 'org-id', logger)
-    const worksheetName = '7. Waste movement level'
-    const worksheet = workbook.getWorksheet(worksheetName)
+    const worksheet = workbook.getWorksheet('7. Waste movement level')
 
     const errors = {
       '7. Waste movement level': [
         {
           coords: [3, 9],
           message: 'ewc codes must be a valid EWC code from the official list',
-          errorValue: ['060110'],
-          sheet: '8. Waste item level'
+          errorValue: ['060110']
         },
         {
           coords: [16, 9],
@@ -31,15 +29,29 @@ describe('excel proccessor', () => {
           errorValue: [
             { name: 'Hydrochloric Acid', concentration: '<=37%' },
             { name: 'Water', concentration: 'Balance' }
-          ],
-          sheet: '8. Waste item level'
+          ]
+        }
+      ],
+      '8. Waste item level': [
+        {
+          coords: [null, 9],
+          message: 'Fishy Error',
+          errorValue: null
+        },
+        {
+          message: 'Dodgy Error',
+          errorValue: null
         }
       ]
     }
 
-    updateErrors(workbook, errors)
+    updateErrors(workbook, errors, { firstRowOfData: 9, errors: { '7. Waste movement level': 1, '8. Waste item level': 1 } })
     const cell1 = worksheet.getRow(9).getCell(1)
     expect(cell1.value.richText[0].text).toBe('ewc codes must be a valid EWC code from the official list (C9)')
+
+    const worksheet2 = workbook.getWorksheet('8. Waste item level')
+    const cell2 = worksheet2.getRow(9).getCell(1)
+    expect(cell2.value.richText.map(({ text }) => text)).toEqual(['Fishy Error', '\nDodgy Error'])
   })
 
   test("excel worksheets disappearing during processing get logged and don't throw errors", () => {
