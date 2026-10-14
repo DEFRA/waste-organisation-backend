@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto'
 
 const logger = createLogger()
 
-describe('excel proccessor', () => {
+describe('excel processor', () => {
   beforeAll(() => {
     vi.clearAllMocks()
   })

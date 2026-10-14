@@ -1,6 +1,7 @@
 import { readExcelBuffer, cellError, collectCellErrors, worksheetToArray, updateErrors as xlUpdateErrors, updateCellContent as xlUpdateCellContent, workbookToByteArray as xlWorkbookToByteArray } from './spreadsheetImport/excel.js'
 import { updateIn, getIn, deleteLeaf, distinct } from './spreadsheetImport/utils.js'
 import { getWorksheetMeta } from './spreadsheetImport/worksheetMetadata.js'
+import { validate } from './spreadsheetImport/validator.js'
 
 export const joinWasteItems = (flatData, worksheetMetadata) => {
   const transform = worksheetMetadata.transform
@@ -77,7 +78,10 @@ export const joinWasteItems = (flatData, worksheetMetadata) => {
 
 export const parseExcelFile = (() => {
   return async (buffer, defraCustomerOrganisationId, logger, validateFn) => {
-    const workbook = await readExcelBuffer(buffer, logger)
+    // sanitise the spreadsheet before doing any loading with exceljs
+    const validatedBuffer = await validate(buffer, logger)
+
+    const workbook = await readExcelBuffer(validatedBuffer, logger)
     if (workbook == null) {
       return { hasErrors: true }
     }

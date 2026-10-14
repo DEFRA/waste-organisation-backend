@@ -95,6 +95,7 @@ export const worksheetToArray = ({ worksheet, keyCols, updateFn, minRow, maxCol 
   return { elements, errors }
 }
 
+// Parses an already-validated xlsx buffer. Unzipping/validation happens in parseExcelFile.
 export const readExcelBuffer = async (buffer, logger) => {
   logger.info('Loading spreadsheet')
   try {
