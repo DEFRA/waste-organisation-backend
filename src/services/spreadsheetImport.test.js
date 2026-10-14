@@ -562,8 +562,26 @@ describe('transformBulkApiErrors', () => {
       expected: {
         '7. Waste movement level': [
           {
-            coords: [2, 9],
-            message: 'reason for no consignment code is required when wasteItems[*].ewcCodes ' + 'contains a hazardous code and hazardousWasteConsignmentCode is not provided',
+            coords: [13, 9],
+            message: 'reason for no consignment code is required when wasteItems[*].ewcCodes contains a hazardous code and hazardousWasteConsignmentCode is not provided',
+            sheet: '7. Waste movement level'
+          }
+        ]
+      }
+    },
+    {
+      apiErrors: [
+        {
+          key: '0',
+          errorType: 'BusinessRuleViolation',
+          message: 'error message with no key at the beginning'
+        }
+      ],
+      expected: {
+        '7. Waste movement level': [
+          {
+            coords: [null, 9],
+            message: 'error message with no key at the beginning',
             sheet: '7. Waste movement level'
           }
         ]

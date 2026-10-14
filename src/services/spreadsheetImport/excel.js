@@ -117,21 +117,24 @@ export const updateErrors = (() => {
   // prettier-ignore
   const colNames = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
                     'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK']
-  const coordsToCellName = (coords) => ` (${colNames[coords[0] - 1]}${coords[1]})`
+  const coordsToCellName = (coords) => ` (${colNames[(coords?.[0] ?? 1) - 1]}${coords?.[1] ?? 1})`
 
-  const updateCell = (worksheet, coords, message, errCol) => {
-    const [colNumber, rowNumber] = coords
+  const updateCell = (worksheet, coords, message, errCol, defaultRow) => {
+    const colNumber = coords?.[0]
+    const rowNumber = coords?.[1] ?? defaultRow
     const row = worksheet.getRow(rowNumber)
-    const cell = row.getCell(colNumber)
     const errorCell = row.getCell(errCol)
     if (errorCell) {
-      errorCell.value = appendMessageToCell(errorCell, message + coordsToCellName(coords), font)
+      errorCell.value = appendMessageToCell(errorCell, message + (coords?.[0] ? coordsToCellName(coords) : ''), font)
     }
-    if (cell?.value) {
-      cell.value = { richText: [{ font, text: cellValueText(cell.value) }] }
-      cell.style = { ...cell.style, fill: { ...fillStyle } }
-    } else {
-      cell.value = { richText: [{ font, text: 'Please provide a value' }] }
+    if (colNumber) {
+      const cell = row.getCell(colNumber)
+      if (cell?.value) {
+        cell.value = { richText: [{ font, text: cellValueText(cell.value) }] }
+        cell.style = { ...cell.style, fill: { ...fillStyle } }
+      } else {
+        cell.value = { richText: [{ font, text: 'Please provide a value' }] }
+      }
     }
   }
   return (workbook, cellsAndMessages, worksheetMetadata, logger) => {
@@ -142,7 +145,7 @@ export const updateErrors = (() => {
         for (const { coords, message } of cellsAndMessages[worksheetName]) {
           const logMsg = worksheetMetadata?.worksheets?.[worksheetName]?.mapping?.[coords[0]]?.[0]?.join('.')
           l.info({ event: { reason: logMsg } }, `GRAFANA_REPORT >> spreadsheet_validation_failure >> ${logMsg} >> ${message}`)
-          updateCell(worksheet, coords, message, worksheetMetadata?.errors[worksheetName] ?? 1)
+          updateCell(worksheet, coords, message, worksheetMetadata?.errors[worksheetName] ?? 1, worksheetMetadata?.firstRowOfData)
         }
       } else {
         l.error(`Cannot update errors - worksheet not fonud "${worksheetName}" not in ${workbook.worksheets.map((ws) => ws.name).join(', ')}` + `parsed worksheets: ${JSON.stringify(Object.keys(cellsAndMessages))}`)
