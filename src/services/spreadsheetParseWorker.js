@@ -48,8 +48,12 @@ const run = async () => {
   // argv carries '' (no trace) or sometimes the literal string 'null'; treat both as no trace id.
   const logger = createLogger(traceId && traceId !== 'null' ? traceId : null)
   const s3Client = constructS3Client()
+
+  // download
   const buffer = await fetchS3Object(s3Client, s3Bucket, s3Key)
   logger.info(`ReferenceNumber: ${referenceNumber} -- Fetching bytes: ${buffer.length}`)
+
+  // parse
   const { hasErrors, workbook, movements, rowNumbers, errors } = await parseExcelFile(buffer, organisationId, logger, uploadType)
 
   // Output a base64 serialisation of the workbook object (xlsx bytes, with any error annotations already applied) for the parent to consume.
