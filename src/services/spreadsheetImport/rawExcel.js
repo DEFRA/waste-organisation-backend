@@ -24,11 +24,13 @@ export const rawReadXlsx = async (buffer) => {
   return [zip, workbookXml, relsXml]
 }
 
+const excelColumnNamingBase = 26
+const codePointOfA = 65
 // Excel columns are base 26, but A is 1 rather than 0. 'A' is char code 65, so minus 64 makes A=1, Z=26, and AA=27. AC is 1*26+3 = 29.
 export const columnNumber = (letters) => {
   let number = 0
   for (const letter of letters) {
-    number = number * 26 + letter.codePointAt(0) - 64
+    number = number * excelColumnNamingBase + letter.codePointAt(0) - codePointOfA + 1
   }
   return number
 }
@@ -37,9 +39,9 @@ export const columnLetters = (number) => {
   let letters = ''
   let remaining = number
   while (remaining > 0) {
-    const index = (remaining - 1) % 26
-    letters = String.fromCodePoint(65 + index) + letters
-    remaining = Math.floor((remaining - 1) / 26)
+    const index = (remaining - 1) % excelColumnNamingBase
+    letters = String.fromCodePoint(codePointOfA + index) + letters
+    remaining = Math.floor((remaining - 1) / excelColumnNamingBase)
   }
   return letters
 }

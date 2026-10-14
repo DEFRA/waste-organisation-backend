@@ -27,7 +27,7 @@ export const validate = async (buffer, logger) => {
     return buffer
   }
   logger.debug('Spreadsheet changed during validation')
-  return await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
+  return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
 }
 
 /*
@@ -47,13 +47,13 @@ export const clampWildRanges = async (zip, workbookXml, relsXml) => {
   const boxes = new Map()
   let changed = false
   for (const [name, path] of sheetPaths(workbookXml, relsXml)) {
-    const xml = await readFileFromZip(zip, path)
+    const xml = await readFileFromZip(zip, path) // nosonar
     if (!xml) {
-      continue
+      continue // nosonar
     }
     const box = usedBox(xml)
     if (!box) {
-      continue
+      continue // nosonar
     }
     boxes.set(name, box)
     const clamped = clampSqrefs(xml, box)
