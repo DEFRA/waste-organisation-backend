@@ -654,6 +654,25 @@ describe('transformBulkApiErrors', () => {
           }
         ]
       }
+    },
+    {
+      // DR-215: the API's ISO wording is replaced with the spreadsheet guidance
+      apiErrors: [
+        {
+          key: '0.dateTimeReceived',
+          errorType: 'UnexpectedError',
+          message: '"dateTimeReceived" must be a valid UTC (2025-09-15T12:12:28Z) or BST (2025-09-15T13:12:28+01:00) ISO datetime'
+        }
+      ],
+      expected: {
+        '7. Waste movement level': [
+          {
+            coords: [11, 9],
+            message: 'date time received must be in the London/Europe timezone and in the format: dd/mm/yyyy hh:mm:ss. For example, 01/01/2026 09:30:00',
+            sheet: '7. Waste movement level'
+          }
+        ]
+      }
     }
   ])('should add default error message when col not matched', ({ apiErrors, expected }) => {
     const movementData1 = [{ yourUniqueReference: 'REF1', carrier: { organisationName: 'Carrier Ltd' } }]
@@ -661,29 +680,6 @@ describe('transformBulkApiErrors', () => {
     const rowNumbers = { REF1: { movementRow: 9 } }
     expect(transformBulkApiErrors(movementData1, rowNumbers, worksheetMetadata, apiErrors)).toEqual(expected)
     expect(transformBulkApiErrors(movementData2, rowNumbers, worksheetMetadata, apiErrors)).toEqual(expected)
-  })
-
-  test('should replace the API ISO datetime message with the spreadsheet guidance (DR-215)', () => {
-    const movementData = [{ yourUniqueReference: 'REF1', dateTimeReceived: '16-02-2026 13:00:08' }]
-    const rowNumbers = { REF1: { movementRow: 9 } }
-    const apiError = [
-      {
-        key: '0.dateTimeReceived',
-        errorType: 'UnexpectedError',
-        message: '"dateTimeReceived" must be a valid UTC (2025-09-15T12:12:28Z) or BST (2025-09-15T13:12:28+01:00) ISO datetime'
-      }
-    ]
-
-    expect(transformBulkApiErrors(movementData, rowNumbers, worksheetMetadata, apiError)).toEqual({
-      '7. Waste movement level': [
-        {
-          coords: [11, 9],
-          errorValue: '16-02-2026 13:00:08',
-          message: 'date time received must be in the London/Europe timezone and in the format: dd/mm/yyyy hh:mm:ss. For example, 01/01/2026 09:30:00',
-          sheet: '7. Waste movement level'
-        }
-      ]
-    })
   })
 
   test('should partially match error key', () => {
