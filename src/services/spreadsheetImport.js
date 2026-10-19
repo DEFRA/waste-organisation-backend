@@ -120,7 +120,14 @@ export const parseExcelFile = (() => {
   }
 })()
 
-const cleanErrorMessage = ({ message, key }) => {
+// Bulk API messages that are replaced with wording that matches the spreadsheet guidance
+const messageRewrites = [[/ must be a valid UTC \([^)]*\) or BST \([^)]*\) ISO datetime$/, ' must be in the London/Europe timezone and in the format: dd/mm/yyyy hh:mm:ss. For example, 01/01/2026 09:30:00']]
+
+const rewriteMessage = (message) => messageRewrites.reduce((m, [pattern, replacement]) => m?.replace(pattern, replacement), message)
+
+const cleanErrorMessage = (error) => rewriteMessage(nameFieldInMessage(error))
+
+const nameFieldInMessage = ({ message, key }) => {
   if (key?.match(/^\d+$/)) {
     const name = message?.split(' ')
     if (Array.isArray(name)) {

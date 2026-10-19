@@ -666,6 +666,25 @@ describe('transformBulkApiErrors', () => {
           }
         ]
       }
+    },
+    {
+      // DR-215: the API's ISO wording is replaced with the spreadsheet guidance
+      apiErrors: [
+        {
+          key: '0.dateTimeReceived',
+          errorType: 'UnexpectedError',
+          message: '"dateTimeReceived" must be a valid UTC (2025-09-15T12:12:28Z) or BST (2025-09-15T13:12:28+01:00) ISO datetime'
+        }
+      ],
+      expected: {
+        '7. Waste movement level': [
+          {
+            coords: [11, 9],
+            message: 'date time received must be in the London/Europe timezone and in the format: dd/mm/yyyy hh:mm:ss. For example, 01/01/2026 09:30:00',
+            sheet: '7. Waste movement level'
+          }
+        ]
+      }
     }
   ])('should add default error message when col not matched', ({ apiErrors, expected }) => {
     const movementData1 = [{ yourUniqueReference: 'REF1', carrier: { organisationName: 'Carrier Ltd' } }]
