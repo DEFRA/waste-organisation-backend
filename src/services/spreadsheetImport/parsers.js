@@ -233,12 +233,7 @@ const ukOffsetAt = (instant) => {
 }
 
 const dateTimeMatchesParts = (utcWallClock, { day, month, year, hours, minutes, seconds }) =>
-  utcWallClock.getUTCFullYear() === year &&
-  utcWallClock.getUTCMonth() === month - 1 &&
-  utcWallClock.getUTCDate() === day &&
-  utcWallClock.getUTCHours() === hours &&
-  utcWallClock.getUTCMinutes() === minutes &&
-  utcWallClock.getUTCSeconds() === seconds
+  utcWallClock.getUTCFullYear() === year && utcWallClock.getUTCMonth() === month - 1 && utcWallClock.getUTCDate() === day && utcWallClock.getUTCHours() === hours && utcWallClock.getUTCMinutes() === minutes && utcWallClock.getUTCSeconds() === seconds
 
 // Interprets the parts as Europe/London wall-clock time (independent of the server timezone).
 // Returns the matching instant, or null if the parts are not a valid date/time.
