@@ -302,6 +302,18 @@ describe('some unit tests for parsers', () => {
     expect(withoutSeconds.getSeconds()).toBe(0)
   })
 
+  test('correctDateTimezone treats ISO-like text without a zone as UK local time (DR-217)', () => {
+    const oldTimezone = process.env.TZ
+    process.env.TZ = 'Europe/London'
+    try {
+      expect(correctDateTimezone(null, '2026-10-16T16:39:53')).toEqual(new Date('2026-10-16T15:39:53.000Z')) // BST
+      expect(correctDateTimezone(null, '2025-12-15 12:12:28')).toEqual(new Date('2025-12-15T12:12:28.000Z')) // GMT
+      expect(correctDateTimezone('existing', '2025-02-31 10:00')).toBe('2025-02-31 10:00') // invalid, unchanged
+    } finally {
+      process.env.TZ = oldTimezone
+    }
+  })
+
   test('correctDateTimezone leaves unparseable UK datetime text unchanged', () => {
     expect(correctDateTimezone('existing', '31/02/2026')).toBe('31/02/2026')
     expect(correctDateTimezone('existing', '01/10/2026 07:42:26 extra')).toBe('01/10/2026 07:42:26 extra')

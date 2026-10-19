@@ -242,6 +242,9 @@ const parseUkDateTime = (text) => {
   return dateTimeMatchesParts(parsed, parts) ? parsed : null
 }
 
+// Rewrites zoneless ISO-like text (2026-10-16T16:39:53 or 2026-10-16 16:39) as dd/mm/yyyy hh:mm:ss so it is parsed as UK local time
+const isoToUkDateTime = (text) => text.trim().replace(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](.*))?$/, '$3/$2/$1 $4')
+
 export const correctDateTimezone = (existing, data) => {
   if (data instanceof Date) {
     // Warning: assumes Europe/London timezone
@@ -252,7 +255,7 @@ export const correctDateTimezone = (existing, data) => {
     }
   }
   if (typeof data === 'string') {
-    const parsed = parseUkDateTime(data)
+    const parsed = parseUkDateTime(isoToUkDateTime(data))
     if (parsed) {
       return parsed
     }
