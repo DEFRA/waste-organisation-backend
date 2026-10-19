@@ -282,24 +282,55 @@ describe('some unit tests for parsers', () => {
   })
 
   test('correctDateTimezone parses UK datetime text to a Date', () => {
+    // 1 Oct 2026 is BST (UTC+1)
     const parsed = correctDateTimezone(null, '01/10/2026 07:42:26')
     expect(parsed).toBeInstanceOf(Date)
-    expect(parsed.getFullYear()).toBe(2026)
-    expect(parsed.getMonth()).toBe(9)
-    expect(parsed.getDate()).toBe(1)
-    expect(parsed.getHours()).toBe(7)
-    expect(parsed.getMinutes()).toBe(42)
-    expect(parsed.getSeconds()).toBe(26)
-    const dateOnly = correctDateTimezone(null, '01/10/2026')
-    expect(dateOnly).toBeInstanceOf(Date)
-    expect(dateOnly.getFullYear()).toBe(2026)
-    expect(dateOnly.getMonth()).toBe(9)
-    expect(dateOnly.getDate()).toBe(1)
-    expect(dateOnly.getHours()).toBe(0)
-    const withoutSeconds = correctDateTimezone(null, '01/10/2026 07:42')
-    expect(withoutSeconds.getHours()).toBe(7)
-    expect(withoutSeconds.getMinutes()).toBe(42)
-    expect(withoutSeconds.getSeconds()).toBe(0)
+    expect(parsed).toEqual(new Date('2026-10-01T06:42:26.000Z'))
+    expect(correctDateTimezone(null, '01/10/2026')).toEqual(new Date('2026-09-30T23:00:00.000Z'))
+    expect(correctDateTimezone(null, '01/10/2026 07:42')).toEqual(new Date('2026-10-01T06:42:00.000Z'))
+    // GMT
+    expect(correctDateTimezone(null, '15/12/2025 12:12:28')).toEqual(new Date('2025-12-15T12:12:28.000Z'))
+  })
+
+  test('correctDateTimezone treats ISO-like text without a zone as UK local time (DR-217)', () => {
+    // BST (UTC+1) - exact value from the DR-217 spreadsheet
+    expect(correctDateTimezone(null, '2026-10-16T16:39:53')).toEqual(new Date('2026-10-16T15:39:53.000Z'))
+    expect(correctDateTimezone(null, '2025-09-15 12:12:28')).toEqual(new Date('2025-09-15T11:12:28.000Z'))
+    // GMT (UTC+0)
+    expect(correctDateTimezone(null, '2025-12-15 12:12:28')).toEqual(new Date('2025-12-15T12:12:28.000Z'))
+    // no seconds, date only
+    expect(correctDateTimezone(null, '2025-09-15T12:12')).toEqual(new Date('2025-09-15T11:12:00.000Z'))
+    expect(correctDateTimezone(null, '2025-09-15')).toEqual(new Date('2025-09-14T23:00:00.000Z'))
+  })
+
+  test('correctDateTimezone handles the clock change boundaries (DR-217)', () => {
+    // Spring forward 2026-03-29: 01:00 GMT becomes 02:00 BST
+    expect(correctDateTimezone(null, '2026-03-29T00:59:59')).toEqual(new Date('2026-03-29T00:59:59.000Z')) // last second of GMT
+    expect(correctDateTimezone(null, '2026-03-29T02:00:00')).toEqual(new Date('2026-03-29T01:00:00.000Z')) // first second of BST
+    // Fall back 2026-10-25: 02:00 BST becomes 01:00 GMT
+    expect(correctDateTimezone(null, '2026-10-24T23:59:59')).toEqual(new Date('2026-10-24T22:59:59.000Z')) // day before, BST
+    expect(correctDateTimezone(null, '2026-10-25T02:00:00')).toEqual(new Date('2026-10-25T02:00:00.000Z')) // after the change, GMT
+    expect(correctDateTimezone(null, '2026-10-25T00:59:59')).toEqual(new Date('2026-10-24T23:59:59.000Z')) // before the change, BST
+  })
+
+  test('correctDateTimezone resolves non-existent UK times (skipped hour) to the GMT instant (DR-217)', () => {
+    // 01:30 does not exist in London on 2026-03-29, so it is treated as 00:30Z
+    const parsed = correctDateTimezone(null, '2026-03-29T01:30:00')
+    expect(parsed).toBeInstanceOf(Date)
+    expect(parsed).toEqual(new Date('2026-03-29T00:30:00.000Z'))
+  })
+
+  test('correctDateTimezone resolves ambiguous UK times (repeated hour) to the later, GMT, instant (DR-217)', () => {
+    // 01:00-01:59 happens twice in London on 2026-10-25 (BST then GMT); the GMT occurrence is chosen
+    expect(correctDateTimezone(null, '2026-10-25T01:00:00')).toEqual(new Date('2026-10-25T01:00:00.000Z'))
+    expect(correctDateTimezone(null, '2026-10-25T01:30:00')).toEqual(new Date('2026-10-25T01:30:00.000Z'))
+  })
+
+  test('correctDateTimezone leaves invalid ISO-like text unchanged (DR-217)', () => {
+    expect(correctDateTimezone('existing', '2025-02-31 10:00')).toBe('2025-02-31 10:00')
+    expect(correctDateTimezone('existing', '2025-09-15T25:00:00')).toBe('2025-09-15T25:00:00')
+    expect(correctDateTimezone('existing', '2025-09-15T12:12:28Z')).toBe('2025-09-15T12:12:28Z')
+    expect(correctDateTimezone('existing', '2025-09-15T12:12:28+01:00')).toBe('2025-09-15T12:12:28+01:00')
   })
 
   test('correctDateTimezone leaves unparseable UK datetime text unchanged', () => {

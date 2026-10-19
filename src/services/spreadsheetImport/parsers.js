@@ -224,8 +224,32 @@ const parseUkDate = (datePart) => {
   return { day, month, year }
 }
 
-const dateTimeMatchesParts = (parsed, { day, month, year, hours, minutes, seconds }) =>
-  parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day && parsed.getHours() === hours && parsed.getMinutes() === minutes && parsed.getSeconds() === seconds
+const ukOffsetFormatter = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' })
+
+// Offset (ms) of Europe/London from UTC at the given instant: 0 in GMT, 3600000 in BST
+const ukOffsetAt = (instant) => {
+  const p = Object.fromEntries(ukOffsetFormatter.formatToParts(instant).map(({ type, value }) => [type, Number(value)]))
+  return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - Math.floor(instant.getTime() / 1000) * 1000
+}
+
+const dateTimeMatchesParts = (utcWallClock, { day, month, year, hours, minutes, seconds }) =>
+  utcWallClock.getUTCFullYear() === year &&
+  utcWallClock.getUTCMonth() === month - 1 &&
+  utcWallClock.getUTCDate() === day &&
+  utcWallClock.getUTCHours() === hours &&
+  utcWallClock.getUTCMinutes() === minutes &&
+  utcWallClock.getUTCSeconds() === seconds
+
+// Interprets the parts as Europe/London wall-clock time (independent of the server timezone).
+// Returns the matching instant, or null if the parts are not a valid date/time.
+const ukWallClockToDate = (parts, milliseconds = 0) => {
+  const { year, month, day, hours, minutes, seconds } = parts
+  const wallClock = new Date(Date.UTC(year, month - 1, day, hours, minutes, seconds, milliseconds))
+  if (!dateTimeMatchesParts(wallClock, parts)) {
+    return null
+  }
+  return new Date(wallClock.getTime() - ukOffsetAt(wallClock))
+}
 
 const parseUkDateTime = (text) => {
   const [datePart, timePart, extra] = text.trim().split(/\s+/)
@@ -238,8 +262,20 @@ const parseUkDateTime = (text) => {
     return null
   }
   const parts = { ...date, ...time }
-  const parsed = new Date(parts.year, parts.month - 1, parts.day, parts.hours, parts.minutes, parts.seconds)
-  return dateTimeMatchesParts(parsed, parts) ? parsed : null
+  return ukWallClockToDate(parts)
+}
+
+// e.g. 2026-10-16T16:39:53 or 2026-10-16 16:39 (no zone suffix => assumed UK local time)
+const isoLikeDateTimePattern = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?)?$/
+
+const parseIsoLikeDateTime = (text) => {
+  const match = isoLikeDateTimePattern.exec(text.trim())
+  if (!match) {
+    return null
+  }
+  const [year, month, day, hours = 0, minutes = 0, seconds = 0] = match.slice(1, 7).map((part) => (part === undefined ? undefined : Number(part)))
+  const milliseconds = match[7] ? Number(match[7].padEnd(3, '0')) : 0
+  return ukWallClockToDate({ year, month, day, hours, minutes, seconds }, milliseconds)
 }
 
 export const correctDateTimezone = (existing, data) => {
@@ -252,7 +288,7 @@ export const correctDateTimezone = (existing, data) => {
     }
   }
   if (typeof data === 'string') {
-    const parsed = parseUkDateTime(data)
+    const parsed = parseUkDateTime(data) ?? parseIsoLikeDateTime(data)
     if (parsed) {
       return parsed
     }
