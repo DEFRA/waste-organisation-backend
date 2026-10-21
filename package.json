@@ -76,6 +76,7 @@
     "vitest-mongodb": "1.0.3"
   },
   "overrides": {
+    "braces": "npm:empty-npm-package@1.0.0",
     "exceljs": {
       "archiver": "8.0.0",
       "uuid": "14.0.0",
