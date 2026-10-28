@@ -912,6 +912,7 @@ describe('excel proccessor', () => {
         '7. Waste movement level': [{ coords: [33, 9], message: 'test error' }],
         '8. Waste item level': [{ coords: [2, 10], message: 'No waste movements for unique reference' }]
       },
+      expect.anything(),
       expect.anything()
     )
   })
@@ -938,6 +939,7 @@ describe('excel proccessor', () => {
           { coords: [2, 10], message: 'Please provide a value' }
         ]
       },
+      expect.anything(),
       expect.anything()
     )
   })
@@ -1035,6 +1037,7 @@ describe('excel proccessor', () => {
           }
         ]
       },
+      expect.anything(),
       expect.anything()
     )
   })
@@ -1124,6 +1127,7 @@ describe('excel proccessor', () => {
           }
         ]
       },
+      expect.anything(),
       expect.anything()
     )
   })
@@ -1181,6 +1185,7 @@ describe('excel proccessor', () => {
         ],
         '8. Waste item level': []
       },
+      expect.anything(),
       expect.anything()
     )
   })
