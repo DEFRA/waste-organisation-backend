@@ -16,6 +16,9 @@ export const downloadAndParseSpreadsheetInSandbox = async ({ s3Bucket, s3Key, re
     /* ulimit caps disk writes, --max-old-space-size caps the V8 heap. We use exec so node takes on the process' PID, and the potential SIGKILL to the shell does not leave an orphan; the file descriptors can be inherited, no problem. */
     const command = `ulimit -f ${SANDBOX_MAX_FILE_BLOCKS}; exec node --max-old-space-size=${SANDBOX_MAX_HEAP_MB} "$1" "$2" "$3" "$4" "$5" "$6" "$7"`
 
+    /* the form of sh -c is
+        sh -c command_string command_name arg1 arg2 ...
+      where confusingly command_name will just be the $0 of the whole command, so here 'sh' */
     const child = spawn('/bin/sh', ['-c', command, 'sh', parseWorkerPath, s3Bucket, s3Key, referenceNumber, organisationId, uploadType ?? '', traceId ?? ''], {
       stdio: ['ignore', 'inherit', 'inherit', 'pipe'] // fd 3 will be the result, with logs on stdout / fd 1
     })

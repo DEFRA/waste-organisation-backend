@@ -105,7 +105,7 @@ export const parseExcelFile = (() => {
         errs[metadata.worksheetName] = distinct(flatData[metadata.target].errors.concat(joined.errors[metadata.target]))
         return errs
       }, {})
-      xlUpdateErrors(workbook, errors, worksheetMetadata)
+      xlUpdateErrors(workbook, errors, worksheetMetadata, logger)
       return {
         hasErrors: true,
         errors,
