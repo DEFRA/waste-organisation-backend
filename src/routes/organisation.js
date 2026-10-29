@@ -74,6 +74,8 @@ export const organisations = [
         schema: joi.array().items(
           joi.object({
             organisationId: joi.string().required(),
+            name: joi.string(),
+            isLocalAuthority: joi.boolean(),
             dateRegistered: joi.date().required(),
             activeApiCodeCount: joi.number().integer().required().strict()
           })

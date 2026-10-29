@@ -33,6 +33,8 @@ export const findOrganisationsByDateRange = (db, startDate, endDate) => {
         $project: {
           _id: 0,
           organisationId: 1,
+          name: 1,
+          isLocalAuthority: 1,
           dateRegistered: '$createdAt',
           activeApiCodeCount: {
             $size: {

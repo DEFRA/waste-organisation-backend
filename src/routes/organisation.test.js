@@ -318,6 +318,24 @@ describe('organisation API', () => {
       expect(result).toEqual([])
     })
 
+    test('returns the name and local authority flag, leaving out any not set', async () => {
+      const registered = new Date('2025-08-01T09:00:00.000Z')
+      await server.db.collection(orgCollection).insertMany([
+        { organisationId: 'org-0101', name: 'Local Authority Org', isLocalAuthority: true, createdAt: registered, apiCodes: [apiCode('dr-c101')] },
+        { organisationId: 'org-0102', name: 'Business Org', isLocalAuthority: false, createdAt: registered, apiCodes: [apiCode('dr-c102')] },
+        { organisationId: 'org-0103', createdAt: registered, apiCodes: [apiCode('dr-c103')] }
+      ])
+
+      const { result, statusCode } = await getByDateRange({ startDate: '2025-08-01', endDate: '2025-08-01' })
+
+      expect(statusCode).toBe(200)
+      expect(result).toEqual([
+        { organisationId: 'org-0103', dateRegistered: registered, activeApiCodeCount: 1 },
+        { organisationId: 'org-0102', name: 'Business Org', isLocalAuthority: false, dateRegistered: registered, activeApiCodeCount: 1 },
+        { organisationId: 'org-0101', name: 'Local Authority Org', isLocalAuthority: true, dateRegistered: registered, activeApiCodeCount: 1 }
+      ])
+    })
+
     test.each([
       ['missing startDate', { endDate: '2025-01-31' }],
       ['missing endDate', { startDate: '2025-01-01' }],
