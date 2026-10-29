@@ -149,7 +149,7 @@ export const updateErrors = (() => {
           updateCell(worksheet, coords, message, worksheetMetadata?.errors[worksheetName] ?? 1, worksheetMetadata?.firstRowOfData)
         }
       } else {
-        l.error(`Cannot update errors - worksheet not fonud "${worksheetName}" not in ${workbook.worksheets.map((ws) => ws.name).join(', ')}` + `parsed worksheets: ${JSON.stringify(Object.keys(cellsAndMessages))}`)
+        l.error(`Cannot update errors - worksheet not found "${worksheetName}" not in ${workbook.worksheets.map((ws) => ws.name).join(', ')}` + `parsed worksheets: ${JSON.stringify(Object.keys(cellsAndMessages))}`)
       }
     }
     return workbook
