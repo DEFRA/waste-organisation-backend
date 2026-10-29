@@ -140,7 +140,6 @@ export const updateErrors = (() => {
   }
   return (workbook, cellsAndMessages, worksheetMetadata, logger) => {
     const l = logger || console
-    l.info({ event: { reason: 'foo' } }, `GRAFANA_REPORT >> foofoo >> fooMessage`)
     for (const worksheetName of Object.keys(cellsAndMessages)) {
       const worksheet = workbook.getWorksheet(worksheetName)
       if (worksheet) {
