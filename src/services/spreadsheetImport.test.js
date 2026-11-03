@@ -685,6 +685,42 @@ describe('transformBulkApiErrors', () => {
           }
         ]
       }
+    },
+    {
+      apiErrors: [
+        {
+          key: 'concentrationOperator',
+          errorType: 'UnexpectedError',
+          message: '"0.concentrationOperator" must be one of [null, >, <]'
+        }
+      ],
+      expected: {
+        '7. Waste movement level': [
+          {
+            coords: [3, 9],
+            message: "concentration operator must be '>', '<', or left empty.",
+            sheet: '7. Waste movement level'
+          }
+        ]
+      }
+    },
+    {
+      apiErrors: [
+        {
+          key: 'concentrationOperator',
+          errorType: 'UnexpectedError',
+          message: '"0.concentrationOperator" must be one of [null, >]'
+        }
+      ],
+      expected: {
+        '7. Waste movement level': [
+          {
+            coords: [3, 9],
+            message: "concentration operator must be '>' or left empty.",
+            sheet: '7. Waste movement level'
+          }
+        ]
+      }
     }
   ])('should add default error message when col not matched', ({ apiErrors, expected }) => {
     const movementData1 = [{ yourUniqueReference: 'REF1', carrier: { organisationName: 'Carrier Ltd' } }]
