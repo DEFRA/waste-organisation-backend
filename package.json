@@ -51,7 +51,7 @@
     "hapi-pino": "13.0.0",
     "hapi-pulse": "4.0.0",
     "hapi-swagger": "17.3.2",
-    "joi": "18.2.9",
+    "joi": "18.3.2",
     "jsonwebtoken": "9.0.3",
     "mongo-locks": "3.2.0",
     "mongodb": "7.6.0",
@@ -84,11 +84,11 @@
     },
     "fast-xml-parser": "5.7.3",
     "hapi-swagger": {
-      "joi": "18.2.9",
+      "joi": "18.3.2",
       "handlebars": "4.7.10"
     },
     "hapi-pulse": {
-      "joi": "18.2.9"
+      "joi": "18.3.2"
     },
     "js-yaml": "4.3.2",
     "notifications-node-client": {
