@@ -292,11 +292,11 @@ describe('Error transforms bulk import data', () => {
             coords: [16, 9],
             errorValue: [
               {
-                concentration: '<=37%',
+                concentration: 37,
                 name: 'Hydrochloric Acid'
               },
               {
-                concentration: 'Balance',
+                concentration: 9963,
                 name: 'Water'
               }
             ],

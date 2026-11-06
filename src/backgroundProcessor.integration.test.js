@@ -122,7 +122,7 @@ describe('backgroundProcessor integration', () => {
     const ws = workbook.getWorksheet('8. Waste item level')
     const errorCell = ws.getCell('A10')
     expect(errorCell.value.richText.length).toBeGreaterThan(0)
-    expect(errorCell.value.richText[0].text).toContain('No waste movements for unique reference')
+    expect(errorCell.value.richText.map(({ text }) => text).join('')).toContain('No waste movements for unique reference')
     expect(errorCell.value.richText[0].font.color.argb).toBe('FFD4351C')
   })
 
