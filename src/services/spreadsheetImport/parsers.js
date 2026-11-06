@@ -1,48 +1,51 @@
+const validConcentrationPattern = /^([<>])?\s*(\d+(?:\.\d*)?|\.\d+)$/
+
 const parseConcentration = (value) => {
-  const [, operator, amount] = value.match(/^([<>])?\s*([0-9.]+)$/) ?? []
-
-  if (!amount) {
-    return { concentration: value }
+  const match = value.match(validConcentrationPattern)
+  if (!match) {
+    throw new Error('Invalid concentration')
   }
-
+  const [, operator, amount] = match
   return {
     concentration: Number(amount),
     ...(operator && { concentrationOperator: operator })
   }
 }
 
-export const parseComponentCodes = (existing, data) => {
+const parseComponentEntry = (entry, labelKey) => {
+  const [, label, concentrationText] = entry
+    .match(/([^=]*)=(.*)/) // nosonar
+    .map((part) => part.trim())
+  // benzene>=0.8 splits on the = inside >= and would otherwise send concentration 0.8.
+  if (/[<>]$/.test(label)) {
+    throw new Error('Invalid concentration')
+  }
+  return { [labelKey]: label, ...parseConcentration(concentrationText) }
+}
+
+const parseComponents = (existing, data, labelKey) => {
   const result = existing ?? []
+  return result.concat(
+    data.split(/;/).flatMap((entry) => {
+      if (entry.trim() === '') {
+        return []
+      }
+      return [parseComponentEntry(entry, labelKey)]
+    })
+  )
+}
+
+export const parseComponentCodes = (existing, data) => {
   try {
-    return result.concat(
-      data.split(/;/).flatMap((y) => {
-        if (y.trim() === '') {
-          return []
-        }
-        const [_, code, c] = y
-          .match(/([^=]*)=(.*)/) // nosonar
-          .map((x) => x.trim())
-        return [{ code, ...parseConcentration(c) }]
-      })
-    )
+    return parseComponents(existing, data, 'code')
   } catch {
     throw new Error(`Cannot parse component codes`)
   }
 }
 
 export const parseComponentNames = (existing, data) => {
-  const result = existing ?? []
   try {
-    const parsed = data.split(/;/).flatMap((y) => {
-      if (y.trim() === '') {
-        return []
-      }
-      const [_, name, c] = y
-        .match(/([^=]*)=(.*)/) // nosonar
-        .map((x) => x.trim())
-      return [{ name, ...parseConcentration(c) }]
-    })
-    return result.concat(parsed)
+    return parseComponents(existing, data, 'name')
   } catch {
     throw new Error(`Cannot parse component names`)
   }
