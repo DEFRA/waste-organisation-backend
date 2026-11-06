@@ -1,4 +1,4 @@
-const validConcentrationPattern = /^([<>])?\s*([0-9]+(?:\.[0-9]*)?|\.[0-9]+)$/
+const validConcentrationPattern = /^([<>])?\s*(\d+(?:\.\d*)?|\.\d+)$/
 
 const parseConcentration = (value) => {
   const match = value.match(validConcentrationPattern)
