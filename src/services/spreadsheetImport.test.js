@@ -350,7 +350,7 @@ describe('some unit tests for parsers', () => {
   })
 
   test('parseComponentCodes rejects an unsupported concentration operator', () => {
-    expect(() => parseComponentCodes(null, 'ALD=>=10')).toThrow('Cannot parse component codes')
+    expect(() => parseComponentCodes(null, 'ALD=>=10')).toThrow('Invalid concentration')
   })
 
   test('parseComponentNames with a concentration operator', () => {
@@ -359,7 +359,7 @@ describe('some unit tests for parsers', () => {
       { name: 'Lead', concentration: 0.5, concentrationOperator: '<' },
       { name: 'Arsenic', concentration: 30 }
     ])
-    expect(() => parseComponentNames(null, 'Mercury=ten')).toThrow('Cannot parse component names')
+    expect(() => parseComponentNames(null, 'Mercury=ten')).toThrow('Invalid concentration')
   })
 
   test('parseComponentNames accepts hazardous component concentrations', () => {
@@ -374,9 +374,17 @@ describe('some unit tests for parsers', () => {
   test.each(['benzene>=0.8', 'benzene=+8', 'Cadmium=9.8;Hexavalent chromium=?8;Toluene=0.8', 'Chromium=34;arsenic trioxide=*87', 'Hydrochloric Acid = <=37%; Water = Balance', 'Acetone = 100%', 'x=<1%'])(
     'parseComponentNames rejects an invalid concentration: %s',
     (value) => {
-      expect(() => parseComponentNames(null, value)).toThrow('Cannot parse component names')
+      expect(() => parseComponentNames(null, value)).toThrow('Invalid concentration')
     }
   )
+
+  test('parseComponentNames rejects concentrations continued onto another line', () => {
+    expect(() => parseComponentNames(null, 'benzene=0.8\ntoluene=1.2')).toThrow('Invalid concentration')
+    expect(parseComponentNames(null, 'benzene=0.8;\ntoluene=1.2')).toEqual([
+      { name: 'benzene', concentration: 0.8 },
+      { name: 'toluene', concentration: 1.2 }
+    ])
+  })
 
   test('validateMovementHasWasteItems', () => {
     expect(() => validateMovementHasWasteItems(3)({ yourUniqueReference: 'fish' })).toThrow()
@@ -817,17 +825,17 @@ describe('excel proccessor', () => {
         {
           coords: [16, 9],
           errorValue: 'Hydrochloric Acid = <=37%; Water = Balance',
-          message: 'Cannot parse component names'
+          message: 'Invalid concentration'
         },
         {
           coords: [16, 10],
           errorValue: '2-dibutylaminoethanol (5-<7%) = <1%; Talc (3-<5%) = <1%; Non-hazardous ink components (Balance) = <1%; Metal tins and rags = Balance',
-          message: 'Cannot parse component names'
+          message: 'Invalid concentration'
         },
         {
           coords: [16, 11],
           errorValue: 'Acetone = 100%',
-          message: 'Cannot parse component names'
+          message: 'Invalid concentration'
         },
         {
           coords: [2, 10],
