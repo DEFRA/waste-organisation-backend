@@ -1,9 +1,9 @@
 import { MongoClient } from 'mongodb'
-import { createOrgIndexes, setMissingCreatedAtAndUpdatedAtOrganisationFields } from '../repositories/organisation.js'
-import { createSpreadsheetIndexes } from '../repositories/spreadsheet.js'
-import { createPaymentIndexes } from '../repositories/payment.js'
-import { createScheduledTasksIndexes } from '../repositories/scheduledTasks.js'
-import { createLockManager, singletonRunner } from './mongo-lock.js'
+import { config as migrateMongo, up } from 'migrate-mongo'
+import { createLockManager, acquireLockWithWait } from './mongo-lock.js'
+import migrateMongoConfig from '../../migrate-mongo-config.js'
+
+const MIGRATION_LOCK = 'db-migrations'
 
 export const mongoDb = {
   plugin: {
@@ -20,9 +20,19 @@ export const mongoDb = {
       const db = client.db(databaseName)
       const locker = await createLockManager(db)
 
-      // Note: DB indexes are created and migrations are done during plugin initialisation
-      await createIndexes(db)
-      await runDbMigrations(db, server.logger)
+      /*
+       * Run pending migrations before the service is ready.
+       * changes are versioned migrations in the migrations/ root folder and run only once, not on every startup.
+       * A failing migration throws here, which fails registration and so fails startup. Close the client we
+       * opened on the way out so a failed startup doesn't leak the connection (ignore any close error so the
+       * original migration failure is what propagates).
+       */
+      try {
+        await runDbMigrations(db, server.logger, locker)
+      } catch (e) {
+        await client.close(true).catch(() => {})
+        throw e
+      }
 
       server.logger.info(`MongoDb connected to ${databaseName}`)
 
@@ -44,17 +54,22 @@ export const mongoDb = {
   }
 }
 
-async function createIndexes(db) {
-  await db.collection('mongo-locks').createIndex({ id: 1 })
-  await createOrgIndexes(db)
-  await createSpreadsheetIndexes(db)
-  await createPaymentIndexes(db)
-  await createScheduledTasksIndexes(db)
+/*
+ * Runs pending migrate-mongo migrations with mongo-locks lock rather than migrate-mongo's as they're not safe. First pod runs migrations, any other pod waits
+ */
+export const runDbMigrations = async (db, logger, locker) => {
+  const lockManager = locker ?? (await createLockManager(db))
+  const migrationTimeoutMs = 120000
+  const lock = await acquireLockWithWait(lockManager, MIGRATION_LOCK, logger, migrationTimeoutMs)
+  try {
+    migrateMongo.set(migrateMongoConfig)
+    const migrated = await up(db)
+    if (migrated.length > 0) {
+      logger.info(`Applied db migrations: ${migrated.join(', ')}`)
+    } else {
+      logger.info('No pending db migrations')
+    }
+  } finally {
+    await lock.free()
+  }
 }
-
-export const runDbMigrations = async (db, logger) => {
-  const logMigrationMsg = (label, l) => l.warn(`${label} - db migrations not running due to lock`)
-  await singletonRunner(db, 'db migrations', logger, async () => await migrateDb(db, logger), logMigrationMsg)
-}
-
-const migrateDb = async (db, logger) => await setMissingCreatedAtAndUpdatedAtOrganisationFields(db, logger)

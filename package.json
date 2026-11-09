@@ -8,6 +8,11 @@
     "node": ">=22.16.0"
   },
   "scripts": {
+    "db:migrate": "NODE_ENV=development node --use-strict src/migrate.js",
+    "db:migrate:create": "migrate-mongo create",
+    "db:migrate:down": "migrate-mongo down",
+    "db:migrate:status": "migrate-mongo status",
+    "db:migrate:up": "migrate-mongo up",
     "dev": "NODE_ENV=development npm run server:watch",
     "dev:debug": "NODE_ENV=development npm run server:debug",
     "docker:dev": "npm run dev",
@@ -53,6 +58,7 @@
     "hapi-swagger": "17.3.2",
     "joi": "18.2.9",
     "jsonwebtoken": "9.0.3",
+    "migrate-mongo": "14.0.7",
     "mongo-locks": "3.2.0",
     "mongodb": "7.6.0",
     "node-cron": "4.6.0",
