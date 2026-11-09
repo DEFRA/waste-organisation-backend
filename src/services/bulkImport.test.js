@@ -249,16 +249,6 @@ describe('Error transforms bulk import data', () => {
         },
         {
           errorType: 'UnexpectedError',
-          key: '0.wasteItems.0.hazardous.components.0.concentration',
-          message: '"[0].wasteItems[0].hazardous.components[0].concentration" must be a number'
-        },
-        {
-          errorType: 'UnexpectedError',
-          key: '0.wasteItems.0.hazardous.components.1.concentration',
-          message: '"[0].wasteItems[0].hazardous.components[1].concentration" must be a number'
-        },
-        {
-          errorType: 'UnexpectedError',
           key: '0.carrier.meansOfTransport',
           message: '"[0].carrier.meansOfTransport" is required'
         },
@@ -286,21 +276,6 @@ describe('Error transforms bulk import data', () => {
             coords: [3, 9],
             errorValue: ['060110'],
             message: 'ewc codes must be a valid EWC code from the official list',
-            sheet: '8. Waste item level'
-          },
-          {
-            coords: [16, 9],
-            errorValue: [
-              {
-                concentration: '<=37%',
-                name: 'Hydrochloric Acid'
-              },
-              {
-                concentration: 'Balance',
-                name: 'Water'
-              }
-            ],
-            message: 'concentration must be a number',
             sheet: '8. Waste item level'
           }
         ]

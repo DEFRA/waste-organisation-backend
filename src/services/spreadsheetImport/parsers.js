@@ -1,50 +1,61 @@
+const validConcentrationPattern = /^([<>])?\s*(\d+(?:\.\d*)?|\.\d+)$/
+const invalidConcentrationMessage = 'Invalid concentration'
+
 const parseConcentration = (value) => {
-  const [, operator, amount] = value.match(/^([<>])?\s*([0-9.]+)$/) ?? []
-
-  if (!amount) {
-    return { concentration: value }
+  const match = value.match(validConcentrationPattern)
+  if (!match) {
+    throw new Error(invalidConcentrationMessage)
   }
-
+  const [, operator, amount] = match
   return {
     concentration: Number(amount),
     ...(operator && { concentrationOperator: operator })
   }
 }
 
-export const parseComponentCodes = (existing, data) => {
+const rethrowComponentParseError = (error, fallback) => {
+  if (error instanceof Error && error.message === invalidConcentrationMessage) {
+    throw error
+  }
+  throw new Error(fallback)
+}
+
+const parseComponentEntry = (entry, labelKey) => {
+  const [, label, concentrationText] = entry
+    .match(/([^=]*)=(.*)/s) // nosonar
+    .map((part) => part.trim())
+  // benzene>=0.8 splits on the = inside >= and would otherwise send concentration 0.8.
+  if (/[<>]$/.test(label)) {
+    throw new Error(invalidConcentrationMessage)
+  }
+  return { [labelKey]: label, ...parseConcentration(concentrationText) }
+}
+
+const parseComponents = (existing, data, labelKey) => {
   const result = existing ?? []
+  return result.concat(
+    data.split(/;/).flatMap((entry) => {
+      if (entry.trim() === '') {
+        return []
+      }
+      return [parseComponentEntry(entry, labelKey)]
+    })
+  )
+}
+
+export const parseComponentCodes = (existing, data) => {
   try {
-    return result.concat(
-      data.split(/;/).flatMap((y) => {
-        if (y.trim() === '') {
-          return []
-        }
-        const [_, code, c] = y
-          .match(/([^=]*)=(.*)/) // nosonar
-          .map((x) => x.trim())
-        return [{ code, ...parseConcentration(c) }]
-      })
-    )
-  } catch {
-    throw new Error(`Cannot parse component codes`)
+    return parseComponents(existing, data, 'code')
+  } catch (error) {
+    rethrowComponentParseError(error, 'Cannot parse component codes')
   }
 }
 
 export const parseComponentNames = (existing, data) => {
-  const result = existing ?? []
   try {
-    const parsed = data.split(/;/).flatMap((y) => {
-      if (y.trim() === '') {
-        return []
-      }
-      const [_, name, c] = y
-        .match(/([^=]*)=(.*)/) // nosonar
-        .map((x) => x.trim())
-      return [{ name, ...parseConcentration(c) }]
-    })
-    return result.concat(parsed)
-  } catch {
-    throw new Error(`Cannot parse component names`)
+    return parseComponents(existing, data, 'name')
+  } catch (error) {
+    rethrowComponentParseError(error, 'Cannot parse component names')
   }
 }
 
