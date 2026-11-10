@@ -38,7 +38,7 @@ export const acquireLockWithWait = async (locker, resource, logger, { intervalMs
       throw new Error(`Timed out after ${timeoutMs}ms waiting for '${resource}' lock`)
     }
     logger.info(`Waiting for '${resource}' lock...`)
-    await sleep(intervalMs)
+    await sleep(intervalMs) // nosonar
   }
 }
 
