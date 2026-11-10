@@ -14,6 +14,10 @@ EXPOSE ${PORT} ${PORT_DEBUG}
 COPY --chown=node:node package*.json ./
 RUN npm ci
 COPY --chown=node:node ./src ./src
+# migrations/ and migrate-mongo-config.js live at the repo root (not under src/) but are
+# needed at boot - mongodb.js imports the config and migrate-mongo runs the migration files.
+COPY --chown=node:node ./migrations ./migrations
+COPY --chown=node:node ./migrate-mongo-config.js ./migrate-mongo-config.js
 
 CMD [ "npm", "run", "docker:dev" ]
 
@@ -31,6 +35,8 @@ ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 COPY --from=development /home/node/package*.json ./
 COPY --from=development /home/node/src ./src/
+COPY --from=development /home/node/migrations ./migrations/
+COPY --from=development /home/node/migrate-mongo-config.js ./migrate-mongo-config.js
 
 RUN npm ci --omit=dev
 
