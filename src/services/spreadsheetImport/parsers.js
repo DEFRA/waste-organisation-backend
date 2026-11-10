@@ -1,37 +1,41 @@
-const validConcentrationPattern = /^([<>])?\s*(\d+(?:\.\d*)?|\.\d+)$/
-const invalidConcentrationMessage = 'Invalid concentration'
+const numericConcentrationPattern = /^(?:\d+(?:\.\d*)?|\.\d+)$/
+// Name, the symbols written after it, then the value. The s flag keeps a newline inside the value.
+const componentEntryPattern = /^([A-Za-z\d\s-]+(?:\([^)]*\)[A-Za-z\d\s-]*)*)([^A-Za-z\d.\s()]+(?:\s+[^A-Za-z\d.\s()]+)*)\s*([A-Za-z\d.].*)$/s
 
-const parseConcentration = (value) => {
-  const match = value.match(validConcentrationPattern)
-  if (!match) {
-    throw new Error(invalidConcentrationMessage)
+const componentParseError = (labelKey) => {
+  if (labelKey === 'code') {
+    throw new Error('Cannot parse component codes')
   }
-  const [, operator, amount] = match
-  return {
-    concentration: Number(amount),
-    ...(operator && { concentrationOperator: operator })
-  }
+  throw new Error('Cannot parse component names')
 }
 
-const rethrowComponentParseError = (error, fallback) => {
-  if (error instanceof Error && error.message === invalidConcentrationMessage) {
-    throw error
+const concentrationValue = (valueText) => (numericConcentrationPattern.test(valueText) ? Number(valueText) : valueText)
+
+const readComponentEntry = (entry) => {
+  const match = entry.trim().match(componentEntryPattern)
+  if (!match) {
+    return null
   }
-  throw new Error(fallback)
+  const [, name, operator, valueText] = match
+  return { name: name.trim(), operator: operator.trim(), concentration: concentrationValue(valueText.trim()) }
 }
 
 const parseComponentEntry = (entry, labelKey) => {
-  const [, label, concentrationText] = entry
-    .match(/([^=]*)=(.*)/s) // nosonar
-    .map((part) => part.trim())
-  // benzene>=0.8 splits on the = inside >= and would otherwise send concentration 0.8.
-  if (/[<>]$/.test(label)) {
-    throw new Error(invalidConcentrationMessage)
+  const parsed = readComponentEntry(entry)
+  if (!parsed) {
+    componentParseError(labelKey)
   }
-  return { [labelKey]: label, ...parseConcentration(concentrationText) }
+  return {
+    [labelKey]: parsed.name,
+    concentration: parsed.concentration,
+    ...(parsed.operator !== '=' && { concentrationOperator: parsed.operator })
+  }
 }
 
 const parseComponents = (existing, data, labelKey) => {
+  if (typeof data !== 'string') {
+    componentParseError(labelKey)
+  }
   const result = existing ?? []
   return result.concat(
     data.split(/;/).flatMap((entry) => {
@@ -43,21 +47,9 @@ const parseComponents = (existing, data, labelKey) => {
   )
 }
 
-export const parseComponentCodes = (existing, data) => {
-  try {
-    return parseComponents(existing, data, 'code')
-  } catch (error) {
-    rethrowComponentParseError(error, 'Cannot parse component codes')
-  }
-}
+export const parseComponentCodes = (existing, data) => parseComponents(existing, data, 'code')
 
-export const parseComponentNames = (existing, data) => {
-  try {
-    return parseComponents(existing, data, 'name')
-  } catch (error) {
-    rethrowComponentParseError(error, 'Cannot parse component names')
-  }
-}
+export const parseComponentNames = (existing, data) => parseComponents(existing, data, 'name')
 
 export const parseEstimate = (() => {
   const estVals = ['estimate', 'est', 'y', 'yes', 'true', true, 'TRUE()']
