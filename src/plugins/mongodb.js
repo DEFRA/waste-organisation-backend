@@ -60,7 +60,7 @@ export const mongoDb = {
 export const runDbMigrations = async (db, logger, locker) => {
   const lockManager = locker ?? (await createLockManager(db))
   const migrationTimeoutMs = 120000
-  const lock = await acquireLockWithWait(lockManager, MIGRATION_LOCK, logger, migrationTimeoutMs)
+  const lock = await acquireLockWithWait(lockManager, MIGRATION_LOCK, logger, { timeoutMs: migrationTimeoutMs })
   try {
     migrateMongo.set(migrateMongoConfig)
     const migrated = await up(db)
