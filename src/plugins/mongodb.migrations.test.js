@@ -1,6 +1,7 @@
 import { ObjectId } from 'mongodb'
 import { initialiseServer, stopServer } from '../common/helpers/initialse-test-server.js'
-import { setMissingCreatedAtAndUpdatedAtOrganisationFields, orgCollection } from '../repositories/organisation.js'
+import { orgCollection } from '../repositories/organisation.js'
+import { setMissingCreatedAtAndUpdatedAtOrganisationFields } from '../../migrations/20261104090000-set-missing-org-timestamps.js'
 import { randomUUID } from 'node:crypto'
 import { runDbMigrations } from './mongodb.js'
 import { createLockManager, acquireLockWithWait } from './mongo-lock.js'
