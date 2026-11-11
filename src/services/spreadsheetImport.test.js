@@ -337,49 +337,64 @@ describe('some unit tests for parsers', () => {
       { concentration: 7.1, name: 'def' }
     ])
     expect(parseComponentNames(null, 'abc=123')).toEqual([{ concentration: 123, name: 'abc' }])
-    expect(() => parseComponentNames(null, 'abc')).toThrow()
+    expect(() => parseComponentNames(null, 'abc')).toThrow('Cannot parse component names')
   })
 
   test('parseComponentCodes with a concentration operator', () => {
     expect(parseComponentCodes(null, 'ALD=>10;END=<0.5;HCB=30')).toEqual([
-      { code: 'ALD', concentration: 10, concentrationOperator: '>' },
-      { code: 'END', concentration: 0.5, concentrationOperator: '<' },
+      { code: 'ALD', concentration: 10, concentrationOperator: '=>' },
+      { code: 'END', concentration: 0.5, concentrationOperator: '=<' },
       { code: 'HCB', concentration: 30 }
     ])
-    expect(parseComponentCodes(null, 'ALD = > 10')).toEqual([{ code: 'ALD', concentration: 10, concentrationOperator: '>' }])
-  })
-
-  test('parseComponentCodes rejects an unsupported concentration operator', () => {
-    expect(() => parseComponentCodes(null, 'ALD=>=10')).toThrow('Invalid concentration')
+    expect(parseComponentCodes(null, 'ALD = > 10')).toEqual([{ code: 'ALD', concentration: 10, concentrationOperator: '= >' }])
+    expect(parseComponentCodes(null, 'ALD=>=10')).toEqual([{ code: 'ALD', concentration: 10, concentrationOperator: '=>=' }])
   })
 
   test('parseComponentNames with a concentration operator', () => {
     expect(parseComponentNames(null, 'Mercury=>10;Lead=<0.5;Arsenic=30')).toEqual([
-      { name: 'Mercury', concentration: 10, concentrationOperator: '>' },
-      { name: 'Lead', concentration: 0.5, concentrationOperator: '<' },
+      { name: 'Mercury', concentration: 10, concentrationOperator: '=>' },
+      { name: 'Lead', concentration: 0.5, concentrationOperator: '=<' },
       { name: 'Arsenic', concentration: 30 }
     ])
-    expect(() => parseComponentNames(null, 'Mercury=ten')).toThrow('Invalid concentration')
+    expect(parseComponentNames(null, 'Mercury=ten')).toEqual([{ name: 'Mercury', concentration: 'ten' }])
   })
 
-  test('parseComponentNames accepts hazardous component concentrations', () => {
-    expect(parseComponentNames(null, 'benzene=>0.8')).toEqual([{ name: 'benzene', concentration: 0.8, concentrationOperator: '>' }])
+  test('parseComponentNames passes the operator and concentration through', () => {
+    expect(parseComponentNames(null, 'benzene=>0.8')).toEqual([{ name: 'benzene', concentration: 0.8, concentrationOperator: '=>' }])
     expect(parseComponentNames(null, 'Cadmium=9.8;Hexavalent chromium=>8;Toluene=0.8')).toEqual([
       { name: 'Cadmium', concentration: 9.8 },
-      { name: 'Hexavalent chromium', concentration: 8, concentrationOperator: '>' },
+      { name: 'Hexavalent chromium', concentration: 8, concentrationOperator: '=>' },
       { name: 'Toluene', concentration: 0.8 }
     ])
+    expect(parseComponentNames(null, 'benzene>=0.8')).toEqual([{ name: 'benzene', concentration: 0.8, concentrationOperator: '>=' }])
+    expect(parseComponentNames(null, 'benzene=+8')).toEqual([{ name: 'benzene', concentration: 8, concentrationOperator: '=+' }])
+    expect(parseComponentNames(null, 'chromium?8')).toEqual([{ name: 'chromium', concentration: 8, concentrationOperator: '?' }])
+    expect(parseComponentNames(null, 'Cadmium=9.8;Hexavalent chromium=?8;Toluene=0.8')).toEqual([
+      { name: 'Cadmium', concentration: 9.8 },
+      { name: 'Hexavalent chromium', concentration: 8, concentrationOperator: '=?' },
+      { name: 'Toluene', concentration: 0.8 }
+    ])
+    expect(parseComponentNames(null, 'Chromium=34;arsenic trioxide=*87')).toEqual([
+      { name: 'Chromium', concentration: 34 },
+      { name: 'arsenic trioxide', concentration: 87, concentrationOperator: '=*' }
+    ])
+    expect(parseComponentNames(null, 'Acetone = 100%')).toEqual([{ name: 'Acetone', concentration: '100%' }])
+    expect(parseComponentNames(null, 'x=<1%')).toEqual([{ name: 'x', concentration: '1%', concentrationOperator: '=<' }])
+    expect(parseComponentNames(null, 'Hydrochloric Acid = <=37%; Water = Balance')).toEqual([
+      { name: 'Hydrochloric Acid', concentration: '37%', concentrationOperator: '= <=' },
+      { name: 'Water', concentration: 'Balance' }
+    ])
+    expect(parseComponentNames(null, '2-dibutylaminoethanol (5-<7%) = <1%')).toEqual([{ name: '2-dibutylaminoethanol (5-<7%)', concentration: '1%', concentrationOperator: '= <' }])
   })
 
-  test.each(['benzene>=0.8', 'benzene=+8', 'Cadmium=9.8;Hexavalent chromium=?8;Toluene=0.8', 'Chromium=34;arsenic trioxide=*87', 'Hydrochloric Acid = <=37%; Water = Balance', 'Acetone = 100%', 'x=<1%'])(
-    'parseComponentNames rejects an invalid concentration: %s',
-    (value) => {
-      expect(() => parseComponentNames(null, value)).toThrow('Invalid concentration')
-    }
-  )
+  test('parseComponentNames keeps punctuation inside a chemical name', () => {
+    expect(parseComponentNames(null, '2,4-foophenol>=10')).toEqual([{ name: '2,4-foophenol', concentration: 10, concentrationOperator: '>=' }])
+    expect(parseComponentNames(null, "3,3'-dichlorobenzidine=10")).toEqual([{ name: "3,3'-dichlorobenzidine", concentration: 10 }])
+    expect(parseComponentNames(null, 'Lead(II) oxide = 10')).toEqual([{ name: 'Lead(II) oxide', concentration: 10 }])
+  })
 
-  test('parseComponentNames rejects concentrations continued onto another line', () => {
-    expect(() => parseComponentNames(null, 'benzene=0.8\ntoluene=1.2')).toThrow('Invalid concentration')
+  test('parseComponentNames keeps a second component on a new line in the concentration', () => {
+    expect(parseComponentNames(null, 'benzene=0.8\ntoluene=1.2')).toEqual([{ name: 'benzene', concentration: '0.8\ntoluene=1.2' }])
     expect(parseComponentNames(null, 'benzene=0.8;\ntoluene=1.2')).toEqual([
       { name: 'benzene', concentration: 0.8 },
       { name: 'toluene', concentration: 1.2 }
@@ -823,21 +838,6 @@ describe('excel proccessor', () => {
       '7. Waste movement level': [],
       '8. Waste item level': [
         {
-          coords: [16, 9],
-          errorValue: 'Hydrochloric Acid = <=37%; Water = Balance',
-          message: 'Invalid concentration'
-        },
-        {
-          coords: [16, 10],
-          errorValue: '2-dibutylaminoethanol (5-<7%) = <1%; Talc (3-<5%) = <1%; Non-hazardous ink components (Balance) = <1%; Metal tins and rags = Balance',
-          message: 'Invalid concentration'
-        },
-        {
-          coords: [16, 11],
-          errorValue: 'Acetone = 100%',
-          message: 'Invalid concentration'
-        },
-        {
           coords: [2, 10],
           message: 'No waste movements for unique reference'
         },
@@ -887,6 +887,10 @@ describe('excel proccessor', () => {
             ],
             ewcCodes: ['060110'],
             hazardous: {
+              components: [
+                { name: 'Hydrochloric Acid', concentration: '37%', concentrationOperator: '= <=' },
+                { name: 'Water', concentration: 'Balance' }
+              ],
               hazCodes: ['HP_5', 'HP_8'],
               sourceOfComponents: 'PROVIDED_WITH_WASTE'
             },
