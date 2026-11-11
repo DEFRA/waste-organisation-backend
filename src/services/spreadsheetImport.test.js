@@ -387,6 +387,12 @@ describe('some unit tests for parsers', () => {
     expect(parseComponentNames(null, '2-dibutylaminoethanol (5-<7%) = <1%')).toEqual([{ name: '2-dibutylaminoethanol (5-<7%)', concentration: '1%', concentrationOperator: '= <' }])
   })
 
+  test('parseComponentNames keeps punctuation inside a chemical name', () => {
+    expect(parseComponentNames(null, '2,4-foophenol>=10')).toEqual([{ name: '2,4-foophenol', concentration: 10, concentrationOperator: '>=' }])
+    expect(parseComponentNames(null, "3,3'-dichlorobenzidine=10")).toEqual([{ name: "3,3'-dichlorobenzidine", concentration: 10 }])
+    expect(parseComponentNames(null, 'Lead(II) oxide = 10')).toEqual([{ name: 'Lead(II) oxide', concentration: 10 }])
+  })
+
   test('parseComponentNames keeps a second component on a new line in the concentration', () => {
     expect(parseComponentNames(null, 'benzene=0.8\ntoluene=1.2')).toEqual([{ name: 'benzene', concentration: '0.8\ntoluene=1.2' }])
     expect(parseComponentNames(null, 'benzene=0.8;\ntoluene=1.2')).toEqual([

@@ -1,7 +1,6 @@
 const numericConcentrationPattern = /^(?:\d+(?:\.\d*)?|\.\d+)$/
-// Name, then up to two parentheticals, then up to three symbol runs. The s flag keeps a newline inside the value.
-// None of these quantifiers can consume the same characters, so a failed match is not re-scanned.
-const componentEntryPattern = /^([A-Za-z\d\s-]+(?:\([^)]*\)[A-Za-z\d\s-]*)?(?:\([^)]*\)[A-Za-z\d\s-]*)?)([^A-Za-z\d.\s()]+(?:[ \t]+[^A-Za-z\d.\s()]+)?(?:[ \t]+[^A-Za-z\d.\s()]+)?)[ \t]*([A-Za-z\d.].*)$/s // nosonar
+// The name is everything before the operator, including commas, apostrophes, and parentheses. The s flag keeps a newline inside the value.
+const componentEntryPattern = /^([^()=<>+?*]*(?:\([^)]*\)[^()=<>+?*]*)*)([=<>+?*]+(?:[ \t]+[=<>+?*]+)*)[ \t]*([A-Za-z\d.].*)$/s // nosonar
 
 const componentParseError = (labelKey) => {
   if (labelKey === 'code') {
