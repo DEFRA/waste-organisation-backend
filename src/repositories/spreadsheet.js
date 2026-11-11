@@ -1,10 +1,5 @@
 export const spreadsheetCollection = 'spreadsheets'
 
-export const createSpreadsheetIndexes = async (db) => {
-  await db.collection(spreadsheetCollection).createIndex({ organisationId: 1, uploadId: 1 })
-  await db.collection(spreadsheetCollection).createIndex({ organisationId: 1, filename: 1 })
-}
-
 export const findUploadIdsByFilename = (db, organisationId, filename) => {
   return db
     .collection(spreadsheetCollection)

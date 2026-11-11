@@ -1,3 +1,4 @@
+import { setTimeout as sleep } from 'node:timers/promises'
 import { LockManager } from 'mongo-locks'
 
 export const acquireLock = async (locker, resource, logger) => {
@@ -20,6 +21,26 @@ export const requireLock = async (locker, resource) => {
 }
 
 export const createLockManager = async (db) => new LockManager(db.collection('mongo-locks'))
+
+/*
+Acquire or mandatorily wait for a lock (useful for e.g. waiting for the end of migrations). If the lock cannot be acquired within timeoutMs, throws Error.
+
+Migrations >timeout (60s by default) will cause waiting pods to fail to startup  
+*/
+export const acquireLockWithWait = async (locker, resource, logger, { intervalMs = 2000, timeoutMs = 120000 } = {}) => {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    const lock = await locker.lock(resource)
+    if (lock) {
+      return lock
+    }
+    if (Date.now() >= deadline) {
+      throw new Error(`Timed out after ${timeoutMs}ms waiting for '${resource}' lock`)
+    }
+    logger.info(`Waiting for '${resource}' lock...`)
+    await sleep(intervalMs) // nosonar
+  }
+}
 
 export const singletonRunner = (() => {
   const lockManagers = new WeakMap()
