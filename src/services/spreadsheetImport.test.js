@@ -737,7 +737,7 @@ describe('transformBulkApiErrors', () => {
         '7. Waste movement level': [
           {
             coords: [3, 9],
-            message: "concentration operator must be '>', '<', or left empty.",
+            message: "concentration operator must be '>', '<', '=', or left empty.",
             sheet: '7. Waste movement level'
           }
         ]
@@ -755,7 +755,7 @@ describe('transformBulkApiErrors', () => {
         '7. Waste movement level': [
           {
             coords: [3, 9],
-            message: "concentration operator must be '>' or left empty.",
+            message: "concentration operator must be '>', '=', or left empty.",
             sheet: '7. Waste movement level'
           }
         ]

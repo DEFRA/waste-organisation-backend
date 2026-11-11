@@ -123,8 +123,8 @@ export const parseExcelFile = (() => {
 // Bulk API messages that are replaced with wording that matches the spreadsheet guidance
 const messageRewrites = [
   [/ must be a valid UTC \([^)]*\) or BST \([^)]*\) ISO datetime$/, ' must be in the London/Europe timezone and in the format: dd/mm/yyyy hh:mm:ss. For example, 01/01/2026 09:30:00'],
-  [/ must be one of \[null, >, <\]$/, " must be '>', '<', or left empty."],
-  [/ must be one of \[null, >\]$/, " must be '>' or left empty."]
+  [/ must be one of \[null, >, <\]$/, " must be '>', '<', '=', or left empty."],
+  [/ must be one of \[null, >\]$/, " must be '>', '=', or left empty."]
 ]
 
 const rewriteMessage = (message) => messageRewrites.reduce((m, [pattern, replacement]) => m?.replace(pattern, replacement), message)
