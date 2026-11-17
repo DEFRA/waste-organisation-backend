@@ -959,6 +959,7 @@ describe('excel proccessor', () => {
     setupMockWorkbook(
       buffer,
       [['', 'waste tracking id', 'REF1', '']],
+      // prettier-ignore
       [
         ['', 'REF1', '', ''],
         ['', 'REF2', '', '']
@@ -991,6 +992,7 @@ describe('excel proccessor', () => {
     setupMockWorkbook(
       buffer,
       [['', '', '', 'company name', '', '', '']],
+      // prettier-ignore
       [
         ['', '', 'ewc code 1', ''],
         ['', null, 'ewc code 2', '']
@@ -1017,7 +1019,9 @@ describe('excel proccessor', () => {
     const buffer = Buffer.from('test xl file')
     setupMockWorkbook(
       buffer,
+      // prettier-ignore
       [
+        // prettier-ignore
         [
           '',
           '',
@@ -1043,6 +1047,7 @@ describe('excel proccessor', () => {
           'Road',
           'TE00 SYN'
         ],
+        // prettier-ignore
         [
           '',
           '',
@@ -1069,6 +1074,7 @@ describe('excel proccessor', () => {
           'TE00 SYN'
         ]
       ],
+      // prettier-ignore
       [
         ['', '', '200135', 'WEEE WASTE', 'Solid', '1', 'IBC', 'Kilograms', '1000', 'Yes', 'No', '', 'PROVIDED_WITH_WASTE', 'Yes', 'HP14', '', 'PROVIDED_WITH_WASTE', 'R13;R14'],
         ['', '', '191201', 'Paper', 'Solid', '1', 'IBC', 'Kilograms', '1000', 'Yes', 'No', '', 'PROVIDED_WITH_WASTE', 'No', 'N/H', '', 'PROVIDED_WITH_WASTE', 'D15']
@@ -1115,7 +1121,9 @@ describe('excel proccessor', () => {
     const buffer = Buffer.from('test xl file')
     setupMockWorkbook(
       buffer,
+      // prettier-ignore
       [
+        // prettier-ignore
         [
           '',
           '',
@@ -1141,6 +1149,7 @@ describe('excel proccessor', () => {
           'Road',
           'TE00 SYN'
         ],
+        // prettier-ignore
         [
           '',
           '',
@@ -1167,6 +1176,7 @@ describe('excel proccessor', () => {
           'TE00 SYN'
         ]
       ],
+      // prettier-ignore
       [
         ['', 'test1', '200135', 'WEEE WASTE', 'Solid', '1', 'IBC', 'Kilograms', '1000', 'Yes', 'No', '', 'PROVIDED_WITH_WASTE', 'Yes', 'HP14', '', 'PROVIDED_WITH_WASTE', 'R13'],
         ['', 'test1', '191201', 'Paper', 'Solid', '1', 'IBC', 'Kilograms', '1000', 'Yes', 'No', '', 'PROVIDED_WITH_WASTE', 'No', 'N/H', '', 'PROVIDED_WITH_WASTE', 'D15qqq']
@@ -1204,10 +1214,12 @@ describe('excel proccessor', () => {
   test('should have errors when worksheets are missing', { timeout: 100000 }, async () => {
     const buffer = Buffer.from('test xl file')
     const movementData = [['', 'waste tracking id', 'REF1', '']]
-    const itemData = [
-      ['', 'REF1', '', ''],
-      ['', 'REF2', '', '']
-    ]
+    const itemData =
+      // prettier-ignore
+      [
+        ['', 'REF1', '', ''],
+        ['', 'REF2', '', '']
+      ]
     vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue({
       xlsx: { writeBuffer: async () => buffer, writeFile: async () => null },
       worksheets: [{ name: 'bumf' }, { name: 'renamed - Waste movement level' }, { name: 'renamed - Waste item level' }],
