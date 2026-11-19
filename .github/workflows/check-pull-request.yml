@@ -136,7 +136,8 @@ jobs:
           GRID_PORT: 4444
         run: |
           npm run test:grid:ci:waste-organisation-backend
-          # Off so AnalyseZapReport only reads the saved report and does not start a new ZAP session.
+          # PROXY_MODE must be off so ZAP does not start a new session. The grid run already
+          # downloaded a local JSON report; this step is a simple follow-up that checks that file.
           PROXY_MODE=off npm run test:zap
 
       - name: Generate Test Report
