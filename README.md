@@ -18,6 +18,7 @@ background processing.
   - [Testing](#testing)
   - [Production](#production)
   - [Npm scripts](#npm-scripts)
+- [Spreadsheet validation rules](#spreadsheet-validation-rules)
 - [API endpoints](#api-endpoints)
 - [Authentication](#authentication)
 - [Development helpers](#development-helpers)
@@ -120,6 +121,43 @@ To view them in your command line run:
 ```bash
 npm run
 ```
+
+## Spreadsheet validation rules
+
+`tools/spreadsheet-validation-docs/` writes a service-desk description of the receipt-of-waste spreadsheet. Each column gets its name, obligation, description, and the checks and error messages that apply to it. The text comes from three places: the organisation-backend tag's spreadsheet import source, the version of `@defra/waste-movement-utils` pinned by the movement-backend tag, and the downloadable workbook in the frontend repo. It does not read this checkout or this repo's lockfile.
+
+Run it with the two deployed tags:
+
+```bash
+npm run docs:spreadsheet-validation -- 0.204.0 0.240.0
+```
+
+The first argument is an organisation-backend tag. The second is a movement-backend tag. Both must already exist on their remotes. The command checks the organisation tag out in a temporary worktree, clones that movement tag, and installs the utils version named in the movement tag's lockfile.
+
+The workbook is read from a sibling checkout of waste-organisation-frontend:
+
+```text
+../waste-organisation-frontend/src/server/spreadsheet/downloadSpreadsheet/templates/receipt-of-waste-template.xlsx
+```
+
+The command writes `docs/spreadsheet-validation-rules.md`. That file is generated for a chosen pair of tags and is not committed. `docs/` is listed in `.gitignore`.
+
+Add `--publish` to update the Confluence page as well:
+
+```bash
+npm run docs:spreadsheet-validation -- 0.204.0 0.240.0 --publish
+```
+
+Publishing reads four environment variables. If any of them is missing or blank, the command stops before it checks out a tag.
+
+| Variable               | Value                                                                                                                                       |
+| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
+| `CONFLUENCE_BASE_URL`  | The Confluence site, including `https://` and `/wiki`. For example, `https://eaflood.atlassian.net/wiki`. The tool appends `/api/v2/pages`. |
+| `CONFLUENCE_EMAIL`     | The email address of the Atlassian account that can edit the page.                                                                          |
+| `CONFLUENCE_API_TOKEN` | An API token for that account, created at [id.atlassian.com](https://id.atlassian.com/manage-profile/security/api-tokens).                  |
+| `CONFLUENCE_PAGE_ID`   | The numeric id of the page to replace. It is the number in the page URL, for example `6641485691` in `.../pages/6641485691/Page+title`.     |
+
+Keep these in your shell profile or a gitignored `.env` file. Do not commit them.
 
 ## API endpoints
 
