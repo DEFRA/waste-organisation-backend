@@ -7,6 +7,7 @@ import { adviceFor, customConstantsFrom, joinSpreadsheetFields, messageCatalogFr
 import { validationPatternLines } from './patterns.js'
 import { buildSpreadsheetValidationMarkdown } from './render.js'
 import { assertPublishVariables, publishMarkdown } from './confluence.js'
+import { customAllowedValuesFrom } from './custom-values.js'
 
 const repoRoot = path.resolve(import.meta.dirname, '../..')
 
@@ -750,6 +751,69 @@ describe('spreadsheet validation docs', () => {
     expect(body.body.representation).toBe('storage')
     expect(body.body.value).toContain('<h1>Spreadsheet validation rules</h1>')
     expect(body.body.value).toContain('<strong>Column name:</strong> Site name')
+  })
+
+  test('reads the allowed values out of a custom validator', () => {
+    const values = customAllowedValuesFrom({
+      'src/constants/container-types.js': `
+        export const validContainerTypes = [
+          { code: 'BAG', description: 'Bag' },
+          { code: 'BAL', description: 'Bale' }
+        ]
+        export const isValidContainerType = (containerType) => validContainerTypes.map(({ code }) => code).includes(containerType)
+      `,
+      'src/constants/codes.js': `
+        export const validCodes = [
+          { code: 'END', name: 'Endosulfan' },
+          { code: 'HCBD', name: 'Hexachlorobutadiene' }
+        ]
+        export const isValidCode = (code) => validCodes.some((item) => item.code === code)
+      `,
+      'src/schemas/waste.js': `
+        import { isValidContainerType } from '../constants/container-types.js'
+        import { isValidCode } from '../constants/codes.js'
+        const reasons = ['ON_SITE', 'HOUSEHOLD']
+        const validateContainerType = (value, helpers) => {
+          if (!isValidContainerType(value)) {
+            return helpers.error('InvalidValue.containerType')
+          }
+          return value
+        }
+        const validateReason = (value) => reasons.includes(value)
+        const validateMovement = (value) => reasons.includes(value.reasonForNoConsignmentCode)
+        export const wasteItemsSchema = Joi.object({
+          typeOfContainers: Joi.string().custom(validateContainerType, 'Container type validation'),
+          reason: Joi.string().custom(validateReason),
+          code: Joi.string().custom((value, helpers) => {
+            if (!isValidCode(value)) {
+              return helpers.error('InvalidValue.popCode')
+            }
+            return value
+          }),
+          movement: Joi.object({}).custom(validateMovement)
+        })
+      `
+    })
+    expect(values.typeOfContainers).toEqual(['BAG', 'BAL'])
+    expect(values.reason).toEqual(['ON_SITE', 'HOUSEHOLD'])
+    expect(values.code).toEqual(['END', 'HCBD'])
+    expect(values.movement).toBeUndefined()
+  })
+
+  test('includes the custom validator list in the field checks', () => {
+    const containers = texts(
+      adviceFor(
+        field({
+          columnName: 'Type of containers',
+          apiPath: 'wasteItems.typeOfContainers',
+          customAllowedValues: { typeOfContainers: ['BAG', 'BAL'] },
+          schema: { create: { type: 'string', rules: [{ name: 'custom' }] } }
+        }),
+        [],
+        '8. Waste item level'
+      )
+    )
+    expect(containers).toContain('The upload accepts: BAG, BAL.')
   })
 
   test('reports the status when Confluence rejects the update', async () => {

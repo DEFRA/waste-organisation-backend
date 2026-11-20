@@ -169,7 +169,7 @@ export const messageCatalogFrom = (utils) => {
   return catalog
 }
 
-export const joinSpreadsheetFields = ({ catalogueEntry, cellText, createDescribed, updateDescribed, parsers, customConstants = {}, messageCatalog = {}, patternSamples = [] }) => {
+export const joinSpreadsheetFields = ({ catalogueEntry, cellText, createDescribed, updateDescribed, parsers, customConstants = {}, messageCatalog = {}, patternSamples = [], customAllowedValues = {} }) => {
   const fields = []
   for (const [sheetName, worksheet] of Object.entries(catalogueEntry.worksheets)) {
     worksheet.mapping.forEach((entry, index) => {
@@ -212,6 +212,7 @@ export const joinSpreadsheetFields = ({ catalogueEntry, cellText, createDescribe
           .filter((value) => value instanceof RegExp),
         patternSamples: [...patternSamples, ...(customConstants[apiPath]?.samples ?? [])],
         customConstants: hasCustom(createNode) || hasCustom(updateNode) ? customErrorMessages(customConstants[apiPath]) : [],
+        customAllowedValues,
         examples
       })
     })
@@ -473,6 +474,17 @@ const schemaSentences = (field, fields) => {
       } else {
         lines.push(check(`The upload accepts: ${values.join(', ')}.`))
       }
+    }
+    const customValues = (node.rules ?? []).some((rule) => rule.name === 'custom')
+      ? field.customAllowedValues?.[
+          path
+            .split('.')
+            .filter((part) => part !== '*')
+            .at(-1)
+        ]
+      : null
+    if (customValues?.length) {
+      lines.push(check(`The upload accepts: ${customValues.join(', ')}.`))
     }
     const stated = new Set()
     for (const rule of node.rules ?? []) {

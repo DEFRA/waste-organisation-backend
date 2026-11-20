@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { access, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { parseArgs, promisify } from 'node:util'
@@ -12,6 +12,7 @@ import { cellValueText, customValidationExports, outputRelativePath, readOrganis
 import { customConstantsFrom, joinSpreadsheetFields, messageCatalogFrom } from './schema-advice.js'
 import { patternSamplesFrom } from './patterns.js'
 import { assertPublishVariables, publishMarkdown } from './confluence.js'
+import { customAllowedValuesFrom } from './custom-values.js'
 
 const execFileAsync = promisify(execFile)
 const repoRoot = path.resolve(import.meta.dirname, '../..')
@@ -129,6 +130,15 @@ const main = async () => {
         sources[file] = await readFile(path.join(utilsPackage, file), 'utf8')
       }
     }
+    const utilsSources = {}
+    for (const folder of ['src/schemas', 'src/constants']) {
+      for (const name of await readdir(path.join(utilsPackage, folder))) {
+        if (name.endsWith('.js') && !name.endsWith('.test.js')) {
+          const relative = `${folder}/${name}`
+          utilsSources[relative] = await readFile(path.join(utilsPackage, relative), 'utf8')
+        }
+      }
+    }
     const Joi = await importJoi(utilsDir)
     const { catalogue, parsers } = await readOrganisationRulesFrom(orgDir)
     const { templateKey, cellText } = await readTemplateWorkbook(workbookPath)
@@ -150,7 +160,8 @@ const main = async () => {
       parsers,
       customConstants: customConstantsFrom(utils, sources),
       messageCatalog: messageCatalogFrom(utils),
-      patternSamples: patternSamplesFrom(utils)
+      patternSamples: patternSamplesFrom(utils),
+      customAllowedValues: customAllowedValuesFrom(utilsSources)
     })
     const markdown = buildSpreadsheetValidationMarkdown({
       templateKey,
