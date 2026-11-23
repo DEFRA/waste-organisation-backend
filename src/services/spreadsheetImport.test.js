@@ -812,6 +812,26 @@ describe('transformBulkApiErrors', () => {
   })
 })
 
+describe('template versions', () => {
+  test('recognises the v1.1 template id as the original sheet layout', () => {
+    const workbook = {
+      worksheets: [{ name: 'Coversheet' }, { name: '7. Waste movement level' }, { name: '8. Waste item level' }],
+      getWorksheet: (name) => {
+        if (name === 'Coversheet') {
+          return { getRow: () => ({ getCell: () => ({ value: 'Report receipt of waste v1.1' }) }) }
+        }
+        return { name }
+      }
+    }
+
+    const metadata = getWorksheetMeta(workbook, (x) => x, 'org-id', console)
+
+    expect(metadata.defaultErrorWorksheet).toBe('7. Waste movement level')
+    expect(metadata.worksheets['7. Waste movement level'].firstRowOfData).toBe(9)
+    expect(metadata.worksheets['8. Waste item level'].worksheetName).toBe('8. Waste item level')
+  })
+})
+
 describe('excel proccessor', () => {
   const setupMockWorkbook = (buffer, movementData, itemData) => vi.spyOn(excelImportModule, 'readExcelBuffer').mockResolvedValue(mockWorkbook(buffer, movementData, itemData))
 
