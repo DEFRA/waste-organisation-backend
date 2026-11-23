@@ -298,20 +298,20 @@ const testMovements = [
   {
     carrier: {
       meansOfTransport: 'Inland Waterway',
-      organisationName: 'Qualitech Environmental Services Ltd',
-      registrationNumber: 'CBDU171976'
+      organisationName: 'Example Carrier Ltd',
+      registrationNumber: 'CBDU000001'
     },
     dateTimeReceived: new Date('2026-01-14T11:05:00.000Z'),
-    hazardousWasteConsignmentCode: 'KAWASA/19963',
+    hazardousWasteConsignmentCode: 'EXAMPLE/10001',
     receipt: {
       address: {
-        fullAddress: 'Ernesettle Lane, Plumouth',
-        postcode: 'PL5 2SA'
+        fullAddress: '1 Example Street',
+        postcode: 'ZZ99 9ZZ'
       }
     },
     receiver: {
       authorisationNumber: 'XX9999XX',
-      siteName: 'Kawasaki Precision Machinery UK Ltd'
+      siteName: 'Example Receiver Ltd'
     },
     submittingOrganisation: {
       defraCustomerOrganisationId: '8194cecf-da10-4698-aaaf-f06d2e54ac44'
@@ -436,6 +436,6 @@ const testMovements = [
         }
       }
     ],
-    yourUniqueReference: 'KAWASA/19963'
+    yourUniqueReference: 'EXAMPLE/10001'
   }
 ]
