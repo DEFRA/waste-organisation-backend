@@ -220,6 +220,8 @@ export const getWorksheetMeta = (() => {
       version: '1'
     }
   }
+  // v1.1 keeps the sheet names, columns, and first data row of the original template. Only coversheet A1 changed.
+  knownTemplateVersions['Report receipt of waste v1.1'] = knownTemplateVersions['Report receipt of waste']
   /* v8 ignore stop */
 
   const constructErrorMatchers = (md) => {
