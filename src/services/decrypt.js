@@ -34,4 +34,6 @@ export const decrypt = (encryptionArray, keyOrKeys) => {
       }
     }
   }
+
+  throw new Error('No encryption key could decrypt the value')
 }
