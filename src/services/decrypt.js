@@ -24,16 +24,18 @@ export const decrypt = (encryptionArray, keyOrKeys) => {
     throw new Error('No encryption key is configured')
   }
 
-  for (const [index, key] of keys.entries()) {
+  let authenticationError
+
+  for (const key of keys) {
     try {
       return decryptWithKey(encryptionArray, key)
     } catch (error) {
-      const anotherKeyRemains = index < keys.length - 1
-      if (!isAuthenticationFailure(error) || !anotherKeyRemains) {
+      if (!isAuthenticationFailure(error)) {
         throw error
       }
+      authenticationError = error
     }
   }
 
-  throw new Error('No encryption key could decrypt the value')
+  throw authenticationError
 }

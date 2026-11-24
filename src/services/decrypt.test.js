@@ -57,6 +57,12 @@ describe('Decription', () => {
     expect(() => decrypt(encryptionArray, wrongKeys)).toThrow(/unable to authenticate data/)
   })
 
+  test('throws when no key is configured', () => {
+    const encryptionArray = encrypt(mockEmail, key)
+
+    expect(() => decrypt(encryptionArray, [null, undefined, ''])).toThrow('No encryption key is configured')
+  })
+
   test('does not try a later key when the first key fails for a reason other than the auth tag', () => {
     const previousKey = crypto.randomBytes(32).toString('base64')
     const encryptionArray = encrypt(mockEmail, previousKey)
