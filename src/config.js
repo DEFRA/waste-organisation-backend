@@ -339,6 +339,13 @@ export const config = convict({
     env: 'ENCRYPTION_KEY',
     default: '1r1S98SiPcNEN0vtKm3uiXchW0KYzScxArmmKrYkfKg='
   },
+  encryptionKeyV2: {
+    doc: 'Optional base64 key for ciphertext written after rotation. Tried before encryptionKey. Unset until the new key is deployed.',
+    format: String,
+    nullable: true,
+    default: null,
+    env: 'ENCRYPTION_KEY_V2'
+  },
   isSwaggerEnabled: {
     doc: 'Enable swagger documentation. Disabled in perf-test, ext-test and prod.',
     format: Boolean,
