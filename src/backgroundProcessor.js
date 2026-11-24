@@ -203,8 +203,9 @@ export const processSpreadsheetJob = async (s3Client, message) => {
   const { s3Bucket, s3Key, encryptedEmail, encryptedName, organisationId, uploadId, uploadType, hasError, referenceNumber, filename, traceId } = message
   const processJobLogger = createLogger(traceId)
   processJobLogger.info(`Message: ${JSON.stringify(message)}`)
-  const decryptedEmail = decrypt(encryptedEmail, config.get('encryptionKey'))
-  const decryptedName = decrypt(encryptedName, config.get('encryptionKey'))
+  const decryptionKeys = [config.get('encryptionKeyV2'), config.get('encryptionKey')]
+  const decryptedEmail = decrypt(encryptedEmail, decryptionKeys)
+  const decryptedName = decrypt(encryptedName, decryptionKeys)
 
   const emailReferenceNumber = referenceNumber ?? uploadId
 

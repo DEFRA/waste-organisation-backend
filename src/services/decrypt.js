@@ -1,6 +1,6 @@
 import crypto from 'node:crypto'
 
-export const decrypt = (encryptionArray, key) => {
+const decryptWithKey = (encryptionArray, key) => {
   const [ivB64, ciphertextB64, tagB64] = encryptionArray
 
   const iv = Buffer.from(ivB64, 'base64')
@@ -13,4 +13,29 @@ export const decrypt = (encryptionArray, key) => {
   const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()])
 
   return plaintext.toString('utf8')
+}
+
+const isAuthenticationFailure = (error) => typeof error?.message === 'string' && error.message.includes('unable to authenticate data')
+
+export const decrypt = (encryptionArray, keyOrKeys) => {
+  const keys = (Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys]).filter(Boolean)
+
+  if (keys.length === 0) {
+    throw new Error('No encryption key is configured')
+  }
+
+  let authenticationError
+
+  for (const key of keys) {
+    try {
+      return decryptWithKey(encryptionArray, key)
+    } catch (error) {
+      if (!isAuthenticationFailure(error)) {
+        throw error
+      }
+      authenticationError = error
+    }
+  }
+
+  throw authenticationError
 }
