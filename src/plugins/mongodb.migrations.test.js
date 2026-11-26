@@ -2,6 +2,7 @@ import { ObjectId } from 'mongodb'
 import { initialiseServer, stopServer } from '../common/helpers/initialse-test-server.js'
 import { orgCollection } from '../repositories/organisation.js'
 import { setMissingCreatedAtAndUpdatedAtOrganisationFields } from '../../migrations/20261104090000-set-missing-org-timestamps.js'
+import { deleteOrganisationsWithNullId } from '../../migrations/20261126110000-delete-null-organisation.js'
 import { randomUUID } from 'node:crypto'
 import { runDbMigrations } from './mongodb.js'
 import { createLockManager, acquireLockWithWait } from './mongo-lock.js'
@@ -79,6 +80,63 @@ describe('#setMissingCreatedAtAndUpdatedAtOrganisationFields', () => {
     }
 
     await expect(setMissingCreatedAtAndUpdatedAtOrganisationFields(mockDb, mockLogger)).rejects.toThrow(error)
+  })
+
+  describe('delete-null-organisation migration', () => {
+    const orgs = () => server.db.collection(orgCollection)
+    const org = (fields) => ({ _id: new ObjectId(), apiCodes: [{ code: randomUUID() }], ...fields })
+
+    /* These run against the shared test db, so remove anything they insert. */
+    let inserted
+    beforeEach(() => {
+      inserted = []
+    })
+    afterEach(async () => {
+      await orgs().deleteMany({ _id: { $in: inserted } })
+    })
+    const insert = async (...docs) => {
+      inserted.push(...docs.map(({ _id }) => _id))
+      await orgs().insertMany(docs)
+    }
+
+    test('deletes the one organisation with a null or missing organisationId, and leaves the rest', async () => {
+      const nullOrg = org({ organisationId: null })
+      const validOrg = org({ organisationId: randomUUID() })
+      await insert(nullOrg, validOrg)
+
+      await deleteOrganisationsWithNullId(server.db, mockLogger)
+
+      expect(await orgs().findOne({ _id: nullOrg._id })).toBeNull()
+      expect(await orgs().findOne({ _id: validOrg._id })).not.toBeNull()
+    })
+
+    test('also deletes an organisation with no organisationId field at all', async () => {
+      const missingOrg = org({})
+      await insert(missingOrg)
+
+      await deleteOrganisationsWithNullId(server.db, mockLogger)
+
+      expect(await orgs().findOne({ _id: missingOrg._id })).toBeNull()
+    })
+
+    test('does nothing when every organisation has an organisationId', async () => {
+      const validOrg = org({ organisationId: randomUUID() })
+      await insert(validOrg)
+
+      await deleteOrganisationsWithNullId(server.db, mockLogger)
+
+      expect(await orgs().findOne({ _id: validOrg._id })).not.toBeNull()
+    })
+
+    test('aborts without deleting anything when more than one organisation has a null organisationId', async () => {
+      const nullOrg1 = org({ organisationId: null })
+      const nullOrg2 = org({})
+      await insert(nullOrg1, nullOrg2)
+
+      await expect(deleteOrganisationsWithNullId(server.db, mockLogger)).rejects.toThrow('expected at most 1 organisation with null organisationId, found 2')
+
+      expect(await orgs().countDocuments({ _id: { $in: [nullOrg1._id, nullOrg2._id] } })).toBe(2)
+    })
   })
 
   const MIGRATION_LOCK = 'db-migrations'
