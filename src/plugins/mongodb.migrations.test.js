@@ -25,8 +25,8 @@ describe('#setMissingCreatedAtAndUpdatedAtOrganisationFields', () => {
     const organisation2Id = new ObjectId('69a6c7f03fa2e7991f78ca35')
     const organisation2Date = new Date('2026-03-03T11:37:20.000Z')
     const organisations = [
-      { _id: organisation1Id, apiCodes: [{ code: randomUUID() }] },
-      { _id: organisation2Id, apiCodes: [{ code: randomUUID() }] }
+      { _id: organisation1Id, organisationId: randomUUID(), apiCodes: [{ code: randomUUID() }] },
+      { _id: organisation2Id, organisationId: randomUUID(), apiCodes: [{ code: randomUUID() }] }
     ]
 
     await server.db.collection(orgCollection).insertMany(organisations)
